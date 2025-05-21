@@ -2,7 +2,7 @@
 
 ## Current state
 
-> [! NOTE]
+> [!NOTE]
 > **Work In Progress**. This plugin is not functional yet.
 
 This is not yet a functional nextflow plugin. It contains a skeleton fuzzball project plus
@@ -161,7 +161,7 @@ fuzzball {
 }
 ```
 
-> [! TIP]
+> [!TIP]
 > The exact version has to be specified. Otherwise nextflow will try to download the newest
 > version which will fail.
 

@@ -12,6 +12,12 @@
 #>
 #>Copyright 2025 CIQ, Inc. All rights reserved.
 
+EXIT_SUCCESS=0
+EXIT_NODOWNLOADER=100
+EXIT_DOWNLOAD_FAILED=101
+EXIT_CODEGEN_FAILED=102
+EXIT_SED_FAILED=103
+
 keep=false
 path="__none__"
 while [[ $# -gt 0 ]]; do
@@ -40,14 +46,23 @@ if [[ ! "$path" =~ ^/ ]]; then
 fi
 
 ver=7.13.0
-scriptd="$(readlink -f "$(dirname "$0")")"
+scriptd="$(cd "$(dirname "$0")" && pwd)"
 gen="openapi-generator-cli-${ver}.jar"
 url="https://api.stable.fuzzball.ciq.dev/v2/schema"
 name="fuzzball-sdk"
 
 cd "${scriptd}" || exit 100
 if [[ ! -e "${gen}" ]]; then
-    wget "https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/${ver}/${gen}"
+    if ! command -v wget >/dev/null 2>&1; then
+        if command -v curl >/dev/null 2>&1; then
+            curl -L -o "${gen}" "https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/${ver}/${gen}" || exit $EXIT_DOWNLOAD_FAILED
+        else
+            echo "Error: wget or curl required to download ${gen}" >&2
+            exit $EXIT_NODOWNLOADER
+        fi
+    else
+        wget "https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/${ver}/${gen}" || exit $EXIT_DOWNLOAD_FAILED
+    fi
 fi
 
 tmp=$(mktemp -d)
@@ -58,18 +73,20 @@ java -jar "./${gen}" \
 	  -g groovy \
 	  -c generate_config.yaml \
 	  -o  "${tmp}/${name}" \
-	  -i https://api.stable.fuzzball.ciq.dev/v2/schema || exit 101
+	  -i https://api.stable.fuzzball.ciq.dev/v2/schema || exit $EXIT_CODEGEN_FAILED
 
 # i could not remove the imports for io.swagger.annotations from the generated code without a custom generator
-sed -i .bak -E -e '/import io\.swagger\.annotations\.[^;]+;/d' "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.groovy \
-&& rm -f "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.bak || exit 102
+if sed --version >/dev/null 2>&1; then
+    # GNU sed
+    sed -i -E -e '/import io\.swagger\.annotations\.[^;]+;/d' "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.groovy || exit $EXIT_SED_FAILED
+else
+    # BSD/macOS sed
+    sed -i .bak -E -e '/import io\.swagger\.annotations\.[^;]+;/d' "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.groovy || exit $EXIT_SED_FAILED
+    rm -f "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.bak
+fi
 
 rm -rf "${path}"
 if $keep; then
-    pushd "${tmp}/${name}"
-    gradle wrapper || exit 103
-    #./gradlew assemble || exit 104
-    popd
     mv "${tmp}/${name}" "${path}"
 else
     mkdir -p "${path}"

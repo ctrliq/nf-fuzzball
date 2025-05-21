@@ -45,15 +45,15 @@ gen="openapi-generator-cli-${ver}.jar"
 url="https://api.stable.fuzzball.ciq.dev/v2/schema"
 name="fuzzball-sdk"
 
+cd "${scriptd}" || exit 100
 if [[ ! -e "${gen}" ]]; then
     wget "https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/${ver}/${gen}"
 fi
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-cd "${scriptd}"
 
-java -jar "${gen}" \
+java -jar "./${gen}" \
     generate \
 	  -g groovy \
 	  -c generate_config.yaml \

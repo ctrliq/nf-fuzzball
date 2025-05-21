@@ -47,8 +47,6 @@ ext {
 task generateFuzzballSdk(type: Exec) {
     group = 'build'
     description = 'Generate Fuzzball SDK'
-    // Declaring inputs and outputs so that this task is only executed automatically on compile when needed
-    // Can still be manually executed with `./gradlew generateFuzzballSdk` from the root project
     inputs.files(
         fileTree(dir: 'code-generation', include: ['*.yaml', '*.mustache', '*.sh'])
     )

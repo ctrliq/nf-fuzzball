@@ -1,0 +1,132 @@
+{{! This template is more limited and makes more assumptions than the general groovy template }}
+{{! and may not work in general for all OpenAPI 2.0 schemas }}
+/* groovylint-disable DuplicateNumberLiteral, UnnecessaryGetter */
+package {{apiPackage}}
+
+import groovy.json.JsonBuilder
+import groovy.json.JsonGenerator
+import groovy.json.JsonSlurper
+import groovy.transform.CompileStatic
+import groovy.util.logging.Slf4j
+import java.util.concurrent.TimeUnit
+import org.apache.commons.lang3.StringUtils
+import okhttp3.HttpUrl
+import okhttp3.MediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import okhttp3.Response
+
+import {{apiPackage}}.ApiConfig
+
+/**
+ * Low level utility class for making the REST Requests.
+ */
+@Slf4j
+@CompileStatic
+class ApiUtils {
+    static final String GET = 'GET'
+    static final String POST = 'POST'
+    static final String PUT = 'PUT'
+    static final String PATCH = 'PATCH'
+    static final String DELETE = 'DELETE'
+
+
+    static final JsonGenerator JSON_GEN = new JsonGenerator.Options()
+            .addConverter(Enum) { Enum u, String key ->
+                u.toString()
+            }
+            .build()
+
+    static final OkHttpClient CLIENT = new OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+
+    final ApiConfig config
+
+    ApiUtils(ApiConfig config){
+        this.config = config
+    }
+
+    /**
+     * Invokes an API synchronously using OkHttp and returns the parsed result.
+     *
+     * @param resourcePath Resource path (starts with '/')
+     * @param queryParams Map of query parameters
+     * @param headerParams Map of header parameters
+     * @param bodyParams  Request body (object or map)
+     * @param method      HTTP method (GET, POST, etc.)
+     * @param contentType Content type
+     * @return            Parsed response object
+     * @throws IOException if the request fails
+     * @throws ApiException if the response is not successful
+     */
+    /* groovylint-disable-next-line ParameterCount */
+    Object invokeApi(String resourcePath,
+                     Map<String,Object> queryParams,
+                     Map<String,Object> headerParams,
+                     Object bodyParams,
+                     String method,
+                     String contentType)  {
+
+        HttpUrl.Builder urlBuilder = new HttpUrl.Builder()
+          .scheme(this.config.schema)
+          .host(this.config.host)
+          .port(this.config.port)
+          .addPathSegments(StringUtils.strip(this.config.basePath, '/'))
+          .addPathSegments(StringUtils.strip(resourcePath, '/'))
+        queryParams?.each { k, v -> urlBuilder.addQueryParameter(k, v?.toString()) }
+        String finalUrl = urlBuilder.build()
+
+        RequestBody requestBody = null
+        if (bodyParams != null) {
+            /* groovylint-disable-next-line Instanceof */
+            String json = (bodyParams instanceof String || bodyParams instanceof GString)
+                        ? bodyParams.toString()
+                        : new JsonBuilder(bodyParams, JSON_GEN).toString()
+            requestBody = RequestBody.create(json, MediaType.parse(contentType ?: 'application/json'))
+        }
+
+        Request.Builder requestBuilder = new Request.Builder()
+                .url(finalUrl)
+                .method(method?.toUpperCase() ?: 'GET',
+                        method?.toUpperCase() in ['POST', 'PUT', 'PATCH'] ? requestBody : null)
+
+        headerParams?.each { k, v -> requestBuilder.addHeader(k, v?.toString()) }
+        requestBuilder.addHeader('Authorization', "Bearer ${this.config.token}")
+
+        Request request = requestBuilder.build()
+        log.debug(request.toString().replaceAll(/Authorization:Bearer\s+[^ \t\n\x0B\f\r,\]]+/, 'Authorization:Bearer <REDACTED>'))
+        Response response
+        try {
+            response = this.CLIENT.newCall(request).execute()
+        } catch (IOException e) {
+            response?.body()?.close()
+            throw e
+        }
+        String respBody = response.body()?.string()
+        response?.body()?.close()
+
+        if (response.isSuccessful()) {
+            return respBody ? JsonSlurper.newInstance().parseText(respBody) : null
+        }
+        throw new ApiException(response.code(), response.message())
+    }
+
+    /**
+     * Exception thrown when an API call fails with a non-successful response.
+     */
+    static class ApiException extends RuntimeException {
+
+        final int statusCode
+        final String statusMessage
+        ApiException(int statusCode, String statusMessage) {
+            super("API call failed with status ${statusCode}: ${statusMessage}")
+            this.statusCode = statusCode
+            this.statusMessage = statusMessage
+        }
+
+    }
+
+}

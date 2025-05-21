@@ -1,0 +1,34 @@
+additionalProperties:
+  artifactId: ${out}
+  artifactVersion: $(date +%C%m%d)-stable
+  shortDesc: Groovy Fuzzball SDK
+  serializableModel: true
+  dateLibrary: java8
+  groupId: com.ciq
+  withXml: false
+  modelPackage: com.ciq.fuzzball.model
+  apiPackage: com.ciq.fuzzball.api
+  invokerPackage: com.ciq.fuzzball
+  developerOrganization: CIQ
+  infoUrl: https://ciq.com
+  disallowAdditionalPropertiesIfNotPresent: true
+  legacyDiscriminatorBehavior: false
+templateDir: ./groovy-okhttp-sync
+files:
+  build.gradle.mustache:
+    templateType: SupportingFiles
+    destinationFilename: build.gradle
+  README.mustache:
+    templateType: SupportingFiles
+    destinationFilename: README.md
+  ApiUtils.mustache:
+    templateType: SupportingFiles
+    folder: src/main/groovy/com/ciq/fuzzball/api
+    destinationFilename: ApiUtils.groovy
+  ApiConfig.mustache:
+    templateType: SupportingFiles
+    folder: src/main/groovy/com/ciq/fuzzball/api
+    destinationFilename: ApiConfig.groovy
+  api.mustache:
+    templateType: API
+    destinationFilename: .groovy

@@ -1,0 +1,77 @@
+#! /bin/bash
+#>SYNOPSIS
+#>  generate [--keep|--src] PATH
+#>  generate --help
+#>DESCRIPTION
+#>  Generate a groovy fuzzball-sdk from the openapi spec. Uses several custom templates
+#>  to generate more modern groovy code including replacing the unmaintained httpbuilder-ng with
+#>  okhttp3.
+#>  If PATH exists it will be deleted and replaced with the generated code.
+#>  --keep
+#>      Keep the full generated project. Othewise only the groovy files are copied.
+#>
+#>Copyright 2025 CIQ, Inc. All rights reserved.
+
+keep=false
+path="__none__"
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --keep)
+            keep=true
+            shift
+            ;;
+        --help)
+            awk '/^#>/{sub(/^#>/,"");print}' "$0"
+            exit 0
+            ;;
+        *)
+            path="$1"
+            shift
+            ;;
+    esac
+done
+
+if [[ "${path:-__none__}" == "__none__" ]]; then
+    awk '/^#>/{sub(/^#>/,"");print}' "$0"
+    exit 1
+fi
+if [[ ! "$path" =~ ^/ ]]; then
+    path="${PWD}/${path}"
+fi
+
+ver=7.13.0
+scriptd="$(readlink -f "$(dirname "$0")")"
+gen="openapi-generator-cli-${ver}.jar"
+url="https://api.stable.fuzzball.ciq.dev/v2/schema"
+name="fuzzball-sdk"
+
+if [[ ! -e "${gen}" ]]; then
+    wget "https://repo1.maven.org/maven2/org/openapitools/openapi-generator-cli/${ver}/${gen}"
+fi
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+cd "${scriptd}"
+
+java -jar "${gen}" \
+    generate \
+	  -g groovy \
+	  -c generate_config.yaml \
+	  -o  "${tmp}/${name}" \
+	  -i https://api.stable.fuzzball.ciq.dev/v2/schema || exit 101
+
+# i could not remove the imports for io.swagger.annotations from the generated code without a custom generator
+sed -i .bak -E -e '/import io\.swagger\.annotations\.[^;]+;/d' "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.groovy \
+&& rm -f "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.bak || exit 102
+
+rm -rf "${path}"
+if $keep; then
+    pushd "${tmp}/${name}"
+    gradle wrapper || exit 103
+    #./gradlew assemble || exit 104
+    popd
+    mv "${tmp}/${name}" "${path}"
+else
+    mkdir -p "${path}"
+    mv "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball "${path}"
+fi

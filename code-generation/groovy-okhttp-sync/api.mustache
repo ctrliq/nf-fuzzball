@@ -1,0 +1,107 @@
+/* groovylint-disable FactoryMethodName */
+package {{package}}
+
+import {{apiPackage}}.ApiUtils
+import {{apiPackage}}.ApiConfig
+import groovy.transform.CompileStatic
+import org.codehaus.groovy.runtime.typehandling.GroovyCastException
+import groovy.util.logging.Slf4j
+{{#imports}}import {{import}}
+{{/imports}}
+
+{{#operations}}
+@Slf4j
+@CompileStatic
+class {{classname}} {
+
+    ApiUtils apiUtils
+
+    {{classname}}(ApiConfig config) {
+        this.apiUtils = new ApiUtils(config)
+    }
+
+    {{#operation}}
+    /**
+     * {{operationId}}
+     {{#allParams}}* @param {{paramName}} {{#required}}(required){{/required}}{{/allParams}}{{^allParams}}*{{/allParams}}
+     */
+    {{#returnBaseType}}{{.}}{{/returnBaseType}}{{^returnBaseType}}Object{{/returnBaseType}} {{operationId}}({{#allParams}}{{{dataType}}} {{paramName}}{{^-last}}, {{/-last}}{{/allParams}}) {
+        String resourcePath = "{{{path}}}"
+
+        Map<String,Object> queryParams = [:]
+        Map<String,Object> headerParams = [:]
+        Object bodyParams
+        String contentType
+        {{#allParams}}
+        {{#required}}
+        {{#-first}}
+
+        {{/-first}}
+        if ({{paramName}} == null) {
+            throw new IOException('missing required param {{paramName}}')
+        }
+        {{/required}}
+        {{/allParams}}
+        {{#queryParams}}
+        {{#-first}}
+
+        {{/-first}}
+        if ({{paramName}} != null) {
+            queryParams.put('{{baseName}}', {{paramName}})
+        }
+        {{/queryParams}}
+        {{#headerParams}}
+        {{#-first}}
+
+        {{/-first}}
+        if ({{paramName}} != null) {
+            headerParams.put('{{baseName}}', {{paramName}})
+        }
+        {{/headerParams}}
+
+        {{#bodyParam}}
+        {{^consumes}}
+        contentType = 'application/json'
+        {{/consumes}}
+        {{#consumes.0}}
+        contentType = '{{{mediaType}}}'
+        {{/consumes.0}}
+        bodyParams = {{paramName}}
+        {{/bodyParam}}
+        {{#hasFormParams}}
+        {{#consumes.0}}
+        contentType = '{{{mediaType}}}';
+        {{/consumes.0}}
+        {{#formParams}}
+        {{#-first}}
+        {{^-last}}
+        bodyParams = [:]
+        bodyParams.put('{{baseName}}', {{paramName}})
+        {{/-last}}
+        {{#-last}}
+        bodyParams = {{paramName}}
+        {{/-last}}
+        {{/-first}}
+        {{^-first}}
+        bodyParams.put('{{baseName}}', {{paramName}})
+        {{/-first}}
+        {{/formParams}}
+        {{/hasFormParams}}
+        Object result = apiUtils.invokeApi(resourcePath, queryParams, headerParams, bodyParams, ApiUtils.{{httpMethod}},
+                    contentType)
+        {{#returnBaseType}}
+        try {
+            return (result as {{.}})
+        } catch (Exception e) {
+            throw new IOException('unable to convert API response to {{.}}')
+        }
+        {{/returnBaseType}}
+        {{^returnBaseType}}
+        return result
+        {{/returnBaseType}}        
+    }
+
+    {{/operation}}
+
+}
+{{/operations}}

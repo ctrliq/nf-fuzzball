@@ -1,0 +1,89 @@
+
+config ?= compileClasspath
+
+plugin_id := nf-fuzzball
+manifest := plugins/$(plugin_id)/src/resources/META-INF/MANIFEST.MF
+plugin_ver := $(shell awk '/Plugin-Version:/ {print $$2}' $(manifest))
+plugin_dir := $(plugin_id)-$(plugin_ver)
+plugin_requires := $(shell awk '/Plugin-Requires:/ {print $$2}' $(manifest))
+
+info:
+	@echo "$(plugin_id)@$(plugin_ver) - requires nextflow $(plugin_requires)"
+
+ifdef module 
+mm = :${module}:
+else 
+mm = 
+endif 
+
+clean:
+	rm -rf .nextflow*
+	rm -rf work
+	rm -rf build
+	rm -rf plugins/*/build
+	./gradlew clean
+
+compile:
+	./gradlew :nextflow:exportClasspath compileGroovy
+	@echo "DONE `date`"
+
+
+check:
+	./gradlew check
+
+
+#
+# Show dependencies try `make deps config=runtime`, `make deps config=google`
+#
+deps:
+	./gradlew -q ${mm}dependencies --configuration ${config}
+
+deps-all:
+	./gradlew -q dependencyInsight --configuration ${config} --dependency ${module}
+
+#
+# Refresh SNAPSHOTs dependencies
+#
+refresh:
+	./gradlew --refresh-dependencies 
+
+#
+# Run all tests or selected ones
+#
+test:
+ifndef class
+	./gradlew ${mm}test
+else
+	./gradlew ${mm}test --tests ${class}
+endif
+
+assemble:
+	./gradlew assemble
+
+#
+# generate build zips under build/plugins
+# you can install the plugin copying manually these files to $HOME/.nextflow/plugins
+#
+buildPlugins:
+	./gradlew copyPluginZip
+
+#
+# Upload JAR artifacts to Maven Central
+#
+upload:
+	./gradlew upload
+
+
+upload-plugins:
+	./gradlew plugins:upload
+
+publish-index:
+	./gradlew plugins:publishIndex
+
+install: buildPlugins
+	rm -rf ~/.nextflow/plugins/$(plugin_dir)
+	cp -r build/plugins/$(plugin_dir) ~/.nextflow/plugins
+
+# this is also run as needed during build
+generateFuzzballSdk:
+	./gradlew generateFuzzballSdk

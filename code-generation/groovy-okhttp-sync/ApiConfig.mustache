@@ -1,0 +1,110 @@
+package {{apiPackage}}
+
+import groovy.transform.CompileStatic
+import groovy.transform.Canonical
+import org.yaml.snakeyaml.Yaml
+
+/**
+ * API configuration class
+ */
+@Canonical
+@CompileStatic
+class ApiConfig {
+
+    /** Host name without a schema or port */
+    final String host
+    /** Port number */
+    final int port
+    /** Basepath shared by all endpoints */
+    final String basePath
+    /** Schema (https, ...). Defaults to 'https' */
+    final String schema
+    /** Token for authenication */
+    String token
+
+    ApiConfig(String host, int port, String token, String basePath = null, String schema = null) {
+        this.host = host
+        this.port = port
+        this.token = token
+        this.basePath = basePath ?: {{#basePath}}'{{.}}'{{/basePath}}{{^basePath}}''{{/basePath}}
+        this.schema = schema ?: 'https'
+    }
+
+    static ApiConfig fromFuzzballConfig(Map<String,String> args = [:]) {
+        String configFile = args?.configFile ?: System.getProperty('user.home') + '/.config/fuzzball/config.yaml'
+        FuzzballConfig fbConfig = FuzzballConfig.fromConfigFile(configFile)
+        String useContext = args?.context ?: fbConfig.activeContext
+
+        String hostPort = ''
+        String token = ''
+        fbConfig.contexts.each { context ->
+            if (context.name == fbConfig.activeContext) {
+                hostPort = context.address
+                token = context.auth.credentials.token
+            }
+        }
+
+        String[] hostParts = hostPort.split(':')
+        String host = hostParts[0]
+        int port = hostParts.size() > 1 ? hostParts[1].toInteger() : 443
+        return new ApiConfig(host, port, token)
+    }
+
+}
+
+@CompileStatic
+class FuzzballConfig {
+
+    String activeContext
+    List<FuzzballContext> contexts
+
+    /**
+    * Reads a YAML config file and maps it to a FuzzballConfig class using SnakeYAML.
+    * @param filePath the path to the YAML config file
+    * @return FuzzballConfig instance
+    */
+    protected static FuzzballConfig fromConfigFile(String filePath) {
+        Yaml yaml = new Yaml()
+        InputStream input = new File(filePath).newInputStream()
+        return yaml.loadAs(input, FuzzballConfig)
+    }
+}
+
+@CompileStatic
+class FuzzballContext {
+
+    String name
+    String address
+    String oidcServerURL
+    String oidcClientID
+    FuzzballAuth auth
+    String realm
+    String currentaccountid
+    List<FuzzballAccount> accounts
+
+}
+
+@CompileStatic
+class FuzzballAuth {
+
+    String oidc_client_id // groovylint-disable-line PropertyName
+    String oidc_well_known_endpoint // groovylint-disable-line PropertyName
+    String overrides
+    FuzzballCredentials credentials
+
+}
+
+@CompileStatic
+class FuzzballCredentials {
+
+    String token
+
+}
+
+@CompileStatic
+class FuzzballAccount {
+
+    String accountid
+    String accountalias
+
+}

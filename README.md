@@ -141,6 +141,10 @@ groovy SDK you can run
 code-generation/generate --keep /path/to/where/you/want/the/project
 ```
 
+> [!WARNING]
+> There is still an issue with date conversions in the auto-generated API. Working on resolving
+> that.
+
 To build the plugin and install it locally to `~/.nextflow/plugins/nf-fuzzball-<VER>` use
 
 ```sh
@@ -195,6 +199,7 @@ import com.ciq.fuzzball.model.ListWorkflowsResponse
 import com.ciq.fuzzball.model.WorkflowIDResponse
 import com.ciq.fuzzball.model.GetWorkflowStatusResponse
 import com.ciq.fuzzball.model.WorkflowStatus
+import com.ciq.fuzzball.model.Workflow
 import com.ciq.fuzzball.api.ApiUtils.ApiException
 
 /**
@@ -224,7 +229,7 @@ class Main {
 /**
  * ApiExplorer class to explore the API and perform various operations.
  */
-@CompileDynamic
+@CompileStatic
 class ApiExplorer {
 
     private ApiConfig apiConfig
@@ -237,9 +242,24 @@ class ApiExplorer {
 
     void listWorkflows() {
         println '\n\n-- WorkflowServiceApi.listWorkflows() ------------------------------------------------------------'
-        ListWorkflowsResponse resp
         try {
-            resp = this.workflowService.listWorkflows(null, null, null, null, null)
+            ListWorkflowsResponse resp = this.workflowService.listWorkflows(null, null, null, null, null)
+            println "Found ${resp.workflows?.size() ?: 0} workflows"
+            Map<String,Integer> counts = [:]
+            if (!resp.workflows) {
+                println "No workflows found"
+                return
+            }
+            for (Workflow wf : resp.workflows) {
+                if (wf?.status) {
+                    counts[wf.status.toString()] = (counts[wf.status.toString()] ?: 0) + 1
+                } else {
+                    counts['UNKNOWN'] = (counts['UNKNOWN'] ?: 0) + 1
+                }
+            }
+            counts.each { k, v ->
+                println "  ${k}: ${v}"
+            }
         } catch (ApiException e) {
             println "API error: ${e.statusCode} ${e.statusMessage}"
         } catch (IOException e) {
@@ -248,11 +268,7 @@ class ApiExplorer {
             println "Unexpected error: ${e.message}"
             e.printStackTrace()
         }
-        println "Found ${resp.workflows.size()} workflows"
-        Map<String,Integer> counts = resp.workflows.countBy { it.status } ?: [:]
-        counts.each { k, v ->
-            println "  ${k}: ${v}"
-        }
+
     }
 
     String startWorkflow() {
@@ -293,8 +309,8 @@ jobs:
             println "Unexpected error: ${e.message}"
             e.printStackTrace()
         }
-        println "Started a new workflow with id  ${resp.id}"
-        return resp.id
+        println "Started a new workflow with id  ${resp?.id}"
+        return resp?.id
     }
 
     void worflowStatus(String id) {
@@ -310,7 +326,7 @@ jobs:
             println "Unexpected error: ${e.message}"
             e.printStackTrace()
         }
-        println "Workflow ${id} status: ${resp.workflowStatus}"
+        println "Workflow ${id} status: ${resp?.workflowStatus}"
     }
 
     /**
@@ -326,5 +342,18 @@ jobs:
         return yaml.dump(obj)
     }
 
+    /**
+     * Reads an environment variable and returns its value.
+     * @param envVarName the name of the environment variable
+     * @return the value of the environment variable, or null if not set
+     */
+    protected String getEnv(String envVarName) {
+        Map<String,String> env = System.getenv() // task.getEnvironment()
+        return env[envVarName]
+    }
+
 }
+
+
+
 ```

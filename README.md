@@ -141,14 +141,10 @@ groovy SDK you can run
 code-generation/generate --keep /path/to/where/you/want/the/project
 ```
 
-> [!WARNING]
-> There is still an issue with date conversions in the auto-generated API. Working on resolving
-> that.
-
 To build the plugin and install it locally to `~/.nextflow/plugins/nf-fuzzball-<VER>` use
 
 ```sh
-git clone ...
+git clone https://github.com/ctrliq/nf-fuzzball.git
 cd nf-fuzzball
 make install
 ```
@@ -217,11 +213,13 @@ class Main {
     static void main(String[] args) {
         // Create an instance of ApiExplorer to explore the API
         ApiExplorer apiExplorer = new ApiExplorer()
-        apiExplorer.listWorkflows()
-        String id = apiExplorer.startWorkflow()
-        if (id) {
-            apiExplorer.worflowStatus(id)
+        List<String> wfIds = apiExplorer.listWorkflows()
+        if (wfIds && wfIds.size() > 0) {
+            // i know that status is included in the response from listWorkflows but i'm testing the API here
+            apiExplorer.worflowStatus(wfIds[0])
         }
+        String id = apiExplorer.startWorkflow()
+
     }
 
 }
@@ -240,7 +238,8 @@ class ApiExplorer {
         this.workflowService = new WorkflowServiceApi(this.apiConfig)
     }
 
-    void listWorkflows() {
+    List<String> listWorkflows() {
+        List<String> workflowIds = []
         println '\n\n-- WorkflowServiceApi.listWorkflows() ------------------------------------------------------------'
         try {
             ListWorkflowsResponse resp = this.workflowService.listWorkflows(null, null, null, null, null)
@@ -248,9 +247,10 @@ class ApiExplorer {
             Map<String,Integer> counts = [:]
             if (!resp.workflows) {
                 println "No workflows found"
-                return
+                return workflowIds
             }
             for (Workflow wf : resp.workflows) {
+                workflowIds << wf.id
                 if (wf?.status) {
                     counts[wf.status.toString()] = (counts[wf.status.toString()] ?: 0) + 1
                 } else {
@@ -260,6 +260,7 @@ class ApiExplorer {
             counts.each { k, v ->
                 println "  ${k}: ${v}"
             }
+            return workflowIds
         } catch (ApiException e) {
             println "API error: ${e.statusCode} ${e.statusMessage}"
         } catch (IOException e) {
@@ -353,7 +354,5 @@ jobs:
     }
 
 }
-
-
 
 ```

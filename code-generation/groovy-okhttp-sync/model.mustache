@@ -1,0 +1,16 @@
+package {{package}};
+
+import groovy.transform.Canonical
+import groovy.transform.CompileStatic
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+
+{{#imports}}
+import {{import}};
+{{/imports}}
+
+{{#models}}
+{{#model}}
+{{#isEnum}}{{>modelEnum}}{{/isEnum}}{{^isEnum}}{{>modelClass}}{{/isEnum}}
+{{/model}}
+{{/models}}

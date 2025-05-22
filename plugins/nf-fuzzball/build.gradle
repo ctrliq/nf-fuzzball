@@ -48,7 +48,7 @@ task generateFuzzballSdk(type: Exec) {
     group = 'build'
     description = 'Generate Fuzzball SDK'
     inputs.files(
-        fileTree(dir: 'code-generation', include: ['*.yaml', '*.mustache', '*.sh'])
+        fileTree(dir: "${rootProject.projectDir}/code-generation", include: ['**/*.yaml', '**/*.mustache', '**/*.sh'])
     )
     outputs.dir generatedSdkDir.get().asFile
     commandLine "${rootProject.projectDir}/code-generation/generate", generatedSdkDir.get().asFile.absolutePath

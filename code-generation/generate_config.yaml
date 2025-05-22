@@ -32,3 +32,10 @@ files:
   api.mustache:
     templateType: API
     destinationFilename: .groovy
+  model.mustache:
+    templateType: Model
+    destinationFilename: .groovy
+  modelClass.mustache:
+    templateType: SupportingFiles
+  modelEnum.mustache:
+    templateType: SupportingFiles

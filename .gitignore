@@ -11,3 +11,4 @@ openapi-generator-cli*.jar
 build
 work
 out
+temp

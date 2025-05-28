@@ -1,6 +1,0 @@
-Manifest-Version: 1.0
-Plugin-Id: nf-fuzzball
-Plugin-Version: 0.0.1
-Plugin-Class: com.ciq.fuzzball.FuzzballPlugin
-Plugin-Provider: nextflow
-Plugin-Requires: >=25.01.0-edge

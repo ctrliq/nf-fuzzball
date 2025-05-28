@@ -67,9 +67,6 @@ class FuzzballTraceObserver implements TraceObserver {
     void onFlowError(TaskHandler handler, TraceRecord trace) {}
 
     @Override
-    void onWorkflowPublish(String name, Object value) {}
-
-    @Override
     void onFilePublish(Path destination) {}
 
     @Override
@@ -77,8 +74,4 @@ class FuzzballTraceObserver implements TraceObserver {
         onFilePublish(destination)
     }
 
-    @Override
-    void onFilePublish(Path destination, Path source, Map annotations) {
-        onFilePublish(destination, source)
-    }
 }

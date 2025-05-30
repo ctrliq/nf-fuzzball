@@ -23,7 +23,7 @@ class FuzzballWorkflowDefinitionJobFactory {
         // in case we end up with more than one job per worklow at some point in the future.
         job.name = toSafeYamlKey(task.getName())
         job.image = getNextflowTaskContainer(task) as java.net.URI
-        job.setResource(getNextflowComputeResources(task))
+        job.resource = getNextflowComputeResources(task)
         job.setCommand(getNextflowCommand(task))
         job.setCwd(getNextflowTaskCwd(task))
         job.setPolicy(getNextflowTimeoutPolicy(task))
@@ -53,17 +53,11 @@ class FuzzballWorkflowDefinitionJobFactory {
 
     static WorkflowDefinitionJobResource getNextflowComputeResources(TaskRun task) {
         WorkflowDefinitionJobResource resources = new WorkflowDefinitionJobResource()
-        resources.setCpu(new WorkflowDefinitionJobResourceCpu().setCores(getNextflowTaskCpus(task)))
-        resources.setMemory(new WorkflowDefinitionJobResourceMemory().setSize(getNextflowTaskMemory(task)))
+        // getCpus always returns an int and defaults to 1
+        // Todo: threading? affinity?
+        resources.cpu = new WorkflowDefinitionJobResourceCpu(cores: task.config.getCpus() as Long)
+        resources.memory = new WorkflowDefinitionJobResourceMemory(size: task.config.getMemory()?.toString() ?: "1GiB")
         return resources
-    }
-
-    static Long getNextflowTaskCpus(TaskRun task) {
-        return task.config.getCpus().toLong() ?: 1 // Default to 1 CPU if not specified
-    }
-
-    static String getNextflowTaskMemory(TaskRun task) {
-        return task.config.getMemory()?.toGiga()?.toString() + "GiB" ?: "1GiB" // Default to 1 GiB if not specified
     }
 
     static String getNextflowTaskCwd(TaskRun task) {

@@ -22,7 +22,7 @@ import com.ciq.fuzzball.api.ApiConfig
 // TODO: implements TaskArrayExecutor ?
 
 @Slf4j
-@ServiceName(value='fuzzball-executor')
+@ServiceName(value='fuzzball')
 @CompileStatic
 class FuzzballExecutor extends Executor implements ExtensionPoint {
 
@@ -35,28 +35,7 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
         this.fuzzballApiConfig = ApiConfig.fromFuzzballConfig()
     }
 
-    /**
-     * Submit the specified task for execution to the underlying system
-     * and add it to the queue of tasks to be monitored.
-     *
-     * @param task A {@code TaskRun} instance
-     */
-    void submit( TaskRun task ) {
-        log.trace "Scheduling process: ${task}"
 
-        if( session.isTerminated() ) {
-            new IllegalStateException("Session terminated - Cannot add process to execution queue: ${task}")
-        }
-
-        final handler = createTaskHandler(task)
-
-        /*
-         * Add the task to the queue for processing
-         * Note: queue is implemented as a fixed size blocking queue, when
-         * there's not space the *put* operation will block until some other tasks finish
-         */
-        monitor.schedule(handler)
-    }
 
     /**
      * The path where scratch data is written for the current executor.
@@ -146,7 +125,7 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
     }
 
     /**
-     * @return {@code true} when the executor uses fusion file system 
+     * @return {@code true} when the executor uses fusion file system
      */
     @Override
     boolean isFusionEnabled() {

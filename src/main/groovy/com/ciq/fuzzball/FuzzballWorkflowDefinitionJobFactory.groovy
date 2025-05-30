@@ -6,6 +6,7 @@ import groovy.util.logging.Slf4j
 
 import com.ciq.fuzzball.model.Policy
 import com.ciq.fuzzball.model.Timeout
+import com.ciq.fuzzball.model.URI
 import com.ciq.fuzzball.model.WorkflowDefinitionJob
 import com.ciq.fuzzball.model.WorkflowDefinitionJobResource
 import com.ciq.fuzzball.model.WorkflowDefinitionJobResourceCpu
@@ -21,7 +22,7 @@ class FuzzballWorkflowDefinitionJobFactory {
         // task.getName() should return a unique identifier. I think we want to avoid a default value here
         // in case we end up with more than one job per worklow at some point in the future.
         job.name = toSafeYamlKey(task.getName())
-        job.image = getTaskContainer(task) as java.net.URI
+        job.image = new URI(uri: getTaskContainer(task))
         job.resource = getComputeResources(task)
         job.command = getCommand(task)
         job.cwd = getTaskCwd(task)

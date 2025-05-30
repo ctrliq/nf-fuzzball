@@ -1,5 +1,9 @@
 package com.ciq.fuzzball
 
+
+import groovy.transform.CompileStatic
+import groovy.util.logging.Slf4j
+
 import com.ciq.fuzzball.model.Policy
 import com.ciq.fuzzball.model.Timeout
 import com.ciq.fuzzball.model.WorkflowDefinitionJob
@@ -8,6 +12,9 @@ import com.ciq.fuzzball.model.WorkflowDefinitionJobResourceCpu
 import com.ciq.fuzzball.model.WorkflowDefinitionJobResourceMemory
 import nextflow.processor.TaskRun
 
+
+@CompileStatic
+@Slf4j
 class FuzzballWorkflowDefinitionJobFactory {
 
     static WorkflowDefinitionJob create (TaskRun task){
@@ -21,10 +28,22 @@ class FuzzballWorkflowDefinitionJobFactory {
         return job
     }
 
+    static String toSafeYamlKey(String input) {
+        if (!input) return "_"
+        String key = input
+            .replaceAll(/[^a-zA-Z0-9_]/, "-") // Replace non-alphanumeric with -
+            .replaceAll(/-+/, "-")            // Collapse multiple underscores
+            .replaceAll(/^-+|-+$/, "")        // Trim leading/trailing underscores
+            .toLowerCase()
+        if (!key || !key[0].matches(/[a-z_]/)) {
+            key = "_" + key
+        }
+        return key
+    }
+
     static String getNextflowTaskName(TaskRun task){
         if (task.getName()){
-            return task.getName().replaceAll(/[\[\]\(\)\{\}]/, '')    // Remove all brackets
-                                 .replaceAll(/\s+/, '-') // Replace whitespace with '-'
+            return toSafeYamlKey(task.getName())
         } else {
             return "nf-task"
         }

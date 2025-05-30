@@ -12,7 +12,6 @@ import com.ciq.fuzzball.model.WorkflowDefinitionJobResourceCpu
 import com.ciq.fuzzball.model.WorkflowDefinitionJobResourceMemory
 import nextflow.processor.TaskRun
 
-
 @CompileStatic
 @Slf4j
 class FuzzballWorkflowDefinitionJobFactory {
@@ -36,7 +35,6 @@ class FuzzballWorkflowDefinitionJobFactory {
             .replaceAll(/[^a-zA-Z0-9_]/, "-") // Replace non-alphanumeric with -
             .replaceAll(/-+/, "-")            // Collapse multiple underscores
             .replaceAll(/^-+|-+$/, "")        // Trim leading/trailing underscores
-            .toLowerCase()
         if (!key || !key[0].matches(/[a-z_]/)) {
             key = "_" + key
         }

@@ -19,8 +19,10 @@ class FuzzballWorkflowDefinitionJobFactory {
 
     static WorkflowDefinitionJob create (TaskRun task){
         WorkflowDefinitionJob job = new WorkflowDefinitionJob()
-        job.setName(getNextflowTaskName(task))
-        job.setImage(getNextflowTaskContainer(task) as java.net.URI)
+        // task.getName() should return a unique identifier. I think we want to avoid a default value here
+        // in case we end up with more than one job per worklow at some point in the future.
+        job.name = toSafeYamlKey(task.getName())
+        job.image = getNextflowTaskContainer(task) as java.net.URI
         job.setResource(getNextflowComputeResources(task))
         job.setCommand(getNextflowCommand(task))
         job.setCwd(getNextflowTaskCwd(task))
@@ -39,14 +41,6 @@ class FuzzballWorkflowDefinitionJobFactory {
             key = "_" + key
         }
         return key
-    }
-
-    static String getNextflowTaskName(TaskRun task){
-        if (task.getName()){
-            return toSafeYamlKey(task.getName())
-        } else {
-            return "nf-task"
-        }
     }
 
     static String getNextflowTaskContainer(TaskRun task) {

@@ -24,9 +24,9 @@ class FuzzballWorkflowDefinitionJobFactory {
         job.name = toSafeYamlKey(task.getName())
         job.image = getNextflowTaskContainer(task) as java.net.URI
         job.resource = getNextflowComputeResources(task)
-        job.setCommand(getNextflowCommand(task))
-        job.setCwd(getNextflowTaskCwd(task))
-        job.setPolicy(getNextflowTimeoutPolicy(task))
+        job.command = getNextflowCommand(task)
+        job.cwd = getNextflowTaskCwd(task)
+        job.policy = getNextflowTimeoutPolicy(task)
         return job
     }
 
@@ -54,14 +54,14 @@ class FuzzballWorkflowDefinitionJobFactory {
     static WorkflowDefinitionJobResource getNextflowComputeResources(TaskRun task) {
         WorkflowDefinitionJobResource resources = new WorkflowDefinitionJobResource()
         // getCpus always returns an int and defaults to 1
-        // Todo: threading? affinity?
+        // Todo: thread, affinity, devices, exclusive
         resources.cpu = new WorkflowDefinitionJobResourceCpu(cores: task.config.getCpus() as Long)
         resources.memory = new WorkflowDefinitionJobResourceMemory(size: task.config.getMemory()?.toString() ?: "1GiB")
         return resources
     }
 
     static String getNextflowTaskCwd(TaskRun task) {
-        return task.workDir.toString() 
+        return task.workDir?.toString() ?: ""
     }
 
     static List<String> getNextflowCommand(TaskRun task) {
@@ -69,8 +69,10 @@ class FuzzballWorkflowDefinitionJobFactory {
     }
 
     static Policy getNextflowTimeoutPolicy(TaskRun task) {
+        // Todo: retry
         if (task.config.getTime()) {
-            return new Policy().setTimeout(new Timeout(execute: task.config.getTime.toSeconds().toString + "s" )) // Convert to seconds
+            return new Policy(timeout: new Timeout(execute: "${task.config.getTime().toMinutes().toString()}m"))
         }
+        return null
     }
 }

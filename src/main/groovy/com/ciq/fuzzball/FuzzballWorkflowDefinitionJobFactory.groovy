@@ -22,11 +22,11 @@ class FuzzballWorkflowDefinitionJobFactory {
         // task.getName() should return a unique identifier. I think we want to avoid a default value here
         // in case we end up with more than one job per worklow at some point in the future.
         job.name = toSafeYamlKey(task.getName())
-        job.image = getNextflowTaskContainer(task) as java.net.URI
-        job.resource = getNextflowComputeResources(task)
-        job.command = getNextflowCommand(task)
-        job.cwd = getNextflowTaskCwd(task)
-        job.policy = getNextflowTimeoutPolicy(task)
+        job.image = getTaskContainer(task) as java.net.URI
+        job.resource = getComputeResources(task)
+        job.command = getCommand(task)
+        job.cwd = getTaskCwd(task)
+        job.policy = getTimeoutPolicy(task)
         return job
     }
 
@@ -43,7 +43,7 @@ class FuzzballWorkflowDefinitionJobFactory {
         return key
     }
 
-    static String getNextflowTaskContainer(TaskRun task) {
+    static String getTaskContainer(TaskRun task) {
         if (task.config.getContainer()) {
             return "docker://" + task.config.getContainer().toString()
         } else {
@@ -51,7 +51,7 @@ class FuzzballWorkflowDefinitionJobFactory {
         }
     }
 
-    static WorkflowDefinitionJobResource getNextflowComputeResources(TaskRun task) {
+    static WorkflowDefinitionJobResource getComputeResources(TaskRun task) {
         WorkflowDefinitionJobResource resources = new WorkflowDefinitionJobResource()
         // getCpus always returns an int and defaults to 1
         // Todo: thread, affinity, devices, exclusive
@@ -60,15 +60,15 @@ class FuzzballWorkflowDefinitionJobFactory {
         return resources
     }
 
-    static String getNextflowTaskCwd(TaskRun task) {
+    static String getTaskCwd(TaskRun task) {
         return task.workDir?.toString() ?: ""
     }
 
-    static List<String> getNextflowCommand(TaskRun task) {
+    static List<String> getCommand(TaskRun task) {
         return task.config.getShell() + task.CMD_RUN // Command to run
     }
 
-    static Policy getNextflowTimeoutPolicy(TaskRun task) {
+    static Policy getTimeoutPolicy(TaskRun task) {
         // Todo: retry
         if (task.config.getTime()) {
             return new Policy(timeout: new Timeout(execute: "${task.config.getTime().toMinutes().toString()}m"))

@@ -31,7 +31,6 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
     @Override
     protected void register() {
         super.register()
-        //TODO: get context name from nextflow config fuzzball scope instead of the default activeContext from fuzzball config file
         this.fuzzballApiConfig = ApiConfig.fromFuzzballConfig()
     }
 

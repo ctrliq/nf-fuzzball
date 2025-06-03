@@ -28,3 +28,7 @@ sdk:
 # generate the Fuzzball SDK as a separate project in temp/fuzzball-sdk
 sdk-full:
 	code-generation/generate --keep temp/fuzzball-sdk
+
+# temporary rule for pushing the plugin to S3
+push: assemble
+	aws s3 cp build/distributions/nf-fuzzball-*.zip s3://co-ciq-misc-support/nf-fuzzball/

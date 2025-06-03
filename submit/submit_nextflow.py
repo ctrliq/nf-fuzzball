@@ -4,12 +4,6 @@ collect the required config information, inject it into the  from your fuzzbal c
 file and submit the pipeline controller job to the fuzzball clutster.
 """
 
-## TODO: maybe try https://ctrliq.slack.com/archives/C05UM8YAX2S/p1747675251154369 and create a secret with encrypted username and password
-##       and have the job set up a background process to get a new token every hour. Then the executor could re-read a config file. Or the task
-##       handler could just try to submit the job and if it fails could try to get a new token. This could be done in the ApiConfig class via
-##       a closure provided at the time of creation.
-## TODO: do i need to find and include the various nextflow config files?
-
 import base64
 import pathlib
 import sys
@@ -138,9 +132,6 @@ class MinimalFuzzballClient:
         process.executor = 'fuzzball'
         """
 
-        # TODO: make everything configurable
-        # TODO: maybe home should be configurable to be a persistent volume?
-        # TODO: user mapping?
         workflow = {
             "name": job_name,
             "definition": {

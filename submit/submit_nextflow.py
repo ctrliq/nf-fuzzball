@@ -119,15 +119,23 @@ class MinimalFuzzballClient:
         Submit a Nextflow job to the Fuzzball cluster.
         """
 
+        plugin_version = "0.0.1"
+        nxf_version = "25.05.0-edge"
+        runtime = "24h"
+        home = "/scratch/home"
+        wd = "/data/nextflow"
+        mounts = {"data": {"location": "/data"}, "scratch": {"location": "/scratch"}}
+
         # Create or update the Fuzzball configuration secret. This will allow the nextflow to submit
         # workflows to the Fuzzball cluster. The nextflow plugin will remove the secret.
         secret_name = f"fb-{generate_random_string()}"
         self.create_value_secret(secret_name, self.encode_config())
-
         nxf_fuzzball_config = f"""
+        plugins {{id 'nf-fuzzball@{plugin_version}' }}
         fuzzball {{
             config_secret = "{secret_name}"
         }}
+        process.executor = 'fuzzball'
         """
 
         # TODO: make everything configurable
@@ -146,35 +154,49 @@ class MinimalFuzzballClient:
                     },
                     "scratch": {
                         "reference": "volume://user/ephemeral",
-                        # "ingress": [
-                        #    {
-                        #        "source": {"uri": "s3://co-ciq-misc-support/wresch/nf-fuzzball.zip", "secret": "secret://user/s3"},
-                        #        "destination": {"uri": "file://nf-fuzzball.zip"},
-                        #    }
-                        #            ]
+                        "ingress": [
+                            {
+                                "source": {
+                                    "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-{plugin_version}.zip",
+                                    "secret": "secret://user/s3",
+                                },
+                                "destination": {"uri": "file://nf-fuzzball.zip"},
+                            }
+                        ],
                     },
                 },
                 "jobs": {
+                    "setup": {
+                        "image": {"uri": "docker://alpine:latest"},
+                        "mounts": mounts,
+                        "cwd": wd,
+                        "command": [
+                            "/bin/sh",
+                            "-c",
+                            f"mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version}"
+                            f"  && unzip /scratch/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version}",
+                        ],
+                        "env": [f"HOME={home}"],
+                        "policy": {"timeout": {"execute": "5m"}},
+                        "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
+                    },
                     "nextflow": {
-                        "image": {"uri": "docker://nextflow/nextflow:25.05.0-edge"},
-                        "mounts": {
-                            "data": {"location": "/data"},
-                            "scratch": {"location": "/scratch"},
-                        },
+                        "image": {"uri": f"docker://nextflow/nextflow:{nxf_version}"},
+                        "mounts": mounts,
                         "files": {
                             "/tmp/fuzzball.config": "file://fuzzball.config",
                         },
-                        "cwd": "/data/nextflow",
+                        "cwd": wd,
                         "command": [
                             "/bin/bash",
                             "-c",
-                            "mkdir -p $HOME"
-                            "  && nextflow run -c /tmp/fuzzball.config hello",
+                            "ls -lh $HOME/.nextflow && ls -lh $HOME/.nextflow/plugins && nextflow info -d && nextflow run -c /tmp/fuzzball.config hello",
                         ],
-                        "env": ["HOME=/tmp/home"],
-                        "policy": {"timeout": {"execute": "1h"}},
+                        "env": [f"HOME={home}", f"NXF_HOME={home}/.nextflow"],
+                        "policy": {"timeout": {"execute": runtime}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
-                    }
+                        "requires": ["setup"],
+                    },
                 },
             },
         }
@@ -187,7 +209,7 @@ class MinimalFuzzballClient:
         print("Running Nextflow job with the following configuration:")
         print(yaml.safe_dump(workflow, sort_keys=False, default_flow_style=False))
         response = self.__request("POST", "/workflows", data=workflow)
-        print(response.json())
+        print(f"Submitted workflow {response.json()['id']}")
 
 
 def main() -> None:

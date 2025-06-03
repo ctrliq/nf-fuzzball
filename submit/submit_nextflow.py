@@ -181,7 +181,7 @@ class MinimalFuzzballClient:
                         "command": [
                             "/bin/bash",
                             "-c",
-                            "ls -lh $HOME/.nextflow && ls -lh $HOME/.nextflow/plugins && nextflow info -d && nextflow run -c /tmp/fuzzball.config hello",
+                            "nextflow info -d && nextflow run -c /tmp/fuzzball.config hello",
                         ],
                         "env": [f"HOME={home}", f"NXF_HOME={home}/.nextflow"],
                         "policy": {"timeout": {"execute": runtime}},

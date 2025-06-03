@@ -127,7 +127,7 @@ class MinimalFuzzballClient:
         nxf_fuzzball_config = f"""
         plugins {{id 'nf-fuzzball@{plugin_version}' }}
         fuzzball {{
-            config_secret = "{secret_name}"
+            configSecret = "{secret_name}"
         }}
         process.executor = 'fuzzball'
         """

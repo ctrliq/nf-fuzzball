@@ -1,13 +1,16 @@
 # Ignore Gradle project-specific cache directory
 .gradle
 .idea
+# ingore various hidden directories
 .nextflow*
 .DS_Store
+.venv
+.ruff_cache
 
 # ignore the code generator jars downloaded by the fuzzball api generation script
 openapi-generator-cli*.jar
 
-# Ignore Gradle build output directory
+# Ignore Gradle build and other output directoies
 build
 work
 out

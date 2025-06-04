@@ -112,7 +112,7 @@ class MinimalFuzzballClient:
         nxf_version = "25.05.0-edge"
         runtime = "24h"
         home = "/scratch/home"
-        wd = "/data/nextflow"
+        wd = "/scratch/nextflow"
         env = [f"HOME={home}", f"NXF_HOME={home}/.nextflow"]
         mounts = {"data": {"location": "/data"}, "scratch": {"location": "/scratch"}}
 
@@ -175,7 +175,7 @@ class MinimalFuzzballClient:
                         "command": [
                             "/bin/bash",
                             "-c",
-                            "nextflow info -d && nextflow run -c /tmp/fuzzball.config hello",
+                            "nextflow run -ansi-log false -c /tmp/fuzzball.config hello",
                         ],
                         "env": env,
                         "policy": {"timeout": {"execute": runtime}},
@@ -191,10 +191,8 @@ class MinimalFuzzballClient:
                 "/tmp/nextflow.config"
             ] = "file://nextflow.config"
 
-        print("Running Nextflow job with the following configuration:")
-        print(yaml.safe_dump(workflow, sort_keys=False, default_flow_style=False))
         response = self.__request("POST", "/workflows", data=workflow)
-        print(f"Submitted workflow {response.json()['id']}")
+        print(f"Submitted nextflow workflow {response.json()['id']}")
 
 
 def main() -> None:

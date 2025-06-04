@@ -36,6 +36,7 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
     private boolean destroyed
     private FuzzballExecutor executor
     private WorkflowServiceApi fuzzballWfService
+    private String wfDefinitionYaml
     private Session session
 
     FuzzballTaskHandler(TaskRun task, FuzzballExecutor executor) {
@@ -60,10 +61,12 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
         TaskRun task = this.task
         WorkflowDefinitionJob job = FuzzballWorkflowDefinitionJobFactory.create(task, executor)
         WorkflowDefinition wfDef = new WorkflowDefinition(
-            version: "v1",
+            version: 'v1',
             volumes: executor.volumes,
             jobs: [(job.getName()): job],
         )
+        FuzzballYaml yaml = new FuzzballYaml()
+        wfDefinitionYaml = yaml.dump(wfDef)
         StartWorkflowRequest wfReq = new StartWorkflowRequest(
             name: "nf-${session.runName}-${job.getName()}",
             definition: wfDef,

@@ -20,7 +20,6 @@ import org.pf4j.ExtensionPoint
 import com.ciq.fuzzball.api.ApiConfig
 import com.ciq.fuzzball.api.WorkflowServiceApi
 import com.ciq.fuzzball.model.*
-import com.ciq.fuzzball.FuzzballYaml
 
 // TODO: throttling
 // TODO: implements TaskArrayExecutor ?
@@ -55,8 +54,8 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
         // get the volumes and mounts of the current workflow
         executorWfName = System.getenv('FB_JOB_NAME')
         executorWfId = System.getenv('FB_WORKFLOW_ID')
-        if (! (executorWfName && executorWfId)) {
-            throw new AbortOperationException("Controller job is not running as a fuzzball workflow")
+        if (!(executorWfName && executorWfId)) {
+            throw new AbortOperationException('Controller job is not running as a fuzzball workflow')
         }
         fuzzballWfService = new WorkflowServiceApi(fuzzballApiConfig)
         Workflow wf = fuzzballWfService.getWorkflow(executorWfId)
@@ -69,9 +68,6 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
         }
         volumes = wfDef.volumes ?: [:]
         mounts = wfDef.jobs[executorWfName]?.mounts ?: [:]
-        FuzzballYaml yaml = new FuzzballYaml()
-        log.debug(yaml.dump(volumes))
-        log.debug(yaml.dump(mounts))
     }
 
     /**

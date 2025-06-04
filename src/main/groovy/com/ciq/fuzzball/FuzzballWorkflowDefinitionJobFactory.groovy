@@ -32,22 +32,22 @@ class FuzzballWorkflowDefinitionJobFactory {
     }
 
     static String toSafeYamlKey(String input) {
-        if (!input) return "_"
+        if (!input) return '_'
         String key = input
-            .replaceAll(/[^a-zA-Z0-9_]/, "-") // Replace non-alphanumeric with -
-            .replaceAll(/-+/, "-")            // Collapse multiple underscores
-            .replaceAll(/^-+|-+$/, "")        // Trim leading/trailing underscores
+            .replaceAll(/[^a-zA-Z0-9_]/, '-') // Replace non-alphanumeric with -
+            .replaceAll(/-+/, '-')            // Collapse multiple underscores
+            .replaceAll(/^-+|-+$/, '')        // Trim leading/trailing underscores
         if (!key || !key[0].matches(/[a-z_]/)) {
-            key = "_" + key
+            key = '_' + key
         }
         return key
     }
 
     static String getTaskContainer(TaskRun task) {
         if (task.config.getContainer()) {
-            return "docker://" + task.config.getContainer().toString()
+            return 'docker://' + task.config.getContainer().toString()
         } else {
-            throw new IllegalArgumentException("A container must be specified for the task.")
+            throw new IllegalArgumentException('A container must be specified for the task.')
         }
     }
 
@@ -56,12 +56,12 @@ class FuzzballWorkflowDefinitionJobFactory {
         // getCpus always returns an int and defaults to 1
         // Todo: thread, affinity, devices, exclusive
         resources.cpu = new WorkflowDefinitionJobResourceCpu(cores: task.config.getCpus() as Long)
-        resources.memory = new WorkflowDefinitionJobResourceMemory(size: task.config.getMemory()?.toString() ?: "1GiB")
+        resources.memory = new WorkflowDefinitionJobResourceMemory(size: task.config.getMemory()?.toString() ?: '1GiB')
         return resources
     }
 
     static String getTaskCwd(TaskRun task) {
-        return task.workDir?.toString() ?: ""
+        return task.workDir?.toString() ?: ''
     }
 
     static List<String> getCommand(TaskRun task) {

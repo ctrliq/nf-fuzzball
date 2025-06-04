@@ -11,6 +11,7 @@ import nextflow.processor.TaskRun
 import nextflow.trace.TraceObserver
 import nextflow.trace.TraceRecord
 
+//TODO: do we want to keep this?
 /**
  * Implements an observer that allows implementing custom
  * logic on nextflow execution events.
@@ -21,12 +22,12 @@ class FuzzballTraceObserver implements TraceObserver {
 
     @Override
     void onFlowCreate(Session session) {
-        println "Pipeline is starting! 🚀"
+        println 'Pipeline is starting!'
     }
 
     @Override
     void onFlowComplete() {
-        println "Pipeline complete! 👋"
+        println 'Pipeline complete!'
     }
 
     @Override
@@ -34,7 +35,7 @@ class FuzzballTraceObserver implements TraceObserver {
 
     @Override
     void onProcessCreate(TaskProcessor process) {
-        println "Process created!"
+        println 'Process created!'
     }
 
     @Override
@@ -50,12 +51,12 @@ class FuzzballTraceObserver implements TraceObserver {
 
     @Override
     void onProcessStart(TaskHandler handler, TraceRecord trace) {
-        println "Process started!"
+        println 'Process started!'
     }
 
     @Override
     void onProcessComplete(TaskHandler handler, TraceRecord trace) {
-        println "Process completed!"
+        println 'Process completed!'
     }
 
     @Override

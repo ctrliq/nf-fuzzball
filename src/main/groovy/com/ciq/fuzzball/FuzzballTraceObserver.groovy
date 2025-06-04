@@ -11,10 +11,6 @@ import nextflow.processor.TaskRun
 import nextflow.trace.TraceObserver
 import nextflow.trace.TraceRecord
 
-import com.ciq.fuzzball.model.WorkflowDefinition
-import com.ciq.fuzzball.model.WorkflowDefinitionJob
-import com.ciq.fuzzball.FuzzballYamlDumper
-
 /**
  * Implements an observer that allows implementing custom
  * logic on nextflow execution events.
@@ -22,8 +18,6 @@ import com.ciq.fuzzball.FuzzballYamlDumper
 @Slf4j
 @CompileStatic
 class FuzzballTraceObserver implements TraceObserver {
-
-    static final FuzzballYamlDumper dumper = new FuzzballYamlDumper()
 
     @Override
     void onFlowCreate(Session session) {
@@ -52,15 +46,6 @@ class FuzzballTraceObserver implements TraceObserver {
     @Override
     void onProcessSubmit(TaskHandler handler, TraceRecord trace) {
         println "Process submitted! Will use container ${handler.task.getContainer()}"
-        // TODO: this is only temporary for testing purposes
-        /*TaskRun task = handler.getTask()
-        WorkflowDefinitionJob job = FuzzballWorkflowDefinitionJobFactory.create(task)
-        WorkflowDefinition wfDef = new WorkflowDefinition(
-            version: "v1",
-            jobs: [(job.getName()): job]
-        )
-        println("Workflow Definition:")
-        println(dumper.dump(wfDef))*/
     }
 
     @Override

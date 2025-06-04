@@ -17,7 +17,7 @@ import nextflow.processor.TaskRun
 @Slf4j
 class FuzzballWorkflowDefinitionJobFactory {
 
-    static WorkflowDefinitionJob create (TaskRun task){
+    static WorkflowDefinitionJob create (TaskRun task, FuzzballExecutor executor){
         WorkflowDefinitionJob job = new WorkflowDefinitionJob()
         // task.getName() should return a unique identifier. I think we want to avoid a default value here
         // in case we end up with more than one job per worklow at some point in the future.
@@ -26,6 +26,7 @@ class FuzzballWorkflowDefinitionJobFactory {
         job.resource = getComputeResources(task)
         job.command = getCommand(task)
         job.cwd = getTaskCwd(task)
+        job.mounts = executor.mounts
         job.policy = getTimeoutPolicy(task)
         return job
     }

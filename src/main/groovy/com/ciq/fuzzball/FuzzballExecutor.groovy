@@ -4,6 +4,7 @@ import java.nio.file.Path
 
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import groovy.json.JsonSlurper
 
 import nextflow.exception.AbortOperationException
 import nextflow.executor.Executor
@@ -17,9 +18,14 @@ import nextflow.util.ServiceName
 import org.pf4j.ExtensionPoint
 
 import com.ciq.fuzzball.api.ApiConfig
+import com.ciq.fuzzball.api.WorkflowServiceApi
+import com.ciq.fuzzball.model.*
+import com.ciq.fuzzball.FuzzballYaml
 
 // TODO: throttling
 // TODO: implements TaskArrayExecutor ?
+// TODO: fusion?
+// TODO: fail if not running in a Fuzzball environment
 
 @Slf4j
 @ServiceName(value='fuzzball')
@@ -27,6 +33,11 @@ import com.ciq.fuzzball.api.ApiConfig
 class FuzzballExecutor extends Executor implements ExtensionPoint {
 
     protected ApiConfig fuzzballApiConfig
+    protected String executorWfId = null
+    protected String executorWfName = null
+    protected WorkflowServiceApi fuzzballWfService
+    protected Map<String, WorkflowDefinitionJobMount> mounts = [:]
+    protected Map<String, Volume> volumes = [:]
 
     @Override
     protected void register() {
@@ -40,6 +51,27 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
         } else {
             this.fuzzballApiConfig = ApiConfig.fromFuzzballConfig()
         }
+
+        // get the volumes and mounts of the current workflow
+        executorWfName = System.getenv('FB_JOB_NAME')
+        executorWfId = System.getenv('FB_WORKFLOW_ID')
+        if (! (executorWfName && executorWfId)) {
+            throw new AbortOperationException("Controller job is not running as a fuzzball workflow")
+        }
+        fuzzballWfService = new WorkflowServiceApi(fuzzballApiConfig)
+        Workflow wf = fuzzballWfService.getWorkflow(executorWfId)
+        // Parse JSON from byte[] specification using JsonSlurper
+        WorkflowDefinition wfDef = WorkflowDefinition.fromMap(
+            new JsonSlurper().parseText(new String(wf?.specification, 'UTF-8')) as Map<String, Object>
+        )
+        if (!wfDef) {
+            throw new AbortOperationException("Unable to load workflow definition for workflow: $executorWfName")
+        }
+        volumes = wfDef.volumes ?: [:]
+        mounts = wfDef.jobs[executorWfName]?.mounts ?: [:]
+        FuzzballYaml yaml = new FuzzballYaml()
+        log.debug(yaml.dump(volumes))
+        log.debug(yaml.dump(mounts))
     }
 
     /**
@@ -83,7 +115,7 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
      */
     @Override
     protected TaskMonitor createTaskMonitor() {
-        return TaskPollingMonitor.create(session, name, 1000, Duration.of('10 sec'))
+        return TaskPollingMonitor.create(session, name, 1000, Duration.of('20 sec'))
     }
 
     /**

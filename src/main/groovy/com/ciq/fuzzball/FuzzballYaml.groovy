@@ -15,9 +15,9 @@ import org.yaml.snakeyaml.introspector.Property
  * It extends the standard Yaml class from SnakeYAML with a custom representer.
  */
 @CompileStatic
-class FuzzballYamlDumper extends Yaml {
+class FuzzballYaml extends Yaml {
 
-    FuzzballYamlDumper() {
+    FuzzballYaml() {
         super(createRepresenter(), createOptions())
     }
 

@@ -4,15 +4,16 @@ collect the required config information, inject it into the  from your fuzzbal c
 file and submit the pipeline controller job to the fuzzball clutster.
 """
 
+import argparse
 import base64
 import pathlib
-import sys
-import yaml
-import requests
 import secrets
 import string
-import argparse
+import sys
 from typing import Any, Dict
+
+import yaml
+import requests
 
 CONFIG_PATH = pathlib.Path("~/.config/fuzzball/config.yaml")
 
@@ -112,8 +113,25 @@ class MinimalFuzzballClient:
         nxf_version = "25.05.0-edge"
         runtime = "24h"
         home = "/scratch/home"
-        wd = "/scratch/nextflow"
+        wd = f"/data/nextflow/{secret_name}"
         env = [f"HOME={home}", f"NXF_HOME={home}/.nextflow"]
+        volumes = {
+                    "data": {
+                        "reference": "volume://user/persistent",
+                    },
+                    "scratch": {
+                        "reference": "volume://user/ephemeral",
+                        "ingress": [
+                            {
+                                "source": {
+                                    "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-{plugin_version}.zip",
+                                    "secret": "secret://user/s3",
+                                },
+                                "destination": {"uri": "file://nf-fuzzball.zip"},
+                            }
+                        ],
+                    },
+                }
         mounts = {"data": {"location": "/data"}, "scratch": {"location": "/scratch"}}
 
         self.create_value_secret(secret_name, self.encode_config())
@@ -132,23 +150,7 @@ class MinimalFuzzballClient:
                 "files": {
                     "fuzzball.config": nxf_fuzzball_config,
                 },
-                "volumes": {
-                    "data": {
-                        "reference": "volume://user/persistent",
-                    },
-                    "scratch": {
-                        "reference": "volume://user/ephemeral",
-                        "ingress": [
-                            {
-                                "source": {
-                                    "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-{plugin_version}.zip",
-                                    "secret": "secret://user/s3",
-                                },
-                                "destination": {"uri": "file://nf-fuzzball.zip"},
-                            }
-                        ],
-                    },
-                },
+                "volumes": volumes,
                 "jobs": {
                     "setup": {
                         "image": {"uri": "docker://alpine:latest"},
@@ -190,7 +192,6 @@ class MinimalFuzzballClient:
             workflow["definition"]["jobs"]["nextflow"]["files"][
                 "/tmp/nextflow.config"
             ] = "file://nextflow.config"
-
         response = self.__request("POST", "/workflows", data=workflow)
         print(f"Submitted nextflow workflow {response.json()['id']}")
 

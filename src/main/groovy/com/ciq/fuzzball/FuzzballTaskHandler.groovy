@@ -5,62 +5,38 @@ import groovy.transform.Canonical
 import groovy.util.logging.Slf4j
 
 import nextflow.Session
-
 import nextflow.fusion.FusionAwareTask
-import nextflow.fusion.FusionHelper
-
 import nextflow.processor.TaskRun
 import nextflow.processor.TaskHandler
-import nextflow.processor.TaskStatus
-
+import static nextflow.processor.TaskStatus.*
 import nextflow.executor.BashWrapperBuilder
-
 import nextflow.trace.TraceRecord
-
-import nextflow.extension.FilesEx
-
 import nextflow.util.ProcessHelper
-
-import nextflow.exception.AbortOperationException
 import nextflow.exception.ProcessException
-import nextflow.exception.ProcessUnrecoverableException
-
-import java.nio.file.FileSystems
-import java.nio.file.Files
 import java.nio.file.Path
 
-import com.ciq.fuzzball.FuzzballExecutor
 import com.ciq.fuzzball.api.WorkflowServiceApi
+import com.ciq.fuzzball.model.*
 
-//TODO: should this implement TaskArrayExecutor ?
+//TODO: should we be using grid tasks? how about task arrays?
+//TODO: error handling
+//TODO: credential refreshing?
+//TODO: parse volumes from current fuzzball workflow
+
 @Slf4j
 @CompileStatic
 class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
-
-    @Canonical
-    static class TaskResult {
-        Integer exitStatus
-        File logs
-        Throwable error
-        TaskResult(int exitStatus, File logs) {
-            this.logs = logs
-            this.exitStatus = exitStatus
-        }
-        TaskResult(Throwable error) {
-            this.error = error
-        }
-    }
 
     private final Path exitFile
     private final Long wallTimeMillis
     private final Path wrapperFile
     private final Path outputFile
     private final Path errorFile
-    private Process process
+    private volatile String wfId
     private boolean destroyed
     private FuzzballExecutor executor
+    private WorkflowServiceApi fuzzballWfService
     private Session session
-    private volatile TaskResult result
 
     FuzzballTaskHandler(TaskRun task, FuzzballExecutor executor) {
         super(task)
@@ -72,36 +48,32 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
         this.wallTimeMillis = task.config.getTime()?.toMillis()
         this.executor = executor
         this.session = executor.session
+        this.fuzzballWfService = executor.fuzzballWfService
     }
 
     @Override
     void submit() {
-        // create the wrapper script
+        // create the wrapper
         buildTaskWrapper()
 
-        // create the process builder to run the task in the local computer
-        final builder = createLaunchProcessBuilder()
-        final logFile = builder.redirectOutput().file()
+        // create a fuzzball workflow definition for the task
+        TaskRun task = this.task
+        WorkflowDefinitionJob job = FuzzballWorkflowDefinitionJobFactory.create(task, executor)
+        WorkflowDefinition wfDef = new WorkflowDefinition(
+            version: "v1",
+            volumes: executor.volumes,
+            jobs: [(job.getName()): job],
+        )
+        StartWorkflowRequest wfReq = new StartWorkflowRequest(
+            name: "nf-${session.runName}-${job.getName()}",
+            definition: wfDef,
+        )
 
-        // run async via thread pool
-        session.getExecService().submit( {
-            try {
-                // start the execution and notify the event to the monitor
-                process = builder.start()
-                final status = process.waitFor()
-                result = new TaskResult(status, logFile)
-            }
-            catch( Throwable ex ) {
-                result = new TaskResult(ex)
-            }
-            finally {
-                executor.getTaskMonitor().signal()
-            }
+        // start the workflow
+        WorkflowIDResponse wfIdResp = this.fuzzballWfService.startWorkflow(wfReq)
+        this.wfId = wfIdResp.id
 
-        } )
-
-        // mark as submitted -- transition to STARTED has to be managed by the scheduler
-        status = TaskStatus.SUBMITTED
+        status = SUBMITTED
     }
 
     protected void buildTaskWrapper() {
@@ -112,66 +84,30 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
         wrapper.build()
     }
 
-    protected ProcessBuilder localProcessBuilder() {
-        final cmd = new ArrayList<String>(BashWrapperBuilder.BASH) << wrapperFile.getName()
-        log.debug "Launch cmd line: ${cmd.join(' ')}"
-        // make sure it's a posix file system
-        if( task.workDir.fileSystem != FileSystems.default )
-            throw new ProcessUnrecoverableException("Local executor requires the use of POSIX compatible file system — offending path: ${FilesEx.toUriString(task.workDir)}")
-
-        // NOTE: make sure to redirect process output to a file otherwise
-        // execution can hang when stdout/stderr is bigger than 64k
-        final workDir = task.workDir.toFile()
-        final logFile = new File(workDir, TaskRun.CMD_LOG)
-
-        return new ProcessBuilder()
-                .redirectErrorStream(true)
-                .redirectOutput(logFile)
-                .directory(workDir)
-                .command(cmd)
-    }
-
-    protected ProcessBuilder fusionProcessBuilder() {
-        if( task.workDir.fileSystem == FileSystems.default )
-            throw new ProcessUnrecoverableException("Fusion file system requires the use of an object storage as work directory — offending path: ${task.workDir}")
-
-        final submit = fusionSubmitCli()
-        final launcher = fusionLauncher()
-        final config = task.getContainerConfig()
-        final containerOpts = task.config.getContainerOptions()
-        final cmd = FusionHelper.runWithContainer(launcher, config, task.getContainer(), containerOpts, submit)
-        log.debug "Launch cmd line: ${cmd}"
-
-        final logPath = Files.createTempFile('nf-task','.log')
-
-        return new ProcessBuilder()
-                .redirectErrorStream(true)
-                .redirectOutput(logPath.toFile())
-                .command(List.of('sh','-c', cmd))
-    }
-
-    protected ProcessBuilder createLaunchProcessBuilder() {
-        return fusionEnabled()
-                ? fusionProcessBuilder()
-                : localProcessBuilder()
-    }
-
-    long elapsedTimeMillis() {
-        startTimeMillis ? System.currentTimeMillis() - startTimeMillis : 0
-    }
-
     /**
-     * Check if the submitted job has started
+     * Check if the submitted job has started - i think this only handles transition from submitted to running
      */
     @Override
     boolean checkIfRunning() {
-
-        if( isSubmitted() && (process || result) ) {
-            status = TaskStatus.RUNNING
-            return true
+        if (!isSubmitted() || !wfId) {
+            return false
         }
 
-        return false
+        GetWorkflowStatusResponse statusResp = fuzzballWfService.getWorkflowStatus(wfId)
+        switch(statusResp.workflowStatus) {
+            case WorkflowStatus.STAGE_STATUS_UNSPECIFIED -> false
+            case WorkflowStatus.STAGE_STATUS_STARTED,
+                 WorkflowStatus.STAGE_STATUS_FINISHED,
+                 WorkflowStatus.STAGE_STATUS_FAILED,
+                 WorkflowStatus.STAGE_STATUS_CANCELED -> {
+                    status = RUNNING
+                    yield true
+            }
+            default -> {
+                log.warn("Unknown workflow status: ${statusResp.workflowStatus}")
+                yield false
+            }
+        }
     }
 
     /**
@@ -182,70 +118,51 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
 
         if( !isRunning() ) { return false }
 
-        if( result != null ) {
-            task.exitStatus = result.exitStatus!=null ? result.exitStatus : Integer.MAX_VALUE
-            task.error = result.error
-            task.stdout = outputFile
-            task.stderr = result.exitStatus && result.logs.size() ? result.logs.tail(50) : errorFile
-            status = TaskStatus.COMPLETED
-            destroy()
-            // fusion uses a temporary file, clean it up
-            if( fusionEnabled() ) result.logs.delete()
-            return true
-        }
-
-        if( wallTimeMillis ) {
-            /*
-             * check if the task exceed max duration time
-             */
-            if( elapsedTimeMillis() > wallTimeMillis ) {
-                destroy()
-                task.stdout = outputFile
-                task.stderr = errorFile
-                task.error = new ProcessException("Process exceeded running time limit (${task.config.getTime()})")
-                status = TaskStatus.COMPLETED
-
-                // signal it has completed
-                return true
+        GetWorkflowStatusResponse statusResp = fuzzballWfService.getWorkflowStatus(wfId)
+        switch(statusResp.workflowStatus) {
+            case WorkflowStatus.STAGE_STATUS_UNSPECIFIED,
+                 WorkflowStatus.STAGE_STATUS_STARTED -> false
+            case WorkflowStatus.STAGE_STATUS_FINISHED,
+                 WorkflowStatus.STAGE_STATUS_FAILED -> {
+                    status = COMPLETED
+                    int exit = readExitFile()
+                    task.exitStatus = exit
+                    task.stdout = outputFile
+                    task.stderr = errorFile
+                    yield true
+            }
+            case WorkflowStatus.STAGE_STATUS_CANCELED -> {
+                    status = COMPLETED
+                    task.exitStatus = Integer.MAX_VALUE
+                    task.stdout = outputFile
+                    task.stderr = errorFile
+                    yield true
+            }
+            default -> {
+                log.warn("Unknown workflow status: ${statusResp.workflowStatus}")
+                yield false
             }
         }
-
-        return false
     }
 
+    protected int readExitFile() {
+        try {
+            exitFile.text as Integer
+        }
+        catch( Exception e ) {
+            log.debug "[Fuzzball Executor] Cannot read exitstatus for task: `$task.name` | ${e.message}"
+            return Integer.MAX_VALUE
+        }
+    }
 
     /**
      * Force the submitted job to quit
      */
     @Override
     protected void killTask() {
-        if( !process ) return
-        final pid = ProcessHelper.pid(process)
-        log.trace("Killing process with pid: ${pid}")
-        def cmd = "kill -TERM $pid"
-        def proc = new ProcessBuilder('bash', '-c', cmd ).redirectErrorStream(true).start()
-        def status = proc.waitFor()
-        if( status != 0 ) {
-            def stdout = proc.text
-            log.debug "Unable to kill $task.name -- command: $cmd; exit: $status ${stdout ? "\n${stdout.indent()}":''}"
-        }
-    }
-
-    /**
-     * Destroy the process handler, closing all associated streams
-     */
-    void destroy() {
-
-        if( destroyed ) { return }
-
-        if( process ) {
-            process.getInputStream()?.closeQuietly()
-            process.getOutputStream()?.closeQuietly()
-            process.getErrorStream()?.closeQuietly()
-            process.destroy()
-        }
-
-        destroyed = true
+        if( !wfId ) return
+        fuzzballWfService.stopWorkflow(wfId)
+        log.trace("Killing workflow with id: ${wfId}")
     }
 
     /**
@@ -254,8 +171,8 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
     @Override
     TraceRecord getTraceRecord() {
         final result = super.getTraceRecord()
-        if( process )
-            result.put('native_id', ProcessHelper.pid(process))
+        if( wfId )
+            result.put('native_id', wfId)
         return result
     }
 

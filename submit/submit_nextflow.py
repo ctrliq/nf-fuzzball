@@ -159,8 +159,7 @@ class MinimalFuzzballClient:
                             "-c",
                             f"mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball"
                             f"  && unzip /scratch/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version}"
-                            '   && echo "$FB_CONFIG" | base64 -d > $HOME/.config/fuzzball/config.yaml'
-                            '   && cat $HOME/.config/fuzzball/config.yaml',
+                            '   && echo "$FB_CONFIG" | base64 -d > $HOME/.config/fuzzball/config.yaml',
                         ],
                         "env": env + [f"FB_CONFIG=secret://user/{secret_name}"],
                         "policy": {"timeout": {"execute": "5m"}},

@@ -53,14 +53,14 @@ class FuzzballTraceObserver implements TraceObserver {
     void onProcessSubmit(TaskHandler handler, TraceRecord trace) {
         println "Process submitted! Will use container ${handler.task.getContainer()}"
         // TODO: this is only temporary for testing purposes
-        TaskRun task = handler.getTask()
+        /*TaskRun task = handler.getTask()
         WorkflowDefinitionJob job = FuzzballWorkflowDefinitionJobFactory.create(task)
         WorkflowDefinition wfDef = new WorkflowDefinition(
             version: "v1",
             jobs: [(job.getName()): job]
         )
         println("Workflow Definition:")
-        println(dumper.dump(wfDef))
+        println(dumper.dump(wfDef))*/
     }
 
     @Override

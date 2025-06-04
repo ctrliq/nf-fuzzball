@@ -45,13 +45,7 @@ class MinimalFuzzballClient:
                 self.__base_url = (
                     f"{self.__schema}://{self.__host}:{self.__port}{self.__base_path}"
                 )
-                self.__config = {
-                    "host": self.__host,
-                    "port": self.__port,
-                    "token": self.__token,
-                    "schema": self.__schema,
-                    "base_path": self.__base_path,
-                }
+                self.__config["contexts"].append(c)
                 break
 
     @property
@@ -113,21 +107,20 @@ class MinimalFuzzballClient:
         Submit a Nextflow job to the Fuzzball cluster.
         """
 
+        secret_name = f"fb-{generate_random_string()}"
         plugin_version = "0.0.1"
         nxf_version = "25.05.0-edge"
         runtime = "24h"
         home = "/scratch/home"
         wd = "/data/nextflow"
+        env = [f"HOME={home}", f"NXF_HOME={home}/.nextflow"]
         mounts = {"data": {"location": "/data"}, "scratch": {"location": "/scratch"}}
 
-        # Create or update the Fuzzball configuration secret. This will allow the nextflow to submit
-        # workflows to the Fuzzball cluster. The nextflow plugin will remove the secret.
-        secret_name = f"fb-{generate_random_string()}"
         self.create_value_secret(secret_name, self.encode_config())
         nxf_fuzzball_config = f"""
         plugins {{id 'nf-fuzzball@{plugin_version}' }}
         fuzzball {{
-            configSecret = "{secret_name}"
+            cfgFile = '/scratch/home/.config/fuzzball/config.yaml'
         }}
         process.executor = 'fuzzball'
         """
@@ -164,10 +157,12 @@ class MinimalFuzzballClient:
                         "command": [
                             "/bin/sh",
                             "-c",
-                            f"mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version}"
-                            f"  && unzip /scratch/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version}",
+                            f"mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball"
+                            f"  && unzip /scratch/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version}"
+                            '   && echo "$FB_CONFIG" | base64 -d > $HOME/.config/fuzzball/config.yaml'
+                            '   && cat $HOME/.config/fuzzball/config.yaml',
                         ],
-                        "env": [f"HOME={home}"],
+                        "env": env + [f"FB_CONFIG=secret://user/{secret_name}"],
                         "policy": {"timeout": {"execute": "5m"}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
                     },
@@ -183,7 +178,7 @@ class MinimalFuzzballClient:
                             "-c",
                             "nextflow info -d && nextflow run -c /tmp/fuzzball.config hello",
                         ],
-                        "env": [f"HOME={home}", f"NXF_HOME={home}/.nextflow"],
+                        "env": env,
                         "policy": {"timeout": {"execute": runtime}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
                         "requires": ["setup"],

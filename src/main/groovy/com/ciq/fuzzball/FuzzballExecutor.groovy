@@ -31,10 +31,16 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
     @Override
     protected void register() {
         super.register()
-        this.fuzzballApiConfig = ApiConfig.fromFuzzballConfig()
+
+        String cfgFile = this.session.config.navigate('fuzzball.cfgFile') as String
+        if (cfgFile != null) {
+            this.fuzzballApiConfig = ApiConfig.fromFuzzballConfig(
+                configFile: cfgFile.replaceFirst('^~', System.getProperty('user.home'))
+            )
+        } else {
+            this.fuzzballApiConfig = ApiConfig.fromFuzzballConfig()
+        }
     }
-
-
 
     /**
      * The path where scratch data is written for the current executor.
@@ -43,7 +49,7 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
      */
     @Override
     Path getWorkDir() {
-       session.getWorkDir()
+        session.getWorkDir()
     }
 
     /**
@@ -53,7 +59,7 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
      */
     @Override
     Path getBinDir() {
-       return session.getBinDir()
+        return session.getBinDir()
     }
 
     /**

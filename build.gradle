@@ -21,7 +21,8 @@ nextflowPlugin {
     description = 'Fuzzball executor'
     className = 'com.ciq.fuzzball.FuzzballPlugin'
     extensionPoints = [
-        'com.ciq.fuzzball.FuzzballTraceObserverFactory'
+        'com.ciq.fuzzball.FuzzballTraceObserverFactory',
+        'com.ciq.fuzzball.FuzzballExecutor'
     ]
 
     publishing {
@@ -56,4 +57,3 @@ sourceSets {
         }
     }
 }
-

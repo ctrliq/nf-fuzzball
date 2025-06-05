@@ -4,6 +4,7 @@ import java.nio.file.Path
 
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import groovy.json.JsonSlurper
 
 import nextflow.exception.AbortOperationException
 import nextflow.executor.Executor
@@ -17,45 +18,58 @@ import nextflow.util.ServiceName
 import org.pf4j.ExtensionPoint
 
 import com.ciq.fuzzball.api.ApiConfig
+import com.ciq.fuzzball.api.WorkflowServiceApi
+import com.ciq.fuzzball.model.*
 
 // TODO: throttling
 // TODO: implements TaskArrayExecutor ?
+// TODO: fusion?
+// TODO: fail if not running in a Fuzzball environment
 
 @Slf4j
-@ServiceName(value='fuzzball-executor')
+@ServiceName(value='fuzzball')
 @CompileStatic
 class FuzzballExecutor extends Executor implements ExtensionPoint {
 
     protected ApiConfig fuzzballApiConfig
+    protected String executorWfId = null
+    protected String executorWfName = null
+    protected WorkflowServiceApi fuzzballWfService
+    protected Map<String, WorkflowDefinitionJobMount> mounts = [:]
+    protected Map<String, Volume> volumes = [:]
 
     @Override
     protected void register() {
         super.register()
-        //TODO: get context name from nextflow config fuzzball scope instead of the default activeContext from fuzzball config file
-        this.fuzzballApiConfig = ApiConfig.fromFuzzballConfig()
-    }
 
-    /**
-     * Submit the specified task for execution to the underlying system
-     * and add it to the queue of tasks to be monitored.
-     *
-     * @param task A {@code TaskRun} instance
-     */
-    void submit( TaskRun task ) {
-        log.trace "Scheduling process: ${task}"
-
-        if( session.isTerminated() ) {
-            new IllegalStateException("Session terminated - Cannot add process to execution queue: ${task}")
+        String cfgFile = this.session.config.navigate('fuzzball.cfgFile') as String
+        if (cfgFile != null) {
+            this.fuzzballApiConfig = ApiConfig.fromFuzzballConfig(
+                configFile: cfgFile.replaceFirst('^~', System.getProperty('user.home'))
+            )
+        } else {
+            this.fuzzballApiConfig = ApiConfig.fromFuzzballConfig()
         }
 
-        final handler = createTaskHandler(task)
-
-        /*
-         * Add the task to the queue for processing
-         * Note: queue is implemented as a fixed size blocking queue, when
-         * there's not space the *put* operation will block until some other tasks finish
-         */
-        monitor.schedule(handler)
+        // get the volumes and mounts of the current workflow
+        executorWfName = System.getenv('FB_JOB_NAME')
+        executorWfId = System.getenv('FB_WORKFLOW_ID')
+        if (!(executorWfName && executorWfId)) {
+            throw new AbortOperationException('Controller job is not running as a fuzzball workflow')
+        }
+        fuzzballWfService = new WorkflowServiceApi(fuzzballApiConfig)
+        Workflow wf = fuzzballWfService.getWorkflow(executorWfId)
+        // Parse JSON from byte[] specification using JsonSlurper
+        WorkflowDefinition wfDef = WorkflowDefinition.fromMap(
+            new JsonSlurper().parseText(new String(wf?.specification, 'UTF-8')) as Map<String, Object>
+        )
+        if (!wfDef) {
+            throw new AbortOperationException("Unable to load workflow definition for workflow: $executorWfName")
+        }
+        volumes = wfDef.volumes?.collectEntries { k, v ->
+            [(k): new Volume(reference: v.reference)]
+        } ?: [:]
+        mounts = wfDef.jobs[executorWfName]?.mounts ?: [:]
     }
 
     /**
@@ -65,7 +79,7 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
      */
     @Override
     Path getWorkDir() {
-       session.getWorkDir()
+        session.getWorkDir()
     }
 
     /**
@@ -75,7 +89,7 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
      */
     @Override
     Path getBinDir() {
-       return session.getBinDir()
+        return session.getBinDir()
     }
 
     /**
@@ -99,7 +113,7 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
      */
     @Override
     protected TaskMonitor createTaskMonitor() {
-        return TaskPollingMonitor.create(session, name, 1000, Duration.of('10 sec'))
+        return TaskPollingMonitor.create(session, name, 1000, Duration.of('20 sec'))
     }
 
     /**
@@ -146,7 +160,7 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
     }
 
     /**
-     * @return {@code true} when the executor uses fusion file system 
+     * @return {@code true} when the executor uses fusion file system
      */
     @Override
     boolean isFusionEnabled() {

@@ -1,69 +1,78 @@
 package com.ciq.fuzzball
 
+
+import groovy.transform.CompileStatic
+import groovy.util.logging.Slf4j
+
 import com.ciq.fuzzball.model.Policy
 import com.ciq.fuzzball.model.Timeout
+import com.ciq.fuzzball.model.URI
 import com.ciq.fuzzball.model.WorkflowDefinitionJob
 import com.ciq.fuzzball.model.WorkflowDefinitionJobResource
 import com.ciq.fuzzball.model.WorkflowDefinitionJobResourceCpu
 import com.ciq.fuzzball.model.WorkflowDefinitionJobResourceMemory
 import nextflow.processor.TaskRun
 
+@CompileStatic
+@Slf4j
 class FuzzballWorkflowDefinitionJobFactory {
 
-    static WorkflowDefinitionJob create (TaskRun task){
+    static WorkflowDefinitionJob create (TaskRun task, FuzzballExecutor executor){
         WorkflowDefinitionJob job = new WorkflowDefinitionJob()
-        job.setName(getNextflowTaskName(task))
-        job.setImage(getNextflowTaskContainer(task) as java.net.URI)
-        job.setResource(getNextflowComputeResources(task))
-        job.setCommand(getNextflowCommand(task))
-        job.setCwd(getNextflowTaskCwd(task))
-        job.setPolicy(getNextflowTimeoutPolicy(task))
+        // task.getName() should return a unique identifier. I think we want to avoid a default value here
+        // in case we end up with more than one job per worklow at some point in the future.
+        job.name = toSafeYamlKey(task.getName())
+        job.image = new URI(uri: getTaskContainer(task))
+        job.resource = getComputeResources(task)
+        job.command = getCommand(task)
+        job.cwd = getTaskCwd(task)
+        job.mounts = executor.mounts
+        job.policy = getTimeoutPolicy(task)
         return job
     }
 
-    static String getNextflowTaskName(TaskRun task){
-        if (task.getName()){
-            return task.getName().replaceAll(/[\[\]\(\)\{\}]/, '')    // Remove all brackets
-                                 .replaceAll(/\s+/, '-') // Replace whitespace with '-'
-        } else {
-            return "nf-task"
+    static String toSafeYamlKey(String input) {
+        if (!input) return '_'
+        String key = input
+            .replaceAll(/[^a-zA-Z0-9_]/, '-') // Replace non-alphanumeric with -
+            .replaceAll(/-+/, '-')            // Collapse multiple underscores
+            .replaceAll(/^-+|-+$/, '')        // Trim leading/trailing underscores
+        if (!key || !key[0].matches(/[a-z_]/)) {
+            key = '_' + key
         }
+        return key
     }
 
-    static String getNextflowTaskContainer(TaskRun task) {
+    static String getTaskContainer(TaskRun task) {
         if (task.config.getContainer()) {
-            return "docker://" + task.config.getContainer().toString()
+            return 'docker://' + task.config.getContainer().toString()
         } else {
-            throw new IllegalArgumentException("A container must be specified for the task.")
+            throw new IllegalArgumentException('A container must be specified for the task.')
         }
     }
 
-    static WorkflowDefinitionJobResource getNextflowComputeResources(TaskRun task) {
+    static WorkflowDefinitionJobResource getComputeResources(TaskRun task) {
         WorkflowDefinitionJobResource resources = new WorkflowDefinitionJobResource()
-        resources.setCpu(new WorkflowDefinitionJobResourceCpu().setCores(getNextflowTaskCpus(task)))
-        resources.setMemory(new WorkflowDefinitionJobResourceMemory().setSize(getNextflowTaskMemory(task)))
+        // getCpus always returns an int and defaults to 1
+        // Todo: thread, affinity, devices, exclusive
+        resources.cpu = new WorkflowDefinitionJobResourceCpu(cores: task.config.getCpus() as Long)
+        resources.memory = new WorkflowDefinitionJobResourceMemory(size: task.config.getMemory()?.toString() ?: '1GiB')
         return resources
     }
 
-    static Long getNextflowTaskCpus(TaskRun task) {
-        return task.config.getCpus().toLong() ?: 1 // Default to 1 CPU if not specified
+    static String getTaskCwd(TaskRun task) {
+        return task.workDir?.toString() ?: ''
     }
 
-    static String getNextflowTaskMemory(TaskRun task) {
-        return task.config.getMemory()?.toGiga()?.toString() + "GiB" ?: "1GiB" // Default to 1 GiB if not specified
-    }
-
-    static String getNextflowTaskCwd(TaskRun task) {
-        return task.workDir.toString() 
-    }
-
-    static List<String> getNextflowCommand(TaskRun task) {
+    static List<String> getCommand(TaskRun task) {
         return task.config.getShell() + task.CMD_RUN // Command to run
     }
 
-    static Policy getNextflowTimeoutPolicy(TaskRun task) {
+    static Policy getTimeoutPolicy(TaskRun task) {
+        // Todo: retry
         if (task.config.getTime()) {
-            return new Policy().setTimeout(new Timeout(execute: task.config.getTime.toSeconds().toString + "s" )) // Convert to seconds
+            return new Policy(timeout: new Timeout(execute: "${task.config.getTime().toMinutes().toString()}m"))
         }
+        return null
     }
 }

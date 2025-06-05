@@ -1,8 +1,7 @@
 package com.ciq.fuzzball
 
+import java.nio.file.Path
 
-import com.ciq.fuzzball.model.WorkflowDefinition
-import com.ciq.fuzzball.model.WorkflowDefinitionJob
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import nextflow.Session
@@ -12,11 +11,7 @@ import nextflow.processor.TaskRun
 import nextflow.trace.TraceObserver
 import nextflow.trace.TraceRecord
 
-import org.yaml.snakeyaml.Yaml
-import org.yaml.snakeyaml.DumperOptions
-
-import java.nio.file.Path
-
+//TODO: do we want to keep this?
 /**
  * Implements an observer that allows implementing custom
  * logic on nextflow execution events.
@@ -27,12 +22,12 @@ class FuzzballTraceObserver implements TraceObserver {
 
     @Override
     void onFlowCreate(Session session) {
-        println "Pipeline is starting! 🚀"
+        println 'Pipeline is starting!'
     }
 
     @Override
     void onFlowComplete() {
-        println "Pipeline complete! 👋"
+        println 'Pipeline complete!'
     }
 
     @Override
@@ -40,7 +35,7 @@ class FuzzballTraceObserver implements TraceObserver {
 
     @Override
     void onProcessCreate(TaskProcessor process) {
-        println "Process created!"
+        println 'Process created!'
     }
 
     @Override
@@ -51,36 +46,17 @@ class FuzzballTraceObserver implements TraceObserver {
 
     @Override
     void onProcessSubmit(TaskHandler handler, TraceRecord trace) {
-        println "Process submitted!"
+        println "Process submitted! Will use container ${handler.task.getContainer()}"
     }
 
     @Override
     void onProcessStart(TaskHandler handler, TraceRecord trace) {
-        println "Process started!"
-        TaskRun task = handler.getTask()
-
-        // Generate a Fuzzball job using a task
-        FuzzballWorkflowDefinitionJobFactory jobFactory = new FuzzballWorkflowDefinitionJobFactory()
-        WorkflowDefinitionJob job = jobFactory.create(task)
-        
-        // Add the job into a WorkflowDefinition
-        WorkflowDefinition wfDef = new WorkflowDefinition(
-            version: "v1",
-            jobs: [(job.getName()): job]
-        )
-
-        // Print the workflow definition in YAML format
-        DumperOptions options = new DumperOptions()
-        options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK)
-        options.setPrettyFlow(true)
-        Yaml yaml = new Yaml(options)
-        String yamlStr = yaml.dump(wfDef)
-        println "Workflow Definition YAML:\n${yamlStr}"
+        println 'Process started!'
     }
 
     @Override
     void onProcessComplete(TaskHandler handler, TraceRecord trace) {
-        println "Process completed!"
+        println 'Process completed!'
     }
 
     @Override

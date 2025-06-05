@@ -16,7 +16,7 @@ class FuzzballPluginConfig implements ConfigScope {
 
     FuzzballPluginConfig(Map opts) {
         this.cfg = opts.cfg ?: System.getProperty('user.home') + '/.config/fuzzball/config.yaml'
-        this.volues = opts.volumes ?: [:]
+        this.volumes = opts.volumes ?: [:]
     }
 
     // NOTE: configFile and configPath seem to be reserved keywords. This caused me some headaches.

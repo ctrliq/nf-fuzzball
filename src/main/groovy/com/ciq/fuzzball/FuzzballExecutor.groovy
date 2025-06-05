@@ -66,7 +66,9 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
         if (!wfDef) {
             throw new AbortOperationException("Unable to load workflow definition for workflow: $executorWfName")
         }
-        volumes = wfDef.volumes ?: [:]
+        volumes = wfDef.volumes?.collectEntries { k, v ->
+            [(k): new Volume(reference: v.reference)]
+        } ?: [:]
         mounts = wfDef.jobs[executorWfName]?.mounts ?: [:]
     }
 

@@ -67,6 +67,7 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
         )
         FuzzballYaml yaml = new FuzzballYaml()
         wfDefinitionYaml = yaml.dump(wfDef)
+        log.debug(wfDefinitionYaml)
         StartWorkflowRequest wfReq = new StartWorkflowRequest(
             name: "nf-${session.runName}-${job.getName()}",
             definition: wfDef,

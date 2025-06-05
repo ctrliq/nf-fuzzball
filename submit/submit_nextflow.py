@@ -108,7 +108,7 @@ class MinimalFuzzballClient:
         Submit a Nextflow job to the Fuzzball cluster.
         """
 
-        secret_name = f"fb-{generate_random_string()}"
+        secret_name = f"{generate_random_string()}"
         plugin_version = "0.0.1"
         nxf_version = "25.05.0-edge"
         runtime = "24h"
@@ -116,22 +116,38 @@ class MinimalFuzzballClient:
         wd = f"/data/nextflow/{secret_name}"
         env = [f"HOME={home}", f"NXF_HOME={home}/.nextflow"]
         volumes = {
-                    "data": {
-                        "reference": "volume://user/persistent",
+            "data": {
+                "reference": "volume://user/persistent",
+            },
+            "scratch": {
+                "reference": "volume://user/ephemeral",
+                "ingress": [
+                    {
+                        "source": {
+                            "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-{plugin_version}.zip",
+                            "secret": "secret://user/s3",
+                        },
+                        "destination": {"uri": "file://nf-fuzzball.zip"},
+                    }
+                ],
+                "egress": [
+                    {
+                        "source": {"uri": "file:///nextflow_report.html"},
+                        "destination": {
+                            "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nextflow_report-{secret_name}.html",
+                            "secret": "secret://user/s3",
+                        },
                     },
-                    "scratch": {
-                        "reference": "volume://user/ephemeral",
-                        "ingress": [
-                            {
-                                "source": {
-                                    "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-{plugin_version}.zip",
-                                    "secret": "secret://user/s3",
-                                },
-                                "destination": {"uri": "file://nf-fuzzball.zip"},
-                            }
-                        ],
+                    {
+                        "source": {"uri": "file:///nextflow_timeline.html"},
+                        "destination": {
+                            "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nextflow_timeline-{secret_name}.html",
+                            "secret": "secret://user/s3",
+                        },
                     },
-                }
+                ],
+            },
+        }
         mounts = {"data": {"location": "/data"}, "scratch": {"location": "/scratch"}}
 
         self.create_value_secret(secret_name, self.encode_config())
@@ -177,7 +193,7 @@ class MinimalFuzzballClient:
                         "command": [
                             "/bin/bash",
                             "-c",
-                            "nextflow run -ansi-log false -c /tmp/fuzzball.config hello",
+                            "nextflow run -ansi-log false -with-report /scratch/nextflow_report.html -with-trace -with-timeline /scratch/nextflow_timeline.html -c /tmp/fuzzball.config hello",
                         ],
                         "env": env,
                         "policy": {"timeout": {"execute": runtime}},

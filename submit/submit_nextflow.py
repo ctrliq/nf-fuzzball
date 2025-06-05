@@ -114,6 +114,7 @@ class MinimalFuzzballClient:
         runtime = "24h"
         home = "/scratch/home"
         wd = f"/data/nextflow/{secret_name}"
+        s3_secret = "secret://user/s3"
         env = [f"HOME={home}", f"NXF_HOME={home}/.nextflow"]
         volumes = {
             "data": {
@@ -125,7 +126,7 @@ class MinimalFuzzballClient:
                     {
                         "source": {
                             "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-{plugin_version}.zip",
-                            "secret": "secret://user/s3",
+                            "secret": s3_secret,
                         },
                         "destination": {"uri": "file://nf-fuzzball.zip"},
                     }
@@ -135,14 +136,14 @@ class MinimalFuzzballClient:
                         "source": {"uri": "file:///nextflow_report.html"},
                         "destination": {
                             "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nextflow_report-{secret_name}.html",
-                            "secret": "secret://user/s3",
+                            "secret": s3_secret,
                         },
                     },
                     {
                         "source": {"uri": "file:///nextflow_timeline.html"},
                         "destination": {
                             "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nextflow_timeline-{secret_name}.html",
-                            "secret": "secret://user/s3",
+                            "secret": s3_secret,
                         },
                     },
                 ],

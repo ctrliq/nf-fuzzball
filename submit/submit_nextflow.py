@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 """
 Submit a nextflow pipleine to run on fuzzball. This script will
 collect the required config information, inject it into the  from your fuzzbal configuration
@@ -10,6 +11,7 @@ import pathlib
 import secrets
 import string
 import sys
+import textwrap
 from typing import Any, Dict
 
 import yaml
@@ -26,6 +28,23 @@ def generate_random_string(length: int = 6) -> str:
     return "".join(secrets.choice(characters) for _ in range(length))
 
 
+def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.Node:
+    """
+    Represent strings with newlines as block litererals in YAML
+    """
+    if "\n" in data:
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+yaml.add_representer(str, str_presenter)
+
+def fail(error: str) -> None:
+    """
+    Print an error message and exit the program.
+    """
+    print(f"Error: {error}; exiting", file=sys.stderr)
+    sys.exit(1)
+
 class MinimalFuzzballClient:
     def __init__(self, config_path: pathlib.Path, context: str | None = None):
         with open(config_path, "r") as f:
@@ -36,46 +55,46 @@ class MinimalFuzzballClient:
             raise ValueError(
                 "No active context specified in config or provided as argument."
             )
-        self.__config = {"activeContext": context, "contexts": []}
+        self._config = {"activeContext": context, "contexts": []}
         for c in config.get("contexts", []):
             if c["name"] == context:
-                self.__host, self.__port = c["address"].split(":")
-                self.__token = c["auth"]["credentials"]["token"]
-                self.__schema = "https"
-                self.__base_path = "/v2"
-                self.__base_url = (
-                    f"{self.__schema}://{self.__host}:{self.__port}{self.__base_path}"
+                self._host, self._port = c["address"].split(":")
+                self._token = c["auth"]["credentials"]["token"]
+                self._schema = "https"
+                self._base_path = "/v2"
+                self._base_url = (
+                    f"{self._schema}://{self._host}:{self._port}{self._base_path}"
                 )
-                self.__config["contexts"].append(c)
+                self._config["contexts"].append(c)
                 break
 
     @property
-    def headers(self) -> Dict[str, str]:
+    def _headers(self) -> Dict[str, str]:
         """
         Return the headers required for API requests, including the authorization token.
         """
         return {
-            "Authorization": f"Bearer {self.__token}",
+            "Authorization": f"Bearer {self._token}",
             "Content-Type": "application/json",
         }
 
-    def __request(
+    def _request(
         self, method: str, endpoint: str, data: Dict[str, Any] | None = None
     ) -> requests.Response:
         """
         Make an API request to the Fuzzball server.
         """
-        url = f"{self.__base_url}/{endpoint.lstrip('/')}"
-        response = requests.request(method, url, json=data, headers=self.headers)
+        url = f"{self._base_url}/{endpoint.lstrip('/')}"
+        response = requests.request(method, url, json=data, headers=self._headers)
         response.raise_for_status()
         return response
 
-    def encode_config(self) -> str:
+    def _encode_config(self) -> str:
         """
         Return a base64 encoded version of the minimal configuration file
         containing only the active context.
         """
-        return base64.b64encode(yaml.dump(self.__config).encode("utf-8")).decode(
+        return base64.b64encode(yaml.dump(self._config).encode("utf-8")).decode(
             "utf-8"
         )
 
@@ -85,7 +104,7 @@ class MinimalFuzzballClient:
         """
 
         # Check if the secret already exists
-        response = self.__request("GET", "/secrets")
+        response = self._request("GET", "/secrets")
         id = None
         for secret in response.json()["secrets"]:
             if secret["name"] == secret_name:
@@ -98,12 +117,23 @@ class MinimalFuzzballClient:
                 "scope": "SECRET_SCOPE_USER",
                 "value": {"value": secret_value},
             }
-            self.__request("PUT", "/secrets", data=secret_data)
+            try:
+                resp = self._request("PUT", "/secrets", data=secret_data)
+            except requests.HTTPError as e:
+                fail(f"Failed to create secret: {e}")
+            self._secret_id = resp.json()["id"]
         else:
+            self._secret_id = id
             secret_data = {"value": {"value": secret_value}}
-            self.__request("PATCH", f"/secrets/{id}", data=secret_data)
+            self._request("PATCH", f"/secrets/{id}", data=secret_data)
 
-    def submit_nextflow_job(self, job_name: str, nextflow_config: str | None = None):
+    def submit_nextflow_job(
+        self,
+        job_name: str,
+        nextflow_config: str | None = None,
+        dry_run: bool = False,
+        verbose: bool = False,
+    ) -> None:
         """
         Submit a Nextflow job to the Fuzzball cluster.
         """
@@ -151,8 +181,8 @@ class MinimalFuzzballClient:
         }
         mounts = {"data": {"location": "/data"}, "scratch": {"location": "/scratch"}}
 
-        self.create_value_secret(secret_name, self.encode_config())
-        nxf_fuzzball_config = f"""
+        self.create_value_secret(secret_name, self._encode_config())
+        nxf_fuzzball_config = f"""\
         plugins {{id 'nf-fuzzball@{plugin_version}' }}
         fuzzball {{
             cfgFile = '/scratch/home/.config/fuzzball/config.yaml'
@@ -160,26 +190,44 @@ class MinimalFuzzballClient:
         process.executor = 'fuzzball'
         """
 
+        setup_script = f"""\
+        #! /bin/sh
+        mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball \\
+          && unzip /scratch/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} \\
+          && echo "$FB_CONFIG" | base64 -d > $HOME/.config/fuzzball/config.yaml \\
+          || exit 1
+
+        # there is only a single context in the config file so it's easy to extract the token
+        TOKEN="$(awk '/token:/ {{print $2}}' $HOME/.config/fuzzball/config.yaml)"
+        # clean up the secret but don't fail if there is an error
+        curl -s -X DELETE "{self._base_url}/secrets/{self._secret_id}" \\
+            -H "Authorization: Bearer $TOKEN" \\
+            -H "Accept: application/json" && echo "secret deleted" || echo "secret not deleted"
+        """
+
+        nextflow_script = """\
+        #! /bin/bash
+        nextflow run -ansi-log false \\
+            -with-report /scratch/nextflow_report.html \\
+            -with-trace \\
+            -with-timeline /scratch/nextflow_timeline.html \\
+            -c /tmp/fuzzball.config hello
+        """
+
         workflow = {
             "name": job_name,
             "definition": {
                 "version": "v1",
                 "files": {
-                    "fuzzball.config": nxf_fuzzball_config,
+                    "fuzzball.config": textwrap.dedent(nxf_fuzzball_config),
                 },
                 "volumes": volumes,
                 "jobs": {
                     "setup": {
-                        "image": {"uri": "docker://alpine:latest"},
+                        "image": {"uri": "docker://curlimages/curl"},
                         "mounts": mounts,
                         "cwd": wd,
-                        "command": [
-                            "/bin/sh",
-                            "-c",
-                            f"mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball"
-                            f"  && unzip /scratch/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version}"
-                            '   && echo "$FB_CONFIG" | base64 -d > $HOME/.config/fuzzball/config.yaml',
-                        ],
+                        "script": textwrap.dedent(setup_script),
                         "env": env + [f"FB_CONFIG=secret://user/{secret_name}"],
                         "policy": {"timeout": {"execute": "5m"}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
@@ -191,11 +239,7 @@ class MinimalFuzzballClient:
                             "/tmp/fuzzball.config": "file://fuzzball.config",
                         },
                         "cwd": wd,
-                        "command": [
-                            "/bin/bash",
-                            "-c",
-                            "nextflow run -ansi-log false -with-report /scratch/nextflow_report.html -with-trace -with-timeline /scratch/nextflow_timeline.html -c /tmp/fuzzball.config hello",
-                        ],
+                        "script": textwrap.dedent(nextflow_script),
                         "env": env,
                         "policy": {"timeout": {"execute": runtime}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
@@ -209,7 +253,12 @@ class MinimalFuzzballClient:
             workflow["definition"]["jobs"]["nextflow"]["files"][
                 "/tmp/nextflow.config"
             ] = "file://nextflow.config"
-        response = self.__request("POST", "/workflows", data=workflow)
+        if verbose or dry_run:
+            yaml.dump(workflow, sys.stdout, default_flow_style=False)
+        if dry_run:
+            print("Dry run mode: not submitting the workflow.")
+            return
+        response = self._request("POST", "/workflows", data=workflow)
         print(f"Submitted nextflow workflow {response.json()['id']}")
 
 
@@ -223,6 +272,18 @@ def main() -> None:
         type=str,
         help="Name of the secret context to use from config.yaml. Defaults to the active context in the config file",
         default=None,
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Dump the workflow before submitting",
+    )
+    parser.add_argument(
+        "-n",
+        "--dry-run",
+        action="store_true",
+        help="Don't submit the workflow, just print it",
     )
     args = parser.parse_args()
 
@@ -240,7 +301,9 @@ def main() -> None:
         print(f"Failed to load config: {e}", file=sys.stderr)
         sys.exit(1)
 
-    fb_client.submit_nextflow_job("nextflow-job", nextflow_config=None)
+    fb_client.submit_nextflow_job(
+        "nextflow-job", nextflow_config=None, dry_run=args.dry_run, verbose=args.verbose
+    )
 
 
 if __name__ == "__main__":

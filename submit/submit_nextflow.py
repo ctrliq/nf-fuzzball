@@ -8,6 +8,8 @@ Notes:
   - Any explicitly specified config and/or parameter files will be included in the
     fuzzball job but implicit files (i.e. $HOME/.nextflow/config and ./nextflow.config)
     will not.
+  - If not included in the nextflow command, `-ansi-log false` will be added to the nextflow
+    options
 
 """
 
@@ -139,9 +141,11 @@ class MinimalFuzzballClient:
 
         secret_name = f"{generate_random_string()}"
         plugin_version = args.nf_fuzzball_version
-        home = "/scratch/home"
+        scratch_mount = "/scratch"
+        home_base = "home"
+        abs_home = f"{scratch_mount}/{home_base}"
         wd = f"/data/nextflow/{secret_name}"  ## need to get this from the nextflow command
-        env = [f"HOME={home}", f"NXF_HOME={home}/.nextflow"]
+        env = [f"HOME={abs_home}", f"NXF_HOME={abs_home}/.nextflow"]
         volumes = {
             "data": {
                 "reference": args.data_volume,
@@ -155,33 +159,23 @@ class MinimalFuzzballClient:
                             "secret": args.s3_secret,
                         },
                         "destination": {"uri": "file://nf-fuzzball.zip"},
-                    }
-                ],
-                "egress": [
-                    {
-                        "source": {"uri": "file:///nextflow_report.html"},
-                        "destination": {
-                            "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nextflow_report-{secret_name}.html",
-                            "secret": args.s3_secret,
-                        },
                     },
                     {
-                        "source": {"uri": "file:///nextflow_timeline.html"},
-                        "destination": {
-                            "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nextflow_timeline-{secret_name}.html",
-                            "secret": args.s3_secret,
+                        "source": {
+                            "uri": "file://fuzzball.config",
                         },
+                        "destination": {"uri": f"file://{home_base}/.nextflow/config"},
                     },
                 ],
             },
         }
-        mounts = {"data": {"location": "/data"}, "scratch": {"location": "/scratch"}}
+        mounts = {"data": {"location": "/data"}, "scratch": {"location": scratch_mount}}
 
         self.create_value_secret(secret_name, self._encode_config())
         nxf_fuzzball_config = f"""\
         plugins {{id 'nf-fuzzball@{plugin_version}' }}
         fuzzball {{
-            cfgFile = '/scratch/home/.config/fuzzball/config.yaml'
+            cfgFile = '{abs_home}/.config/fuzzball/config.yaml'
         }}
         process.executor = 'fuzzball'
         """
@@ -189,25 +183,26 @@ class MinimalFuzzballClient:
         setup_script = f"""\
         #! /bin/sh
         mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball \\
-          && unzip /scratch/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} \\
+          && unzip /scratch/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} > /dev/null \\
           && echo "$FB_CONFIG" | base64 -d > $HOME/.config/fuzzball/config.yaml \\
           || exit 1
+        set -x
+        ls -lh $HOME/.nextflow
+        ls -lh $HOME/.nextflow/plugins
+        cat $HOME/.nextflow/config
+        set +x
 
         # there is only a single context in the config file so it's easy to extract the token
         TOKEN="$(awk '/token:/ {{print $2}}' $HOME/.config/fuzzball/config.yaml)"
         # clean up the secret but don't fail if there is an error
         curl -s -X DELETE "{self._base_url}/secrets/{self._secret_id}" \\
             -H "Authorization: Bearer $TOKEN" \\
-            -H "Accept: application/json" && echo "secret deleted" || echo "secret not deleted"
+            -H "Accept: application/json" &> /dev/null && echo "temp secret deleted" || echo "temp secret not deleted"
         """
 
-        nextflow_script = """\
+        nextflow_script = f"""\
         #! /bin/bash
-        nextflow run -ansi-log false \\
-            -with-report /scratch/nextflow_report.html \\
-            -with-trace \\
-            -with-timeline /scratch/nextflow_timeline.html \\
-            -c /tmp/fuzzball.config hello
+        {shlex.join(args.nextflow_cmd)} -ansi-log false
         """
 
         workflow = {
@@ -231,9 +226,6 @@ class MinimalFuzzballClient:
                     "nextflow": {
                         "image": {"uri": f"docker://nextflow/nextflow:{args.nextflow_version}"},
                         "mounts": mounts,
-                        "files": {
-                            "/tmp/fuzzball.config": "file://fuzzball.config",
-                        },
                         "cwd": wd,
                         "script": textwrap.dedent(nextflow_script),
                         "env": env,
@@ -261,6 +253,16 @@ def parse_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=__doc__,
         usage="%(prog)s [options] -- <nextflow_cmd>",
+        epilog=textwrap.dedent(
+            """\
+            Example:
+              %(prog)s -- nextflow run \\
+                  -with-report report.html \\
+                  -with-trace \\
+                  -with-timeline timeline.html \\
+                  hello
+            """
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
@@ -332,7 +334,12 @@ def parse_cli() -> argparse.Namespace:
         nargs=argparse.REMAINDER,
         help="Nextflow command"
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if not args.nextflow_cmd:
+        parser.error("Nextflow command is required. Please provide it after the options.")
+    if args.nextflow_cmd[0] == "--":
+        args.nextflow_cmd.pop(0)
+    return args
 
 def main() -> None:
     args = parse_cli()

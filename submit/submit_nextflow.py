@@ -257,6 +257,7 @@ class MinimalFuzzballClient:
             yaml.dump(workflow, sys.stdout, default_flow_style=False)
         if dry_run:
             print("Dry run mode: not submitting the workflow.")
+            self._request("DELETE", f"/secrets/{self._secret_id}")
             return
         response = self._request("POST", "/workflows", data=workflow)
         print(f"Submitted nextflow workflow {response.json()['id']}")

@@ -15,6 +15,7 @@ import argparse
 import base64
 import pathlib
 import secrets
+import shlex
 import string
 import sys
 import textwrap
@@ -137,24 +138,21 @@ class MinimalFuzzballClient:
         """
 
         secret_name = f"{generate_random_string()}"
-        plugin_version = "0.0.1"
-        nxf_version = "25.05.0-edge"
-        runtime = "24h"
+        plugin_version = args.nf_fuzzball_version
         home = "/scratch/home"
-        wd = f"/data/nextflow/{secret_name}"
-        s3_secret = "secret://user/s3"
+        wd = f"/data/nextflow/{secret_name}"  ## need to get this from the nextflow command
         env = [f"HOME={home}", f"NXF_HOME={home}/.nextflow"]
         volumes = {
             "data": {
-                "reference": "volume://user/persistent",
+                "reference": args.data_volume,
             },
             "scratch": {
-                "reference": "volume://user/ephemeral",
+                "reference": args.scratch_volume,
                 "ingress": [
                     {
                         "source": {
                             "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-{plugin_version}.zip",
-                            "secret": s3_secret,
+                            "secret": args.s3_secret,
                         },
                         "destination": {"uri": "file://nf-fuzzball.zip"},
                     }
@@ -164,14 +162,14 @@ class MinimalFuzzballClient:
                         "source": {"uri": "file:///nextflow_report.html"},
                         "destination": {
                             "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nextflow_report-{secret_name}.html",
-                            "secret": s3_secret,
+                            "secret": args.s3_secret,
                         },
                     },
                     {
                         "source": {"uri": "file:///nextflow_timeline.html"},
                         "destination": {
                             "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nextflow_timeline-{secret_name}.html",
-                            "secret": s3_secret,
+                            "secret": args.s3_secret,
                         },
                     },
                 ],
@@ -231,7 +229,7 @@ class MinimalFuzzballClient:
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
                     },
                     "nextflow": {
-                        "image": {"uri": f"docker://nextflow/nextflow:{nxf_version}"},
+                        "image": {"uri": f"docker://nextflow/nextflow:{args.nextflow_version}"},
                         "mounts": mounts,
                         "files": {
                             "/tmp/fuzzball.config": "file://fuzzball.config",
@@ -239,7 +237,7 @@ class MinimalFuzzballClient:
                         "cwd": wd,
                         "script": textwrap.dedent(nextflow_script),
                         "env": env,
-                        "policy": {"timeout": {"execute": runtime}},
+                        "policy": {"timeout": {"execute": args.timelimit}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
                         "requires": ["setup"],
                     },
@@ -263,13 +261,13 @@ def parse_cli() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=__doc__,
         usage="%(prog)s [options] -- <nextflow_cmd>",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
         "-c",
         "--context",
         type=str,
-        help="Name of the secret context to use from config.yaml. Defaults to the active context in the config file",
+        help="Name of the secret context to use from config.yaml. Defaults to the active context in the config file.",
         default=None,
     )
     parser.add_argument(
@@ -288,7 +286,46 @@ def parse_cli() -> argparse.Namespace:
         "--job-name",
         type=str,
         default="nextflow-job",
-        help="Name of the Fuzzball workflow running the nextflow controller job",
+        help="Name of the Fuzzball workflow running the nextflow controller job [%(default)s]",
+    )
+    parser.add_argument(
+        "--nf-fuzzball-version",
+        type=str,
+        default="0.0.1",
+        help="nf-fuzzball plugin version [%(default)s]",
+    )
+    parser.add_argument(
+        "--nextflow-version",
+        type=str,
+        default="25.05.0-edge",
+        help="Nextflow version [%(default)s]",
+    )
+    parser.add_argument(
+        "--timelimit",
+        type=str,
+        default="8h",
+        help="Timelimit for pipeline job [%(default)s]",
+    )
+    parser.add_argument(
+        "--scratch-volume",
+        type=str,
+        default="volume://user/ephemeral",
+        help="Ephemeral scratch volume [%(default)s]",
+    )
+    parser.add_argument(
+        "--data-volume",
+        type=str,
+        default="volume://user/persistent",
+        help="Persistent data volume [%(default)s]",
+    )
+    parser.add_argument(
+        "--s3-secret",
+        type=str,
+        default="secret://user/s3",
+        help=(
+            "Refernce for fuzzball S3 secret to use for ingress/egress. This is not the same as the environment"
+             " credentials needed to transfer to/from S3 in the pipeline [%(default)s]"
+        ),
     )
     parser.add_argument(
         "nextflow_cmd",

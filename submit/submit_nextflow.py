@@ -261,8 +261,11 @@ class MinimalFuzzballClient:
         response = self._request("POST", "/workflows", data=workflow)
         print(f"Submitted nextflow workflow {response.json()['id']}")
 
+def parse_cli() -> argparse.Namespace:
+    """
+    Parsing the commandline
+    """
 
-def main() -> None:
     parser = argparse.ArgumentParser(
         description="Create a Fuzzball secret via REST API."
     )
@@ -285,8 +288,12 @@ def main() -> None:
         action="store_true",
         help="Don't submit the workflow, just print it",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main() -> None:
+
+    args = parse_cli()
     config_path = CONFIG_PATH.expanduser()
     if not config_path.exists():
         print(

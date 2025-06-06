@@ -8,8 +8,6 @@ Notes:
   - Any explicitly specified config and/or parameter files will be included in the
     fuzzball job but implicit files (i.e. $HOME/.nextflow/config and ./nextflow.config)
     will not.
-  - If not included in the nextflow command, `-ansi-log false` will be added to the nextflow
-    options
 
 """
 
@@ -145,7 +143,12 @@ class MinimalFuzzballClient:
         home_base = "home"
         abs_home = f"{scratch_mount}/{home_base}"
         wd = f"/data/nextflow/{secret_name}"  ## need to get this from the nextflow command
-        env = [f"HOME={abs_home}", f"NXF_HOME={abs_home}/.nextflow"]
+        env = [
+            f"HOME={abs_home}",
+            f"NXF_HOME={abs_home}/.nextflow",
+             "NXF_ANSI_CONSOLE=false",
+             "NXF_ANSI_SUMMARY=false",
+            ]
         volumes = {
             "data": {
                 "reference": args.data_volume,
@@ -202,7 +205,7 @@ class MinimalFuzzballClient:
 
         nextflow_script = f"""\
         #! /bin/bash
-        {shlex.join(args.nextflow_cmd)} -ansi-log false
+        {shlex.join(args.nextflow_cmd)}
         """
 
         workflow = {

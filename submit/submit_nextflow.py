@@ -1,8 +1,14 @@
 #! /usr/bin/env python3
 """
-Submit a nextflow pipleine to run on fuzzball. This script will
-collect the required config information, inject it into the  from your fuzzbal configuration
-file and submit the pipeline controller job to the fuzzball clutster.
+Submit a nextflow pipeline to Fuzzball.
+
+Notes:
+  - Paths for input, workdir, and output in your nextflow command are relative to the
+    data volume mounted at /data.
+  - Any explicitly specified config and/or parameter files will be included in the
+    fuzzball job but implicit files (i.e. $HOME/.nextflow/config and ./nextflow.config)
+    will not.
+
 """
 
 import argparse
@@ -94,9 +100,7 @@ class MinimalFuzzballClient:
         Return a base64 encoded version of the minimal configuration file
         containing only the active context.
         """
-        return base64.b64encode(yaml.dump(self._config).encode("utf-8")).decode(
-            "utf-8"
-        )
+        return base64.b64encode(yaml.dump(self._config).encode("utf-8")).decode("utf-8")
 
     def create_value_secret(self, secret_name: str, secret_value: str) -> None:
         """
@@ -127,13 +131,7 @@ class MinimalFuzzballClient:
             secret_data = {"value": {"value": secret_value}}
             self._request("PATCH", f"/secrets/{id}", data=secret_data)
 
-    def submit_nextflow_job(
-        self,
-        job_name: str,
-        nextflow_config: str | None = None,
-        dry_run: bool = False,
-        verbose: bool = False,
-    ) -> None:
+    def submit_nextflow_job(self, args: argparse.Namespace) -> None:
         """
         Submit a Nextflow job to the Fuzzball cluster.
         """
@@ -215,7 +213,7 @@ class MinimalFuzzballClient:
         """
 
         workflow = {
-            "name": job_name,
+            "name": args.job_name,
             "definition": {
                 "version": "v1",
                 "files": {
@@ -248,14 +246,9 @@ class MinimalFuzzballClient:
                 },
             },
         }
-        if nextflow_config:
-            workflow["definition"]["files"]["nextflow.config"] = nextflow_config
-            workflow["definition"]["jobs"]["nextflow"]["files"][
-                "/tmp/nextflow.config"
-            ] = "file://nextflow.config"
-        if verbose or dry_run:
+        if args.verbose or args.dry_run:
             yaml.dump(workflow, sys.stdout, default_flow_style=False)
-        if dry_run:
+        if args.dry_run:
             print("Dry run mode: not submitting the workflow.")
             self._request("DELETE", f"/secrets/{self._secret_id}")
             return
@@ -268,7 +261,9 @@ def parse_cli() -> argparse.Namespace:
     """
 
     parser = argparse.ArgumentParser(
-        description="Create a Fuzzball secret via REST API."
+        description=__doc__,
+        usage="%(prog)s [options] -- <nextflow_cmd>",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
         "-c",
@@ -289,11 +284,20 @@ def parse_cli() -> argparse.Namespace:
         action="store_true",
         help="Don't submit the workflow, just print it",
     )
+    parser.add_argument(
+        "--job-name",
+        type=str,
+        default="nextflow-job",
+        help="Name of the Fuzzball workflow running the nextflow controller job",
+    )
+    parser.add_argument(
+        "nextflow_cmd",
+        nargs=argparse.REMAINDER,
+        help="Nextflow command"
+    )
     return parser.parse_args()
 
-
 def main() -> None:
-
     args = parse_cli()
     config_path = CONFIG_PATH.expanduser()
     if not config_path.exists():
@@ -309,10 +313,7 @@ def main() -> None:
         print(f"Failed to load config: {e}", file=sys.stderr)
         sys.exit(1)
 
-    fb_client.submit_nextflow_job(
-        "nextflow-job", nextflow_config=None, dry_run=args.dry_run, verbose=args.verbose
-    )
-
+    fb_client.submit_nextflow_job(args)
 
 if __name__ == "__main__":
     main()

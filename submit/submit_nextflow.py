@@ -13,27 +13,18 @@ Notes:
 
 import argparse
 import base64
+import hashlib
 import pathlib
-import secrets
 import shlex
-import string
 import sys
 import textwrap
 from typing import Any, Dict
+import uuid
 
 import yaml
 import requests
 
 CONFIG_PATH = pathlib.Path("~/.config/fuzzball/config.yaml")
-
-
-def generate_random_string(length: int = 6) -> str:
-    """
-    Generate a random string of fixed length using letters and digits.
-    """
-    characters = string.ascii_letters + string.digits
-    return "".join(secrets.choice(characters) for _ in range(length))
-
 
 def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.Node:
     """
@@ -43,7 +34,9 @@ def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.Node:
         return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
     return dumper.represent_scalar("tag:yaml.org,2002:str", data)
 
+
 yaml.add_representer(str, str_presenter)
+
 
 def fail(error: str) -> None:
     """
@@ -51,6 +44,7 @@ def fail(error: str) -> None:
     """
     print(f"Error: {error}; exiting", file=sys.stderr)
     sys.exit(1)
+
 
 class MinimalFuzzballClient:
     def __init__(self, config_path: pathlib.Path, context: str | None = None):
@@ -137,18 +131,20 @@ class MinimalFuzzballClient:
         Submit a Nextflow job to the Fuzzball cluster.
         """
 
-        secret_name = f"{generate_random_string()}"
+        nextflow_cmd = shlex.join(args.nextflow_cmd)
+        job_name = args.job_name if len(args.job_name) > 0 else str(uuid.UUID(hashlib.md5(nextflow_cmd.encode()).hexdigest()))
+        secret_name = str(uuid.uuid4())
         plugin_version = args.nf_fuzzball_version
         scratch_mount = "/scratch"
         home_base = "home"
-        abs_home = f"{scratch_mount}/{home_base}"
-        wd = f"/data/nextflow/{secret_name}"  ## need to get this from the nextflow command
+        abs_home = f"/data/{args.nextflow_work_base}/{home_base}"
+        wd = f"/data/nextflow/{job_name}"  ## need to get this from the nextflow command
         env = [
             f"HOME={abs_home}",
             f"NXF_HOME={abs_home}/.nextflow",
-             "NXF_ANSI_CONSOLE=false",
-             "NXF_ANSI_SUMMARY=false",
-            ]
+            "NXF_ANSI_CONSOLE=false",
+            "NXF_ANSI_SUMMARY=false",
+        ]
         volumes = {
             "data": {
                 "reference": args.data_volume,
@@ -163,12 +159,6 @@ class MinimalFuzzballClient:
                         },
                         "destination": {"uri": "file://nf-fuzzball.zip"},
                     },
-                    {
-                        "source": {
-                            "uri": "file://fuzzball.config",
-                        },
-                        "destination": {"uri": f"file://{home_base}/.nextflow/config"},
-                    },
                 ],
             },
         }
@@ -177,10 +167,12 @@ class MinimalFuzzballClient:
         self.create_value_secret(secret_name, self._encode_config())
         nxf_fuzzball_config = f"""\
         profiles {{
+            plugins {{ id 'nf-fuzzball@{plugin_version}' }}
             fuzzball {{
                 process {{
                     executor = 'fuzzball'
                 }}
+                {"docker { registry = 'quay.io' }" if args.nf_core else ""}
                 fuzzball {{
                     cfgFile = '{abs_home}/.config/fuzzball/config.yaml'
                 }}
@@ -210,16 +202,16 @@ class MinimalFuzzballClient:
 
         nextflow_script = f"""\
         #! /bin/bash
-        {shlex.join(args.nextflow_cmd)} -plugins nf-fuzzball@{plugin_version}
+        {nextflow_cmd} -c /tmp/fuzzball.config
         ec=$?
-        echo "-------------------------------------------------------------------------------------------------"
+        echo "-- LOG START ---------------------------------------------------------------------------------"
         cat .nextflow.log
-        echo "-------------------------------------------------------------------------------------------------"
+        echo "-- LOG END -----------------------------------------------------------------------------------"
         exit $ec
         """
 
         workflow = {
-            "name": args.job_name,
+            "name": job_name,
             "definition": {
                 "version": "v1",
                 "files": {
@@ -237,7 +229,10 @@ class MinimalFuzzballClient:
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
                     },
                     "nextflow": {
-                        "image": {"uri": f"docker://nextflow/nextflow:{args.nextflow_version}"},
+                        "image": {
+                            "uri": f"docker://nextflow/nextflow:{args.nextflow_version}"
+                        },
+                        "files": {"/tmp/fuzzball.config": "file://fuzzball.config"},
                         "mounts": mounts,
                         "cwd": wd,
                         "script": textwrap.dedent(nextflow_script),
@@ -258,6 +253,7 @@ class MinimalFuzzballClient:
         response = self._request("POST", "/workflows", data=workflow)
         print(f"Submitted nextflow workflow {response.json()['id']}")
 
+
 def parse_cli() -> argparse.Namespace:
     """
     Parsing the commandline
@@ -276,7 +272,7 @@ def parse_cli() -> argparse.Namespace:
                   hello
             """
         ),
-        formatter_class=argparse.RawDescriptionHelpFormatter
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "-c",
@@ -300,8 +296,21 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--job-name",
         type=str,
-        default="nextflow-job",
-        help="Name of the Fuzzball workflow running the nextflow controller job [%(default)s]",
+        default="",
+        help=(
+            "Name of the Fuzzball workflow running the nextflow controller job. Defaults to a "
+            "UUID seeded by the full commandline of the nextflow command."
+        )
+    )
+    parser.add_argument(
+        "--nextflow-work-base",
+        type=str,
+        default="nextflow/executions",
+        help=(
+            "Name of basedirectory for nextflow execution paths. The nextflow execution path will be "
+            "/data/<nextflow-work-base>/<job-name> which would include logs and the default workdir. "
+            "[%(default)s]"
+        )
     )
     parser.add_argument(
         "--nf-fuzzball-version",
@@ -334,25 +343,31 @@ def parse_cli() -> argparse.Namespace:
         help="Persistent data volume [%(default)s]",
     )
     parser.add_argument(
+        "--nf-core",
+        action="store_true",
+        help="Use nf-core conventions",
+    )
+    parser.add_argument(
         "--s3-secret",
         type=str,
         default="secret://user/s3",
         help=(
             "Reference for fuzzball S3 secret to use for ingress/egress. This is not the same as the environment"
-             " credentials needed to transfer to/from S3 in the pipeline [%(default)s]"
+            " credentials needed to transfer to/from S3 in the pipeline [%(default)s]"
         ),
     )
     parser.add_argument(
-        "nextflow_cmd",
-        nargs=argparse.REMAINDER,
-        help="Nextflow command"
+        "nextflow_cmd", nargs=argparse.REMAINDER, help="Nextflow command"
     )
     args = parser.parse_args()
     if not args.nextflow_cmd:
-        parser.error("Nextflow command is required. Please provide it after the options.")
+        parser.error(
+            "Nextflow command is required. Please provide it after the options."
+        )
     if args.nextflow_cmd[0] == "--":
         args.nextflow_cmd.pop(0)
     return args
+
 
 def main() -> None:
     args = parse_cli()
@@ -371,6 +386,7 @@ def main() -> None:
         sys.exit(1)
 
     fb_client.submit_nextflow_job(args)
+
 
 if __name__ == "__main__":
     main()

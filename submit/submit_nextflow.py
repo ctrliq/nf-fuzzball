@@ -176,11 +176,16 @@ class MinimalFuzzballClient:
 
         self.create_value_secret(secret_name, self._encode_config())
         nxf_fuzzball_config = f"""\
-        plugins {{id 'nf-fuzzball@{plugin_version}' }}
-        fuzzball {{
-            cfgFile = '{abs_home}/.config/fuzzball/config.yaml'
+        profiles {{
+            fuzzball {{
+                process {{
+                    executor = 'fuzzball'
+                }}
+                fuzzball {{
+                    cfgFile = '{abs_home}/.config/fuzzball/config.yaml'
+                }}
+            }}
         }}
-        process.executor = 'fuzzball'
         """
 
         setup_script = f"""\
@@ -205,7 +210,12 @@ class MinimalFuzzballClient:
 
         nextflow_script = f"""\
         #! /bin/bash
-        {shlex.join(args.nextflow_cmd)}
+        {shlex.join(args.nextflow_cmd)} -plugins nf-fuzzball@{plugin_version}
+        ec=$?
+        echo "-------------------------------------------------------------------------------------------------"
+        cat .nextflow.log
+        echo "-------------------------------------------------------------------------------------------------"
+        exit $ec
         """
 
         workflow = {
@@ -328,7 +338,7 @@ def parse_cli() -> argparse.Namespace:
         type=str,
         default="secret://user/s3",
         help=(
-            "Refernce for fuzzball S3 secret to use for ingress/egress. This is not the same as the environment"
+            "Reference for fuzzball S3 secret to use for ingress/egress. This is not the same as the environment"
              " credentials needed to transfer to/from S3 in the pipeline [%(default)s]"
         ),
     )

@@ -19,9 +19,10 @@ class FuzzballWorkflowDefinitionJobFactory {
 
     static WorkflowDefinitionJob create (TaskRun task, FuzzballExecutor executor){
         WorkflowDefinitionJob job = new WorkflowDefinitionJob()
-        // task.getName() should return a unique identifier. I think we want to avoid a default value here
-        // in case we end up with more than one job per worklow at some point in the future.
-        job.name = toSafeYamlKey(task.getName())
+        // fuzzball jobs have some limits on the job name (RFC1034 subdomain which means [0-9a-z-] at most 63 characters)
+        // so let us use the tash hash instead b/c nf-core names get long quickly. And at least the hash can be
+        // used to find the corresponding work directory easily.
+        job.name = toSaveJobName(task.hash.toString())
         job.image = new URI(uri: getTaskContainer(task))
         job.resource = getComputeResources(task)
         job.command = getCommand(task)
@@ -31,15 +32,15 @@ class FuzzballWorkflowDefinitionJobFactory {
         return job
     }
 
-    static String toSafeYamlKey(String input) {
-        if (!input) return '_'
+    static String toSaveJobName(String input) {
+        if (!input) return 'a' // must start with a letter or digit
         String key = input
-            .replaceAll(/[^a-zA-Z0-9_]/, '-') // Replace non-alphanumeric with -
-            .replaceAll(/-+/, '-')            // Collapse multiple underscores
-            .replaceAll(/^-+|-+$/, '')        // Trim leading/trailing underscores
-        if (!key || !key[0].matches(/[a-z_]/)) {
-            key = '_' + key
-        }
+            .toLowerCase()
+            .replaceAll(/[^a-z0-9-]/, '-') // Only allow a-z, 0-9, and hyphen
+            .replaceAll(/-+/, '-')         // Collapse multiple hyphens
+            .replaceAll(/^-+/, '')         // Remove leading hyphens
+            .replaceAll(/-+$/, '')         // Remove trailing hyphens
+        if (key.length() > 63) key = key.substring(0, 63)
         return key
     }
 

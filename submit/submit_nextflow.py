@@ -133,12 +133,13 @@ class MinimalFuzzballClient:
 
         nextflow_cmd = shlex.join(args.nextflow_cmd)
         job_name = args.job_name if len(args.job_name) > 0 else str(uuid.UUID(hashlib.md5(nextflow_cmd.encode()).hexdigest()))
-        secret_name = str(uuid.uuid4())
-        plugin_version = args.nf_fuzzball_version
+        wd = f"/data/{args.nextflow_work_base}/{job_name}"
         scratch_mount = "/scratch"
         home_base = "home"
-        abs_home = f"/data/{args.nextflow_work_base}/{home_base}"
-        wd = f"/data/nextflow/{job_name}"  ## need to get this from the nextflow command
+        abs_home = f"{wd}/{job_name}/{home_base}"
+        secret_name = str(uuid.uuid4())
+        plugin_version = args.nf_fuzzball_version
+
         env = [
             f"HOME={abs_home}",
             f"NXF_HOME={abs_home}/.nextflow",
@@ -166,8 +167,8 @@ class MinimalFuzzballClient:
 
         self.create_value_secret(secret_name, self._encode_config())
         nxf_fuzzball_config = f"""\
+        plugins {{ id 'nf-fuzzball@{plugin_version}' }}
         profiles {{
-            plugins {{ id 'nf-fuzzball@{plugin_version}' }}
             fuzzball {{
                 process {{
                     executor = 'fuzzball'

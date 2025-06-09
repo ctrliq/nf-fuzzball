@@ -58,7 +58,6 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
         buildTaskWrapper()
 
         // create a fuzzball workflow definition for the task
-        TaskRun task = this.task
         WorkflowDefinitionJob job = FuzzballWorkflowDefinitionJobFactory.create(task, executor)
         WorkflowDefinition wfDef = new WorkflowDefinition(
             version: 'v1',

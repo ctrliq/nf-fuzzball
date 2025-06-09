@@ -45,8 +45,8 @@ class FuzzballWorkflowDefinitionJobFactory {
     }
 
     static String getTaskContainer(TaskRun task) {
-        if (task.config.getContainer()) {
-            return 'docker://' + task.config.getContainer().toString()
+        if (task.getContainer()) {
+            return 'docker://' + task.getContainer().toString()
         } else {
             throw new IllegalArgumentException('A container must be specified for the task.')
         }

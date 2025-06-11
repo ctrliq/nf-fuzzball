@@ -20,11 +20,18 @@ EXIT_SED_FAILED=103
 
 keep=false
 path="__none__"
+url="https://api.stable.fuzzball.ciq.dev/v2/schema"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --keep)
             keep=true
+            ;;
+        --url)
+            url="$2"
             shift
+            ;;
+        --url=*)
+            url="${1#--url=}"
             ;;
         --help)
             awk '/^#>/{sub(/^#>/,"");print}' "$0"
@@ -32,9 +39,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             path="$1"
-            shift
             ;;
     esac
+    shift
 done
 
 if [[ "${path:-__none__}" == "__none__" ]]; then
@@ -48,7 +55,6 @@ fi
 ver=7.13.0
 scriptd="$(cd "$(dirname "$0")" && pwd)"
 gen="openapi-generator-cli-${ver}.jar"
-url="https://api.stable.fuzzball.ciq.dev/v2/schema"
 name="fuzzball-sdk"
 
 cd "${scriptd}" || exit 100
@@ -73,7 +79,7 @@ java -jar "./${gen}" \
 	  -g groovy \
 	  -c generate_config.yaml \
 	  -o  "${tmp}/${name}" \
-	  -i https://api.stable.fuzzball.ciq.dev/v2/schema || exit $EXIT_CODEGEN_FAILED
+	  -i "${url}" || exit $EXIT_CODEGEN_FAILED
 
 # - i could not remove the imports for io.swagger.annotations from the generated code without a custom generator
 # - the abstract java generation class that is the base class for the groovy generator includes a hardcoded mapping of URI -> java.net.URI
@@ -99,3 +105,9 @@ else
     mkdir -p "${path}"
     mv "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball "${path}"
 fi
+
+printf -- "------------------------------------------------\n"
+printf "Fuzzball SDK generated in %s\n" "${path}"
+printf "  source: %s\n" "${url}"
+printf "  version: %s\n" "$(curl -H 'Accept: application/json' -s "${url%/schema}/version" | jq -r '.version')"
+printf -- "------------------------------------------------\n"

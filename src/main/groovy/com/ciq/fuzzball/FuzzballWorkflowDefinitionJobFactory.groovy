@@ -11,7 +11,9 @@ import com.ciq.fuzzball.model.WorkflowDefinitionJob
 import com.ciq.fuzzball.model.WorkflowDefinitionJobResource
 import com.ciq.fuzzball.model.WorkflowDefinitionJobResourceCpu
 import com.ciq.fuzzball.model.WorkflowDefinitionJobResourceMemory
+
 import nextflow.processor.TaskRun
+import nextflow.executor.BashWrapperBuilder
 
 @CompileStatic
 @Slf4j
@@ -66,7 +68,9 @@ class FuzzballWorkflowDefinitionJobFactory {
     }
 
     static List<String> getCommand(TaskRun task) {
-        return task.config.getShell() + task.CMD_RUN // Command to run
+        List<String> command = BashWrapperBuilder.BASH as ArrayList<String>
+        command << task.workDir.resolve(TaskRun.CMD_RUN).getName()
+        return command
     }
 
     static Policy getTimeoutPolicy(TaskRun task) {

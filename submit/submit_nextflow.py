@@ -155,7 +155,7 @@ class MinimalFuzzballClient:
                 "ingress": [
                     {
                         "source": {
-                            "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-{plugin_version}.zip",
+                            "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-{plugin_version}-{self._config['activeContext']}.zip",
                             "secret": args.s3_secret,
                         },
                         "destination": {"uri": "file://nf-fuzzball.zip"},
@@ -183,15 +183,16 @@ class MinimalFuzzballClient:
 
         setup_script = f"""\
         #! /bin/sh
-        mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball \\
+        set -x
+        rm -rf $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} \\
+          && mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball \\
           && unzip /scratch/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} > /dev/null \\
           && echo "$FB_CONFIG" | base64 -d > $HOME/.config/fuzzball/config.yaml \\
           || exit 1
-        set -x
+
         ls -lh $HOME/.nextflow
         ls -lh $HOME/.nextflow/plugins
-        cat $HOME/.nextflow/config
-        set +x
+
 
         # there is only a single context in the config file so it's easy to extract the token
         TOKEN="$(awk '/token:/ {{print $2}}' $HOME/.config/fuzzball/config.yaml)"

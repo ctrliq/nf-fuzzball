@@ -45,8 +45,38 @@ def fail(error: str) -> None:
     print(f"Error: {error}; exiting", file=sys.stderr)
     sys.exit(1)
 
+class LocalFile:
+    """
+    Represents a local file that should be included in the Nextflow job. The remote name
+    is derived from the file content using a UUID based on the MD5 hash of the content.
+    The file will be uploaded to the fuzzball working directory.
+    """
+
+    def __init__(self, local_path: pathlib.Path):
+        self.local_path = local_path
+        with local_path.open("rb") as f:
+            self.content: str = base64.b64encode(f.read()).decode("utf-8")
+        self.remote_path: str = str(uuid.UUID(hashlib.md5(self.content.encode()).hexdigest()))
+
+
+def find_and_import_local_files(nextflow_cmd: list[str]) -> tuple[list[str], list[LocalFile]]:
+    mangled_command = []
+    local_files = []
+    for arg in nextflow_cmd:
+        p = pathlib.Path(arg)
+        if p.is_file() and p.exists():
+            local_file = LocalFile(p)
+            local_files.append(local_file)
+            mangled_command.append(str(local_file.remote_path))
+        else:
+            mangled_command.append(arg)
+    return mangled_command, local_files
+
 
 class MinimalFuzzballClient:
+    """
+    A minimal client for interacting with the Fuzzball API.
+    """
     def __init__(self, config_path: pathlib.Path, context: str | None = None):
         with open(config_path, "r") as f:
             config = yaml.safe_load(f)
@@ -131,18 +161,26 @@ class MinimalFuzzballClient:
         Submit a Nextflow job to the Fuzzball cluster.
         """
 
-        nextflow_cmd = shlex.join(args.nextflow_cmd)
-        job_name = args.job_name if len(args.job_name) > 0 else str(uuid.UUID(hashlib.md5(nextflow_cmd.encode()).hexdigest()))
-        wd = f"/data/{args.nextflow_work_base}/{job_name}"
-        scratch_mount = "/scratch"
+        mangled_nextflow_cmd, config_files = find_and_import_local_files(args.nextflow_cmd)
+
+        nextflow_cmd_str = shlex.join(args.nextflow_cmd)
+        mangled_nextflow_cmd_str = shlex.join(mangled_nextflow_cmd)
+
+        job_name = args.job_name if len(args.job_name) > 0 else str(uuid.UUID(hashlib.md5(nextflow_cmd_str.encode()).hexdigest()))
+
+        mounts = {"data": {"location": "/data"}, "scratch": {"location": "/scratch"}}
+        wd_base = f"{args.nextflow_work_base}/{job_name}"
+        wd = f"{mounts['data']['location']}/{wd_base}"
         home_base = "home"
-        abs_home = f"{wd}/{job_name}/{home_base}"
+        home = f"{wd}/{home_base}"
+
         secret_name = str(uuid.uuid4())
+
         plugin_version = args.nf_fuzzball_version
 
         env = [
-            f"HOME={abs_home}",
-            f"NXF_HOME={abs_home}/.nextflow",
+            f"HOME={home}",
+            f"NXF_HOME={home}/.nextflow",
             "NXF_ANSI_CONSOLE=false",
             "NXF_ANSI_SUMMARY=false",
         ]
@@ -163,7 +201,6 @@ class MinimalFuzzballClient:
                 ],
             },
         }
-        mounts = {"data": {"location": "/data"}, "scratch": {"location": scratch_mount}}
 
         self.create_value_secret(secret_name, self._encode_config())
         nxf_fuzzball_config = f"""\
@@ -175,13 +212,13 @@ class MinimalFuzzballClient:
                 }}
                 {"docker { registry = 'quay.io' }" if args.nf_core else ""}
                 fuzzball {{
-                    cfgFile = '{abs_home}/.config/fuzzball/config.yaml'
+                    cfgFile = '{home}/.config/fuzzball/config.yaml'
                 }}
             }}
         }}
         """
 
-        setup_script = f"""\
+        setup_script = textwrap.dedent(f"""\
         #! /bin/sh
         rm -rf $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} \\
           && mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball \\
@@ -195,17 +232,21 @@ class MinimalFuzzballClient:
         curl -s -X DELETE "{self._base_url}/secrets/{self._secret_id}" \\
             -H "Authorization: Bearer $TOKEN" \\
             -H "Accept: application/json" &> /dev/null && echo "temp secret deleted" || echo "temp secret not deleted"
-        """
 
-        nextflow_script = f"""\
+        """)
+
+        for f in config_files:
+            setup_script += f"cat /tmp/{f.remote_path} | base64 -d > {f.remote_path} || exit 1\n"
+
+        nextflow_script = textwrap.dedent(f"""\
         #! /bin/bash
-        {nextflow_cmd} -c /tmp/fuzzball.config
+        {mangled_nextflow_cmd_str} -c /tmp/fuzzball.config
         ec=$?
         echo "-- LOG START ---------------------------------------------------------------------------------"
         cat .nextflow.log
         echo "-- LOG END -----------------------------------------------------------------------------------"
         exit $ec
-        """
+        """)
 
         workflow = {
             "name": job_name,
@@ -220,7 +261,7 @@ class MinimalFuzzballClient:
                         "image": {"uri": "docker://curlimages/curl"},
                         "mounts": mounts,
                         "cwd": wd,
-                        "script": textwrap.dedent(setup_script),
+                        "script": setup_script,
                         "env": env + [f"FB_CONFIG=secret://user/{secret_name}"],
                         "policy": {"timeout": {"execute": "5m"}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
@@ -232,7 +273,7 @@ class MinimalFuzzballClient:
                         "files": {"/tmp/fuzzball.config": "file://fuzzball.config"},
                         "mounts": mounts,
                         "cwd": wd,
-                        "script": textwrap.dedent(nextflow_script),
+                        "script": nextflow_script,
                         "env": env,
                         "policy": {"timeout": {"execute": args.timelimit}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
@@ -241,6 +282,14 @@ class MinimalFuzzballClient:
                 },
             },
         }
+
+        # add in the local files
+        for f in config_files:
+            workflow["definition"]["files"][f.remote_path] = f.content
+            if "files" not in workflow["definition"]["jobs"]["setup"]:
+                workflow["definition"]["jobs"]["setup"]["files"] = {}
+            workflow["definition"]["jobs"]["setup"]["files"][f"/tmp/{f.remote_path}"] = f"file://{f.remote_path}"
+
         if args.verbose or args.dry_run:
             yaml.dump(workflow, sys.stdout, default_flow_style=False)
         if args.dry_run:

@@ -42,11 +42,12 @@ tasks.register('generateFuzzballSdk', Exec) {
     final codegenFile = codegenDir.file('generate')
     group = 'build'
     description = 'Generate Fuzzball SDK'
+    def openapiUrl = project.hasProperty('openapiUrl') ? project.property('openapiUrl') : 'https://api.stable.fuzzball.ciq.dev/v2/schema'
     inputs.files(
         fileTree(dir: codegenDir, include: ['**/*.yaml', '**/*.mustache', '**/*.sh'])
     )
     outputs.dir generatedSdkDir
-    commandLine codegenFile.getAsFile().getAbsolutePath(), generatedSdkDir.get().getAsFile().getAbsolutePath()
+    commandLine codegenFile.getAsFile().getAbsolutePath(), "--url=${openapiUrl}", generatedSdkDir.get().getAsFile().getAbsolutePath()
 }
 compileGroovy.dependsOn tasks.named('generateFuzzballSdk')
 

@@ -58,12 +58,12 @@ to do so:
 
 Some relevant links (h/t Brian for some of them)
 
-- Brian pointed to Rescale's Nextflow plugin  https://github.com/rescale/nf-rescale-hpc 
+- Brian pointed to Rescale's Nextflow plugin  https://github.com/rescale/nf-rescale-hpc
 - general nextflow information:
-   - Nextflow docs: https://www.nextflow.io/ 
-   - Nextflow repo: https://github.com/nextflow-io/nextflow 
-   - Example plugin repo: https://github.com/nextflow-io/nf-hello 
-   - Plugin docs: https://www.nextflow.io/docs/latest/plugins.html 
+   - Nextflow docs: https://www.nextflow.io/
+   - Nextflow repo: https://github.com/nextflow-io/nextflow
+   - Example plugin repo: https://github.com/nextflow-io/nf-hello
+   - Plugin docs: https://www.nextflow.io/docs/latest/plugins.html
 - Available plugins:
    ```console
    $ curl -s https://raw.githubusercontent.com/nextflow-io/plugins/refs/heads/main/plugins.json \
@@ -110,7 +110,7 @@ Some relevant links (h/t Brian for some of them)
    nf-k8s           https://github.com/nextflow-io/nf-k8s
    nf-lamin         https://github.com/laminlabs/nf-lamin
    ```
-- Brian found this very helpful tutorial video with Ben Sherman and Phil Ewels: https://nextflow.io/podcast/2024/ep35_nextflow_plugins.html 
+- Brian found this very helpful tutorial video with Ben Sherman and Phil Ewels: https://nextflow.io/podcast/2024/ep35_nextflow_plugins.html
 
 ## Development
 
@@ -139,6 +139,15 @@ groovy SDK you can run
 
 ```sh
 code-generation/generate --keep /path/to/where/you/want/the/project
+# or to save to temp/fuzzball-sdk
+make sdk-full
+```
+
+For integration use
+```sh
+code-generation/generate --url https://api.integration.fuzzball.ciq.dev/v2/schema --keep /path/to/where/you/want/the/project
+# or to save to temp/fuzzball-sdk
+make sdk-full FB_TARGET=integration
 ```
 
 To build the plugin and install it locally to `~/.nextflow/plugins/nf-fuzzball-<VER>` use
@@ -147,6 +156,7 @@ To build the plugin and install it locally to `~/.nextflow/plugins/nf-fuzzball-<
 git clone https://github.com/ctrliq/nf-fuzzball.git
 cd nf-fuzzball
 make install
+# use `make install FB_TARGET=integration` for integration
 ```
 
 The repository contains a `nextflow.config` file which will activate the plugin:
@@ -175,7 +185,7 @@ you will be running nextflow with the plugin activated
 
 
 ```sh
-git clone 
+git clone
 ```
 
 ### Example code using the generated SDK

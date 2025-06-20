@@ -6,8 +6,16 @@ How to run with uv
 uv venv
 uv pip install requests pyyaml
 pushd .. && make push && popd
-uv run python submit_nextflow.py
+uv run python submit_nextflow.py --help
 ```
+
+You can use direnv as well
+```sh
+echo "source .venv/bin/activate" >> .envrc
+direnv allow
+./submit_nextflow.py --help
+```
+
 
 This assumes that
   - you have aws installed and authenticated to access `s3://co-ciq-misc-support`

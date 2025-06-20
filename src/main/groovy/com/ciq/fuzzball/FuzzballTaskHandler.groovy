@@ -58,18 +58,17 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
         buildTaskWrapper()
 
         // create a fuzzball workflow definition for the task
-        TaskRun task = this.task
         WorkflowDefinitionJob job = FuzzballWorkflowDefinitionJobFactory.create(task, executor)
         WorkflowDefinition wfDef = new WorkflowDefinition(
             version: 'v1',
             volumes: executor.volumes,
-            jobs: [(job.getName()): job],
+            jobs: [(job.name): job],
         )
         FuzzballYaml yaml = new FuzzballYaml()
         wfDefinitionYaml = yaml.dump(wfDef)
-        log.debug(wfDefinitionYaml)
+        log.info(wfDefinitionYaml)
         StartWorkflowRequest wfReq = new StartWorkflowRequest(
-            name: "nf-${session.runName}-${job.getName()}",
+            name: "nf-${session.runName}-${job.name}",
             definition: wfDef,
         )
 

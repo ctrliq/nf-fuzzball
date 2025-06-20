@@ -1,6 +1,16 @@
 # Build the plugin
+
+FB_TARGET ?= stable
+ifeq ($(FB_TARGET),integration)
+  OPENAPI_URL := https://api.integration.fuzzball.ciq.dev/v2/schema
+else
+    OPENAPI_URL := https://api.stable.fuzzball.ciq.dev/v2/schema
+endif
+
+VERSION := $(shell ./gradlew properties | awk '/^version:/{print $$2}')
+
 assemble:
-	./gradlew assemble
+	./gradlew assemble -PopenapiUrl=$(OPENAPI_URL)
 
 clean:
 	rm -rf .nextflow*
@@ -14,21 +24,21 @@ test:
 
 # Install the plugin into local nextflow plugins dir
 install:
-	./gradlew install
+	./gradlew install -PopenapiUrl=$(OPENAPI_URL)
 
 # Publish the plugin
 release:
-	./gradlew releasePlugin
+	./gradlew releasePlugin -PopenapiUrl=$(OPENAPI_URL)
 
 # generate the Fuzzball SDK based on the stable cluster. This generates the
 # code as it would be in a `make assemble` (i.e. only groovy sources in the build dir)
 sdk:
-	./gradlew generateSdk
+	./gradlew generateSdk -PopenapiUrl=$(OPENAPI_URL)
 
 # generate the Fuzzball SDK as a separate project in temp/fuzzball-sdk
 sdk-full:
-	code-generation/generate --keep temp/fuzzball-sdk
+	code-generation/generate --url "$(OPENAPI_URL)" --keep temp/fuzzball-sdk
 
 # temporary rule for pushing the plugin to S3
 push: assemble
-	aws s3 cp build/distributions/nf-fuzzball-*.zip s3://co-ciq-misc-support/nf-fuzzball/
+	aws s3 cp build/distributions/nf-fuzzball-$(VERSION).zip s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-$(VERSION)-$(FB_TARGET).zip

@@ -20,6 +20,12 @@ jobs:
         java_version: [17, 21]
 
     steps:
+
+      - name: Get Fuzzball version on stable
+        run: |
+          FUZZBALL_VERSION=$(curl -s https://api.stable.fuzzball.ciq.dev/v2/version | jq -r '.version')
+          echo "FUZZBALL_VERSION=${FUZZBALL_VERSION}" >> $GITHUB_ENV
+
       - name: Environment
         run: env | sort
 
@@ -28,6 +34,12 @@ jobs:
         with:
           fetch-depth: 1
           submodules: true
+      
+      - name: Get plugin version
+        run: |
+          echo "Getting plugin version from build.gradle"
+          PLUGIN_VERSION=$(grep -E "version\s*=" build.gradle | head -1 | sed -E "s/.*version\s*=\s*'([^']+)'.*/\1/")
+          echo "PLUGIN_VERSION=${PLUGIN_VERSION}" >> $GITHUB_ENV
 
       - name: Setup Java ${{ matrix.java_version }}
         uses: actions/setup-java@v3

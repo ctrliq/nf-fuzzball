@@ -52,4 +52,26 @@ jobs:
         run: ./gradlew check
         env:
           GRADLE_OPTS: '-Dorg.gradle.daemon=false'
+      
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ env.PLUGIN_VERSION }}-stable-${{ env.FUZZBALL_VERSION }}
+          release_name: Release v${{ env.PLUGIN_VERSION }}-stable-${{ env.FUZZBALL_VERSION }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        id: upload-release-asset 
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: build/distributions/nf-fuzzball-${{ env.PLUGIN_VERSION }}.zip
+          asset_name: nf-fuzzball-${{ env.PLUGIN_VERSION }}-stable-${{ env.FUZZBALL_VERSION }}.zip
+          asset_content_type: application/zip
 

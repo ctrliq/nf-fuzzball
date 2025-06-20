@@ -8,16 +8,13 @@ on:
   pull_request:
     branches:
       - '*'
+
 jobs:
   build:
     name: Build nf-fuzzball
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        java_version: [17, 21]
 
     steps:
 
@@ -41,10 +38,10 @@ jobs:
           PLUGIN_VERSION=$(grep -E "version\s*=" build.gradle | head -1 | sed -E "s/.*version\s*=\s*'([^']+)'.*/\1/")
           echo "PLUGIN_VERSION=${PLUGIN_VERSION}" >> $GITHUB_ENV
 
-      - name: Setup Java ${{ matrix.java_version }}
+      - name: Setup Java 17
         uses: actions/setup-java@v3
         with:
-          java-version: ${{matrix.java_version}}
+          java-version: 17
           architecture: x64
           distribution: 'temurin'
 

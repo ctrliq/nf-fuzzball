@@ -109,11 +109,12 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
     }
 
     /**
-     * @return Create a new instance of the {@code TaskQueueHolder} component
+     * Using a low default queueSize of 20. Can be overridden by the user with the queueSize executor config option.
+     * @return Create a new instance of the {@code TaskQueueHolder} component.
      */
     @Override
     protected TaskMonitor createTaskMonitor() {
-        return TaskPollingMonitor.create(session, name, 1000, Duration.of('20 sec'))
+        return TaskPollingMonitor.create(session, name, 20, Duration.of('20 sec'))
     }
 
     /**

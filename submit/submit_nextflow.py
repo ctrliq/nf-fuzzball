@@ -367,6 +367,11 @@ class MinimalFuzzballClient:
         plugins {{ id 'nf-fuzzball@{plugin_version}' }}
         profiles {{
             fuzzball {{
+                executor {{
+                    '$fuzzball' {{
+                        queueSize = {args.queue_size}
+                    }}
+                }}
                 process {{
                     executor = 'fuzzball'
                 }}
@@ -571,6 +576,15 @@ def parse_cli() -> argparse.Namespace:
         "--nf-core",
         action="store_true",
         help="Use nf-core conventions",
+    )
+    parser.add_argument(
+        "--queue-size",
+        type=int,
+        default=20,
+        help=(
+            "Queue size for the Fuzzball executor. This is the number of jobs that can be queued at once. "
+            "[%(default)s]"
+        ),
     )
     parser.add_argument(
         "--s3-secret",

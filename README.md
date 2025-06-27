@@ -1,14 +1,5 @@
 # Fuzzball executor plugin for nextflow
 
-## Current state
-
-> [!NOTE]
-> **Work In Progress**. This plugin is not functional yet.
-
-This is not yet a functional nextflow plugin. It contains a skeleton fuzzball project plus
-code and templates to automatically generate a modern-ish groovy Fuzzball SDK with the
-gradle tooling to integrate the generated code into a build.
-
 ## Introduction
 
 [Nextflow](https://www.nextflow.io/ ) is a workflow orchestration tool with many

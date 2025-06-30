@@ -26,4 +26,4 @@ resources. If you are running in the cloud, instances will be provisioned to run
 Nextflow child jobs.
 
 For more information on submission script usage, please see the
-[submission script usage documentation](submit/Readme.md).
+[submission script usage documentation](submit/README.md).

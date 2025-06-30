@@ -1,4 +1,9 @@
-# Fuzzball executor plugin for nextflow
+# Fuzzball Executor Plugin for Nextflow
+
+The following repository contains source code for a Nextflow plugin implementing
+support for CIQ's product [Fuzzball](https://ciq.com/products/fuzzball/). This
+plugin enables use of high quality, community maintained workflows provided by
+the [nf-core](https://nf-co.re) on Fuzzball.
 
 ## Introduction
 

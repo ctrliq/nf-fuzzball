@@ -41,17 +41,6 @@ make install
 # use `make install FB_TARGET=integration` for integration
 ```
 
-The repository contains a `nextflow.config` file which will activate the plugin:
-
-```text
-plugins {
-  id 'nf-fuzzball@0.0.1'
-}
-
-fuzzball {
-  fuzzball_config_file = "~/.config/fuzzball/config.yaml"
-}
-```
 
 > [!TIP]
 > The exact version has to be specified. Otherwise nextflow will try to download the newest

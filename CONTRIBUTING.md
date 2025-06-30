@@ -8,7 +8,7 @@
     directory. This is awkward and will not support all possible scenarios of
     plugin development
 - **recommended** if not using the `launcher.sh`, you need to install
-    nextflow somewhere. I've added some rules to the Makefile to build and
+    nextflow somewhere. We added some rules to the Makefile to build and
     locally install the plugin for testing/experimentation. See below.
 - groovy if you want to do some local exploration of groovy with the groovy
 console. Otherwise i don't think you need it since it gets pulled in during

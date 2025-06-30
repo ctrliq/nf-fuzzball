@@ -1,28 +1,78 @@
+# Submitting Nextflow Workflows to Fuzzball
 
+This directory contains a helper script (`submit_nextflow.py`) for submitting
+Nextflow workflows to Fuzzball using Python.
 
-How to run with uv
+## Prerequisites
+
+- Access to a Fuzzball deployment
+  - Logged in to your Fuzzball deployment via the Fuzzball CLI will update
+  `~/.config/fuzzball/config.yaml` with a valid token
+- [`uv`](https://github.com/astral-sh/uv) installed for Python dependencies
+
+## Quick Start
+
+The following section will walk though getting your environment set up with
+[`uv`](https://github.com/astral-sh/uv) and
+[`direnv`](https://github.com/direnv/direnv).
+
+### Running with uv
 
 ```sh
 uv venv
 uv pip install requests pyyaml
-pushd .. && make push && popd
 uv run python submit_nextflow.py --help
 ```
 
-You can use direnv as well
+### Setting up direnv
+
 ```sh
 echo "source .venv/bin/activate" >> .envrc
 direnv allow
 ./submit_nextflow.py --help
 ```
 
+## Available Arguements
 
-This assumes that
-  - you have aws installed and authenticated to access `s3://co-ciq-misc-support`
-  - you have a fuzzball S3 secret `secret://user/s3` with access to the same bucket
-  - have a `~/.config/fuzzball/config.yaml` file with a valid token to submit jobs.
-    The active context/account will be used.
-  - you have `uv` installed for python dependencies
+The table below outlines options that can be specified in the submission script,
+if they are required, defaults, and a description of what the arguement does.
+Below is the general format of calling the helper script using `uv`.
 
-This needs to either become a real python project or (more likely) be turned into
-an application template (once there is a mechanism to credential fuzzball jobs automatically).
+```sh
+uv run python submit_nextflow.py [OPTIONS] -- [nextflow_cmd]
+```
+
+| Argument                  | Required | Default                        | Description                                                                                                                        |
+|---------------------------|----------|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `nextflow_cmd`            | Yes      | (none)                         | The Nextflow command to run (specified after `--`).                                                                                |
+| `-c`, `--context`         | No       | (active context in config)     | Name of the Fuzzball context to use from config.yaml. Defaults to the active context in the config file.                           |
+| `-v`, `--verbose`         | No       | False                          | Dump the workflow before submitting and add debug logging.                                                                         |
+| `--fuzzball-config`       | No       | `~/.config/fuzzball/config.yaml` | Path to the Fuzzball configuration file.                                                                                           |
+| `-n`, `--dry-run`         | No       | False                          | Don't submit the workflow, just print it.                                                                                          |
+| `--job-name`              | No       | (UUID from command)            | Name of the Fuzzball workflow running the Nextflow controller job. Defaults to a UUID seeded by the full Nextflow command.         |
+| `--nextflow-work-base`    | No       | `nextflow/executions`          | Base directory for Nextflow execution paths.                                                                                       |
+| `--nf-fuzzball-version`   | No       | `0.0.1`                        | nf-fuzzball plugin version.                                                                                                        |
+| `--nextflow-version`      | No       | `25.05.0-edge`                 | Nextflow version to use in the Fuzzball job.                                                                                       |
+| `--timelimit`             | No       | `8h`                           | Timelimit for the pipeline job.                                                                                                    |
+| `--scratch-volume`        | No       | `volume://user/ephemeral`      | Ephemeral scratch volume reference.                                                                                                |
+| `--data-volume`           | No       | `volume://user/persistent`     | Persistent data volume reference.                                                                                                  |
+| `--nf-core`               | No       | False                          | Use nf-core conventions.                                                                                                           |
+| `--queue-size`            | No       | 20                             | Queue size for the Fuzzball executor (number of jobs that can be queued at once).                                                  |
+| `--s3-secret`             | No       | `secret://user/s3`             | Reference for Fuzzball S3 secret to use for ingress/egress.                                                                        |
+
+## Example Usage
+
+```sh
+# Login into active Fuzzball context to set up valid token in
+# ~/.config/fuzzball/config.yaml
+
+fuzzball context login
+
+# Submit nf-core/demultiplex workflow into Fuzzball such that each child jobs
+# runs as Fuzzball workflows
+uv run python submit_nextflow.py --job-name demux-test \
+  --nf-core -- \
+    nextflow run nf-core/demultiplex \
+      -profile test,fuzzball \
+      --outdir /data/nextflow/out/demux-test-out
+```

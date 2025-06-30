@@ -57,17 +57,6 @@ fuzzball {
 > The exact version has to be specified. Otherwise nextflow will try to download the newest
 > version which will fail.
 
-The plugin doesn't do anything yet but if you run
-
-```sh
-nextflow run hello
-```
-
-you will be running nextflow with the plugin activated
-
-```sh
-git clone
-```
 
 ### Example code using the generated SDK
 

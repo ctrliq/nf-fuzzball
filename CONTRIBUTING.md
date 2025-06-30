@@ -11,8 +11,7 @@
     nextflow somewhere. We added some rules to the Makefile to build and
     locally install the plugin for testing/experimentation. See below.
 - groovy if you want to do some local exploration of groovy with the groovy
-console. Otherwise i don't think you need it since it gets pulled in during
-build time as a library.
+console.
 
 ## Fuzzball Groovy SDK Generation
 

@@ -44,7 +44,8 @@ make install
 
 > [!TIP]
 > The exact version has to be specified. Otherwise nextflow will try to download the newest
-> version which will fail.
+> version which will fail. Note that at this point the nf-fuzzball plugin expects to be running within a Fuzzball
+> workflow and therefore local installation is generally not yet useful.
 
 
 ### Example code using the generated SDK

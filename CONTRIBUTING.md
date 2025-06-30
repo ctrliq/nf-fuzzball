@@ -31,13 +31,6 @@ code-generation/generate --keep /path/to/where/you/want/the/project
 make sdk-full
 ```
 
-For integration use
-
-```sh
-code-generation/generate --url https://api.integration.fuzzball.ciq.dev/v2/schema --keep /path/to/where/you/want/the/project
-# or to save to temp/fuzzball-sdk
-make sdk-full FB_TARGET=integration
-```
 
 To build the plugin and install it locally to `~/.nextflow/plugins/nf-fuzzball-<VER>` use
 

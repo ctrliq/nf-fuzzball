@@ -3,11 +3,14 @@
 FB_TARGET ?= stable
 ifeq ($(FB_TARGET),integration)
   OPENAPI_URL := https://api.integration.fuzzball.ciq.dev/v2/schema
+  VERSION_URL := https://api.integration.fuzzball.ciq.dev/v2/version
 else
     OPENAPI_URL := https://api.stable.fuzzball.ciq.dev/v2/schema
+    VERSION_URL := https://api.stable.fuzzball.ciq.dev/v2/version
 endif
 
 VERSION := $(shell ./gradlew properties | awk '/^version:/{print $$2}')
+FB_VERSION := $(shell curl -s "$(VERSION_URL)" | jq -r '.version')
 
 assemble:
 	./gradlew assemble -PopenapiUrl=$(OPENAPI_URL)
@@ -41,4 +44,4 @@ sdk-full:
 
 # temporary rule for pushing the plugin to S3
 push: assemble
-	aws s3 cp build/distributions/nf-fuzzball-$(VERSION).zip s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-$(VERSION)-$(FB_TARGET).zip
+	aws s3 cp build/distributions/nf-fuzzball-$(VERSION).zip s3://co-ciq-misc-support/nf-fuzzball/v$(VERSION)/nf-fuzzball-$(VERSION)-stable-$(FB_VERSION).zip

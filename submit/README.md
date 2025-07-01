@@ -47,7 +47,7 @@ uv run python submit_nextflow.py [OPTIONS] -- [nextflow_cmd]
 | `nextflow_cmd`            | Yes      | (none)                         | The Nextflow command to run (specified after `--`).                                                                                |
 | `-c`, `--context`         | No       | (active context in config)     | Name of the Fuzzball context to use from config.yaml. Defaults to the active context in the config file.                           |
 | `-v`, `--verbose`         | No       | False                          | Dump the workflow before submitting and add debug logging.                                                                         |
-| `--fuzzball-config`       | No       | `~/.config/fuzzball/config.yaml` | Path to the Fuzzball configuration file.                                                                                           |
+| `--fuzzball-config`       | No       | `~/.config/fuzzball/config.yaml` | Path to the Fuzzball configuration file.                                                                                         |
 | `-n`, `--dry-run`         | No       | False                          | Don't submit the workflow, just print it.                                                                                          |
 | `--job-name`              | No       | (UUID from command)            | Name of the Fuzzball workflow running the Nextflow controller job. Defaults to a UUID seeded by the full Nextflow command.         |
 | `--nextflow-work-base`    | No       | `nextflow/executions`          | Base directory for Nextflow execution paths.                                                                                       |
@@ -58,7 +58,9 @@ uv run python submit_nextflow.py [OPTIONS] -- [nextflow_cmd]
 | `--data-volume`           | No       | `volume://user/persistent`     | Persistent data volume reference.                                                                                                  |
 | `--nf-core`               | No       | False                          | Use nf-core conventions.                                                                                                           |
 | `--queue-size`            | No       | 20                             | Queue size for the Fuzzball executor (number of jobs that can be queued at once).                                                  |
-| `--s3-secret`             | No       | `secret://user/s3`             | Reference for Fuzzball S3 secret to use for ingress/egress.                                                                        |
+| `--plugin-base-uri`       | No       | Downloads from this repo       | Base URI for the nf-fuzzball plugin. The submission script expects to find a zip file at                                           |
+|                           |          |                                | `<plugin-base-uri>/v<version>/nf-fuzzball-<version>-stable-v<fuzzball-version>.zip`                                                |
+| `--s3-secret`             | Maybe    | (none)                         | Reference for fuzzball S3 secret used to pull the nf-fuzzball plugin if the base URI for the plugin download is a S3 URI.          |
 
 ## Example Usage
 

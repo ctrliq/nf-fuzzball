@@ -22,7 +22,7 @@ import pathlib
 import shlex
 import sys
 import textwrap
-from typing import Any, Dict
+from typing import Dict, Any
 import uuid
 
 import yaml
@@ -50,6 +50,7 @@ def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.Node:
 
 
 yaml.add_representer(str, str_presenter)
+
 
 def die(error: str) -> None:
     """
@@ -206,6 +207,16 @@ class MinimalFuzzballClient:
         if not context_found:
             raise ValueError(f"Context '{context}' not found in configuration file")
 
+        # Determine version of the Fuzzball API server
+        try:
+            response = self._request("GET", "/version")
+            self._fb_version = response.json()["version"]
+            logger.info(f"Connected to Fuzzball version {self._fb_version} API server")
+        except requests.HTTPError as e:
+            raise ValueError(f"Failed to connect to Fuzzball API: {e}")
+        except Exception as e:
+            raise ValueError(f"Unexpected error occurred: {e}")
+
     @property
     def _headers(self) -> Dict[str, str]:
         """
@@ -337,6 +348,16 @@ class MinimalFuzzballClient:
         )
         mangled_nextflow_cmd_str = shlex.join(mangled_nextflow_cmd)
 
+        # download url for the plugin (until it's in the nextflow plugin registry)
+        plugin_uri = f"{args.plugin_base_uri}/v{args.nf_fuzzball_version}/nf-fuzzball-{args.nf_fuzzball_version}-stable-{self._fb_version}.zip"
+        # check that the URL exists
+        if plugin_uri.startswith("http://") or plugin_uri.startswith("https://"):
+            try:
+                response = requests.head(plugin_uri, timeout=10)
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                raise Exception(f"Failed to access nf-fuzzball plugin for this version of Fuzzball at {plugin_uri}")
+
         env = [
             f"HOME={home}",
             f"NXF_HOME={home}/.nextflow",
@@ -352,14 +373,15 @@ class MinimalFuzzballClient:
                 "ingress": [
                     {
                         "source": {
-                            "uri": f"s3://co-ciq-misc-support/nf-fuzzball/nf-fuzzball-{plugin_version}-{self._config['activeContext']}.zip",
-                            "secret": args.s3_secret,
+                            "uri": plugin_uri,
                         },
                         "destination": {"uri": "file://nf-fuzzball.zip"},
                     },
                 ],
             },
         }
+        if args.plugin_base_uri.startswith("s3://"):
+            volumes["scratch"]["ingress"][0]["source"]["secret"] = args.s3_secret
 
         self.create_value_secret(secret_name, self._encode_config())
         nxf_fuzzball_config = base64.b64encode(
@@ -549,6 +571,25 @@ def parse_cli() -> argparse.Namespace:
         help="nf-fuzzball plugin version [%(default)s]",
     )
     parser.add_argument(
+        "--s3-secret",
+        type=str,
+        default="",
+        help=(
+            "Reference for fuzzball S3 secret used to pull the nf-fuzzball plugin if the base URI for the plugin download is a S3 URI"
+            " Defaults to [%(default)s]"
+        ),
+    )
+    parser.add_argument(
+        "--plugin-base-uri",
+        type=str,
+        default="https://github.com/ctrliq/nf-fuzzball/releases/download",
+        help=(
+            "Base URI for the nf-fuzzball plugin. The submission script expects to find a zip file at "
+            "<plugin-base-uri>/v<version>/nf-fuzzball-<version>-stable-v<fuzzball-version>.zip. "
+            "Defaults to [%(default)s]"
+        ),
+    )
+    parser.add_argument(
         "--nextflow-version",
         type=str,
         default="25.05.0-edge",
@@ -587,15 +628,6 @@ def parse_cli() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--s3-secret",
-        type=str,
-        default="secret://user/s3",
-        help=(
-            "Reference for fuzzball S3 secret to use for ingress/egress. This is not the same as the environment"
-            " credentials needed to transfer to/from S3 in the pipeline [%(default)s]"
-        ),
-    )
-    parser.add_argument(
         "nextflow_cmd", nargs=argparse.REMAINDER, help="Nextflow command"
     )
     args = parser.parse_args()
@@ -607,6 +639,11 @@ def parse_cli() -> argparse.Namespace:
         args.nextflow_cmd.pop(0)
     if args.verbose or args.dry_run:
         logging.getLogger().setLevel(logging.DEBUG)
+
+    if args.plugin_base_uri.startswith("s3://") and not args.s3_secret:
+        parser.error(
+            "When using --plugin-base-uri with an S3 URI, you must also specify --s3-secret to access the S3 bucket."
+        )
     return args
 
 
@@ -633,7 +670,10 @@ def main() -> None:
             die(f"Failed to load config: {e}")
 
         # Submit job
-        fb_client.submit_nextflow_job(args)
+        try:
+            fb_client.submit_nextflow_job(args)
+        except Exception as e:
+            die(f"Failed to submit Nextflow job: {e}")
 
     except KeyboardInterrupt:
         logger.info("Operation interrupted by user")

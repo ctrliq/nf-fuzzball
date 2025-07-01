@@ -35,15 +35,12 @@ class FuzzballWorkflowDefinitionJobFactory {
     }
 
     static String toSaveJobName(String input) {
-        if (!input) return 'a' // must start with a letter or digit
+        if (!input) return 'a'
         String key = input
             .toLowerCase()
-            .replaceAll(/[^a-z0-9-]/, '-') // Only allow a-z, 0-9, and hyphen
-            .replaceAll(/-+/, '-')         // Collapse multiple hyphens
-            .replaceAll(/^-+/, '')         // Remove leading hyphens
-            .replaceAll(/-+$/, '')         // Remove trailing hyphens
-        if (key.length() > 63) key = key.substring(0, 63)
-        return key
+            .replaceAll(/[^a-z0-9-]+/, '-') // Replace invalid characters and collapse multiple hyphens
+            .replaceAll(/^-|-$|^-+/, '')    // Remove leading and trailing hyphens
+        return key.length() > 63 ? key.substring(0, 63) : key
     }
 
     static String getTaskContainer(TaskRun task) {

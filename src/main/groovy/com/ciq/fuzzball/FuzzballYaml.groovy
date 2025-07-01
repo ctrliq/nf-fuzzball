@@ -34,7 +34,7 @@ class FuzzballYaml extends Yaml {
 
 }
 
-/** Custom represetner to remote empty/null stuff from the output */
+/** Custom representer to remove empty/null stuff from the output */
 @CompileStatic
 class SkipNullRepresenter extends Representer {
 
@@ -44,19 +44,16 @@ class SkipNullRepresenter extends Representer {
 
     @Override
     protected NodeTuple representJavaBeanProperty(Object javaBean, Property property, Object propertyValue, Tag customTag) {
-        if (propertyValue == null) {
-            return null
+        try {
+            if (propertyValue == null || (propertyValue instanceof Collection && propertyValue.isEmpty()) ||
+                (propertyValue instanceof Map && propertyValue.isEmpty()) ||
+                (propertyValue instanceof CharSequence && propertyValue.toString().isEmpty())) {
+                return null
+            }
+            return super.representJavaBeanProperty(javaBean, property, propertyValue, customTag)
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Error representing property '${property.name}' of ${javaBean.class.name}: ${e.message}", e)
         }
-        if (propertyValue instanceof Collection && propertyValue.isEmpty()) {
-            return null
-        }
-        if (propertyValue instanceof Map && propertyValue.isEmpty()) {
-            return null
-        }
-        if (propertyValue instanceof CharSequence && propertyValue.toString().isEmpty()) {
-            return null
-        }
-        return super.representJavaBeanProperty(javaBean, property, propertyValue, customTag)
     }
 
     @Override

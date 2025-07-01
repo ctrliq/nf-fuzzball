@@ -18,11 +18,6 @@ import java.nio.file.Path
 import com.ciq.fuzzball.api.WorkflowServiceApi
 import com.ciq.fuzzball.model.*
 
-//TODO: should we be using grid tasks? how about task arrays?
-//TODO: error handling
-//TODO: credential refreshing?
-//TODO: parse volumes from current fuzzball workflow
-
 @Slf4j
 @CompileStatic
 class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
@@ -73,10 +68,15 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
         )
 
         // start the workflow
-        WorkflowIDResponse wfIdResp = this.fuzzballWfService.startWorkflow(wfReq)
-        this.wfId = wfIdResp.id
-
-        status = SUBMITTED
+        try {
+            WorkflowIDResponse wfIdResp = this.fuzzballWfService.startWorkflow(wfReq)
+            this.wfId = wfIdResp.id
+            status = SUBMITTED
+        } catch (Exception e) {
+            log.error("Failed to submit workflow for task: ${task.name}", e)
+            status = COMPLETED // The GridTaskHandler sets status to COMPLETED in this case
+            throw new ProcessException("Workflow submission failed for task: ${task.name}", e)
+        }
     }
 
     protected void buildTaskWrapper() {
@@ -96,7 +96,14 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
             return false
         }
 
-        GetWorkflowStatusResponse statusResp = fuzzballWfService.getWorkflowStatus(wfId)
+        GetWorkflowStatusResponse statusResp
+        try {
+            statusResp = fuzzballWfService.getWorkflowStatus(wfId)
+        } catch (Exception e) {
+            log.error("Failed to retrieve workflow status for workflow ID: ${wfId}", e)
+            return false
+        }
+
         switch(statusResp.workflowStatus) {
             case WorkflowStatus.STAGE_STATUS_UNSPECIFIED -> false
             case WorkflowStatus.STAGE_STATUS_STARTED,
@@ -174,8 +181,9 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
     @Override
     TraceRecord getTraceRecord() {
         final result = super.getTraceRecord()
-        if( wfId )
+        if (wfId) {
             result.put('native_id', wfId)
+        }
         return result
     }
 

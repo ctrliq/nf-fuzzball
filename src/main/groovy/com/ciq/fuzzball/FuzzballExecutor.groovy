@@ -21,10 +21,7 @@ import com.ciq.fuzzball.api.ApiConfig
 import com.ciq.fuzzball.api.WorkflowServiceApi
 import com.ciq.fuzzball.model.*
 
-// TODO: throttling
-// TODO: implements TaskArrayExecutor ?
-// TODO: fusion?
-// TODO: fail if not running in a Fuzzball environment
+// TODO: task batching possibly with TaskArrayExecutor
 
 @Slf4j
 @ServiceName(value='fuzzball')
@@ -58,7 +55,12 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
             throw new AbortOperationException('Controller job is not running as a fuzzball workflow')
         }
         fuzzballWfService = new WorkflowServiceApi(fuzzballApiConfig)
-        Workflow wf = fuzzballWfService.getWorkflow(executorWfId)
+        Workflow wf
+        try {
+            wf = fuzzballWfService.getWorkflow(executorWfId)
+        } catch (Exception e) {
+            throw new AbortOperationException("Failed to retrieve workflow for ID: $executorWfId", e)
+        }
         // Parse JSON from byte[] specification using JsonSlurper
         WorkflowDefinition wfDef = WorkflowDefinition.fromMap(
             new JsonSlurper().parseText(new String(wf?.specification, 'UTF-8')) as Map<String, Object>

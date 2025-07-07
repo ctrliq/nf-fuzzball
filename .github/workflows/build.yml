@@ -51,6 +51,19 @@ jobs:
             echo "PLUGIN_VERSION=${PLUGIN_VERSION}" >> $GITHUB_ENV
           fi
 
+      - name: Check plugin in build.gradle matches tag
+        if: github.ref_type == 'tag'
+        run: |
+          PLUGIN_VERSION_TAG="${{ github.ref_name }}"
+          PLUGIN_VERSION_GRADLE=$(grep -E "version\s*=" build.gradle | head -1 | sed -E "s/.*version\s*=\s*'([^']+)'.*/\1/")
+
+          if [[ "${PLUGIN_VERSION_TAG#v}" != "${PLUGIN_VERSION_GRADLE}" ]]; then
+            echo "Plugin version in build.gradle (${PLUGIN_VERSION_GRADLE}) does not match tag (${PLUGIN_VERSION_TAG})"
+            exit 1
+          else
+            echo "Plugin version in build.gradle matches tag"
+          fi
+
       - name: Setup Java 17
         uses: actions/setup-java@v3
         with:

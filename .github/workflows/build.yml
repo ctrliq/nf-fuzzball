@@ -37,11 +37,19 @@ jobs:
           fetch-depth: 1
           submodules: true
       
-      - name: Get plugin version
+      - name: Set plugin version
         run: |
-          echo "Getting plugin version from build.gradle"
-          PLUGIN_VERSION=$(grep -E "version\s*=" build.gradle | head -1 | sed -E "s/.*version\s*=\s*'([^']+)'.*/\1/")
-          echo "PLUGIN_VERSION=${PLUGIN_VERSION}" >> $GITHUB_ENV
+
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "Using tag as plugin version"
+            PLUGIN_VERSION="${{ github.ref_name }}"
+            # Remove the v prefix if it exists
+            echo "PLUGIN_VERSION=${PLUGIN_VERSION#v}" >> $GITHUB_ENV
+          else
+            echo "Not pushing to a tag, using build.gradle to determine plugin version"
+            PLUGIN_VERSION=$(grep -E "version\s*=" build.gradle | head -1 | sed -E "s/.*version\s*=\s*'([^']+)'.*/\1/")
+            echo "PLUGIN_VERSION=${PLUGIN_VERSION}" >> $GITHUB_ENV
+          fi
 
       - name: Setup Java 17
         uses: actions/setup-java@v3
@@ -64,7 +72,7 @@ jobs:
           mv build/distributions/nf-fuzzball-${{ env.PLUGIN_VERSION }}.zip build/distributions/nf-fuzzball-${{ env.PLUGIN_VERSION }}-stable-${{ env.FUZZBALL_VERSION }}.zip
 
       - name: Create or update release and attach artifact
-        if: github.event.inputs.publish_release == 'true'
+        if: github.event.inputs.publish_release == 'true' || github.ref_type == 'tag'
         uses: ncipollo/release-action@v1
         with:
           name: Release v${{ env.PLUGIN_VERSION }}

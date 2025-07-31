@@ -392,6 +392,7 @@ class MinimalFuzzballClient:
                 executor {{
                     '$fuzzball' {{
                         queueSize = {args.queue_size}
+                        retry {{ maxAttempt = 3 }}
                     }}
                 }}
                 process {{

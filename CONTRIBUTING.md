@@ -226,3 +226,36 @@ jobs:
 }
 
 ```
+
+## Branching Strategy
+
+### Branch Structure
+
+- main: Production-ready code, always deployable
+- vMAJOR.MINOR.x: Release branches for major.minor versions (e.g., v0.1.x, v1.0.x)
+- Feature branches: Short-lived branches for development
+
+### Tagging Strategy
+
+- vMAJOR.MINOR.0 tags on vMAJOR.MINOR.x branches (initial release)
+- vMAJOR.MINOR.Z patch tags on vMAJOR.MINOR.x branches
+- All tags follow semantic versioning
+
+Example:
+```
+main ←────────────────────────────────────
+↓
+v0.1.x ── v0.1.0 ── v0.1.1 ── v0.1.2
+↓
+v1.0.x ── v1.0.0 ── v1.0.1
+```
+
+### Workflow Process
+
+1. Feature Development: Create feature branch from main → PR to main
+2. Release Preparation: Create vMAJOR.MINOR.x branch from main
+3. Release Tagging: Tag vMAJOR.MINOR.0 on vMAJOR.MINOR.x branch
+4. Patch Releases: Cherry-pick fixes to vMAJOR.MINOR.x → tag vMAJOR.MINOR.Z
+5. The `build.gradle` version on main should be the next minor version up
+   from the most recent release branch. That change is made after creation of
+   a release branch.

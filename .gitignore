@@ -7,6 +7,7 @@
 .venv
 .ruff_cache
 .envrc
+*.pyc
 
 # ignore the code generator jars downloaded by the fuzzball api generation script
 openapi-generator-cli*.jar

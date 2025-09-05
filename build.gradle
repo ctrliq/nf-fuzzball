@@ -1,6 +1,7 @@
 plugins {
     // https://plugins.gradle.org/plugin/io.nextflow.nextflow-plugin
-    id 'io.nextflow.nextflow-plugin' version '1.0.0-beta6'
+    // https://github.com/nextflow-io/nextflow-plugin-gradle
+    id 'io.nextflow.nextflow-plugin' version '1.0.0-beta.6'
 }
 
 dependencies {
@@ -26,12 +27,6 @@ nextflowPlugin {
         'com.ciq.fuzzball.FuzzballExecutor'
     ]
 
-    publishing {
-        registry {
-            url = 'https://plugins.nextflow.io/api'
-            authToken = project.findProperty('registry_access_token')
-        }
-    }
 }
 
 

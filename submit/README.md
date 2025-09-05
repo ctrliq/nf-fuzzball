@@ -20,7 +20,7 @@ The following section will walk though getting your environment set up with
 
 ```sh
 uv venv
-uv pip install requests pyyaml
+uv pip install urllib3 pyyaml
 uv run python submit_nextflow.py --help
 ```
 
@@ -61,6 +61,7 @@ uv run python submit_nextflow.py [OPTIONS] -- [nextflow_cmd]
 | `--plugin-base-uri`       | No       | Downloads from this repo       | Base URI for the nf-fuzzball plugin. The submission script expects to find a zip file at                                           |
 |                           |          |                                | `<plugin-base-uri>/v<version>/nf-fuzzball-<version>-stable-v<fuzzball-version>.zip`                                                |
 | `--s3-secret`             | Maybe    | (none)                         | Reference for fuzzball S3 secret used to pull the nf-fuzzball plugin if the base URI for the plugin download is a S3 URI.          |
+| `--ca-cert`               | Maybe    | (none)                         | If using a self-signed certificate for Fuzzball, the CA certificate used to sign the Fuzzball certificate is required              |
 
 ## Example Usage
 
@@ -69,12 +70,27 @@ uv run python submit_nextflow.py [OPTIONS] -- [nextflow_cmd]
 # ~/.config/fuzzball/config.yaml
 
 fuzzball context login
+```
 
-# Submit nf-core/demultiplex workflow into Fuzzball such that each child jobs
-# runs as Fuzzball workflows
+Submit the nextflow hello-world workflow
+```sh
+uv run python submit_nextflow.py -- \
+    nextflow run \
+      -profile fuzzball \
+      -with-report report.html \
+      -with-trace \
+      -with-timeline timeline.html \
+      hello
+```
+
+Submit nf-core/demultiplex workflow into Fuzzball such that each child jobs
+runs as Fuzzball workflows
+```sh
 uv run python submit_nextflow.py --job-name demux-test \
   --nf-core -- \
     nextflow run nf-core/demultiplex \
       -profile test,fuzzball \
       --outdir /data/nextflow/out/demux-test-out
 ```
+
+## Using the Plugin from the Main Branch

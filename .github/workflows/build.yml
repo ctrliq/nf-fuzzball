@@ -3,7 +3,7 @@ on:
   pull_request:
     branches:
       - '*'
-  push: 
+  push:
     tags:
       - "v*.*.*"
   workflow_dispatch:
@@ -23,49 +23,42 @@ jobs:
 
     steps:
 
-      - name: Get Fuzzball version on stable
+      - name: Get Fuzzball version on stable (starts with 'v')
         run: |
           FUZZBALL_VERSION=$(curl -s https://api.stable.fuzzball.ciq.dev/v2/version | jq -r '.version')
-          echo "FUZZBALL_VERSION=${FUZZBALL_VERSION}" >> $GITHUB_ENV
+          # make sure Fuzzball version starts with a v
+          echo "FUZZBALL_VERSION=v${FUZZBALL_VERSION#v}" >> $GITHUB_ENV
 
       - name: Environment
         run: env | sort
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
           submodules: true
-      
-      - name: Set plugin version
-        run: |
 
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            echo "Using tag as plugin version"
-            PLUGIN_VERSION="${{ github.ref_name }}"
-            # Remove the v prefix if it exists
-            echo "PLUGIN_VERSION=${PLUGIN_VERSION#v}" >> $GITHUB_ENV
-          else
-            echo "Not pushing to a tag, using build.gradle to determine plugin version"
-            PLUGIN_VERSION=$(grep -E "version\s*=" build.gradle | head -1 | sed -E "s/.*version\s*=\s*'([^']+)'.*/\1/")
-            echo "PLUGIN_VERSION=${PLUGIN_VERSION}" >> $GITHUB_ENV
-          fi
+      - name: Set plugin version (starts with 'v')
+        run: |
+          # PLUGIN_VERSION always comes from gradle but we make sure it also starts with a v
+          PLUGIN_VERSION=$(grep -E "version\s*=" build.gradle | head -1 | sed -E "s/.*version\s*=\s*'([^']+)'.*/\1/")
+          echo "PLUGIN_VERSION=v${PLUGIN_VERSION#v}" >> $GITHUB_ENV
 
       - name: Check plugin in build.gradle matches tag
         if: github.ref_type == 'tag'
         run: |
           PLUGIN_VERSION_TAG="${{ github.ref_name }}"
-          PLUGIN_VERSION_GRADLE=$(grep -E "version\s*=" build.gradle | head -1 | sed -E "s/.*version\s*=\s*'([^']+)'.*/\1/")
+          PLUGIN_VERSION_GRADLE="${{ env.PLUGIN_VERSION }}"
 
-          if [[ "${PLUGIN_VERSION_TAG#v}" != "${PLUGIN_VERSION_GRADLE}" ]]; then
-            echo "Plugin version in build.gradle (${PLUGIN_VERSION_GRADLE}) does not match tag (${PLUGIN_VERSION_TAG})"
+          if [[ "${PLUGIN_VERSION_TAG#v}" != "${PLUGIN_VERSION_GRADLE#v}" ]]; then
+            echo "Plugin version in build.gradle (${PLUGIN_VERSION_GRADLE#v}) does not match tag (${PLUGIN_VERSION_TAG#v})"
             exit 1
           else
             echo "Plugin version in build.gradle matches tag"
           fi
 
       - name: Setup Java 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: 17
           architecture: x64
@@ -81,15 +74,16 @@ jobs:
 
       - name: Update name of build artifact
         run: |
-          echo "Renaming build artifact to nf-fuzzball-${{ env.PLUGIN_VERSION }}-stable-${{ env.FUZZBALL_VERSION }}.zip"
-          mv build/distributions/nf-fuzzball-${{ env.PLUGIN_VERSION }}.zip build/distributions/nf-fuzzball-${{ env.PLUGIN_VERSION }}-stable-${{ env.FUZZBALL_VERSION }}.zip
+          aname="nf-fuzzball-${{ env.PLUGIN_VERSION }}-stable-${{ env.FUZZBALL_VERSION }}.zip"
+          echo "Renaming build artifact to ${aname}"
+          mv build/distributions/nf-fuzzball-*.zip build/distributions/${aname}
 
       - name: Create or update release and attach artifact
-        if: github.event.inputs.publish_release == 'true' || github.ref_type == 'tag'
+        if: github.ref_type == 'tag' && (github.event_name == 'push' || github.event.inputs.publish_release == 'true')
         uses: ncipollo/release-action@v1
         with:
-          name: Release v${{ env.PLUGIN_VERSION }}
-          tag: v${{ env.PLUGIN_VERSION }}
+          name: Release ${{ env.PLUGIN_VERSION }}
+          tag: ${{ env.PLUGIN_VERSION }}
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
           artifacts: "build/distributions/nf-fuzzball-${{ env.PLUGIN_VERSION }}-stable-${{ env.FUZZBALL_VERSION }}.zip"

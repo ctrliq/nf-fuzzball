@@ -12,7 +12,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.1'
 }
 
-// plugin version
+// plugin version - gradle by convention seems to not use v prefixes. That does
+// cause some issues in other places but we'll stick with convention
 version = '0.1.0'
 
 nextflowPlugin {

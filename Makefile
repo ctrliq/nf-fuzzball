@@ -42,6 +42,13 @@ sdk:
 sdk-full:
 	code-generation/generate --url "$(OPENAPI_URL)" --keep temp/fuzzball-sdk
 
-# temporary rule for pushing the plugin to S3
-push: assemble
-	aws s3 cp build/distributions/nf-fuzzball-$(VERSION).zip s3://co-ciq-misc-support/nf-fuzzball/v$(VERSION)/nf-fuzzball-$(VERSION)-stable-$(FB_VERSION).zip
+# Rule for pushing dev versions of the plugin to a local plugin repository that can
+# be used with --plugin-base-uri
+# Depends on the script `push_dev.local` to work. This script is not included in the repository. Create
+# your own to customize.
+push_dev: assemble
+	if [ -e push_dev.local ] ; then \
+	    ./push_dev.local v$(VERSION) $(FB_VERSION); \
+	else \
+	    echo "Create a 'push_dev' script to build the plugin and push it to a https or s3 accessible location"; \
+	fi

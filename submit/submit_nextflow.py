@@ -3,9 +3,10 @@
 Submit a nextflow pipeline to Fuzzball.
 
 Notes:
+  - Requires a persistent data volume (mounted at /data) and an ephemeral volume (mounted
+    at /scratch).
   - Paths for input, workdir, and output in your nextflow command should be absolute. For
-    paths in persistent storate they should include the persistent storage mount point
-    (/data by default).
+    paths in persistent storate they should include the persistent storage mount point.
   - Any explicitly specified config and/or parameter files will be included in the
     fuzzball job but implicit files (i.e. $HOME/.nextflow/config and ./nextflow.config)
     will not.
@@ -43,6 +44,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 NAMESPACE_CONTENT = uuid.UUID("71c91ef2-0f9b-47f3-988b-5725d2f67599")
+DATA_MOUNT = "/data"
+SCRATCH_MOUNT = "/scratch"
 
 
 def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.Node:
@@ -392,15 +395,16 @@ class MinimalFuzzballClient:
             if len(args.job_name) > 0
             else str(uuid.uuid5(NAMESPACE_CONTENT, nextflow_cmd_str))
         )
-        mounts = {"data": {"location": "/data"}, "scratch": {"location": "/scratch"}}
-        wd_base = f"{args.nextflow_work_base}/{job_name}"
-        wd = f"{mounts['data']['location']}/{wd_base}"
+        mounts = {"data": {"location": DATA_MOUNT}, "scratch": {"location": SCRATCH_MOUNT}}
+        wd = f"{args.nextflow_work_base}/{job_name}"
         home_base = "home"
         home = f"{wd}/{home_base}"
         files_base = "files"
         files = f"{wd}/{files_base}"
         secret_name = str(uuid.uuid4())
+        # we use a v prfix for tag but gradle idiomatically does not use a prefix
         plugin_version = args.nf_fuzzball_version
+        plugin_tag = f"v{plugin_version}"
 
         mangled_nextflow_cmd, config_files = find_and_import_local_files(
             args.nextflow_cmd, files
@@ -408,7 +412,7 @@ class MinimalFuzzballClient:
         mangled_nextflow_cmd_str = shlex.join(mangled_nextflow_cmd)
 
         # download url for the plugin (until it's in the nextflow plugin registry)
-        plugin_uri = f"{args.plugin_base_uri}/v{args.nf_fuzzball_version}/nf-fuzzball-{args.nf_fuzzball_version}-stable-{self._fb_version}.zip"
+        plugin_uri = f"{args.plugin_base_uri}/{plugin_tag}/nf-fuzzball-{plugin_tag}-stable-{self._fb_version}.zip"
         # check that the URL exists
         if plugin_uri.startswith("http://") or plugin_uri.startswith("https://"):
             try:
@@ -474,7 +478,7 @@ class MinimalFuzzballClient:
         #! /bin/sh
         rm -rf $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} \\
           && mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball \\
-          && unzip /scratch/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} > /dev/null \\
+          && unzip {SCRATCH_MOUNT}/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} > /dev/null \\
           && echo "$FB_CONFIG" | base64 -d > $HOME/.config/fuzzball/config.yaml \\
           || exit 1
 
@@ -485,7 +489,7 @@ class MinimalFuzzballClient:
             -H "Authorization: Bearer $TOKEN" \\
             -H "Accept: application/json" &> /dev/null && echo "temp secret deleted" || echo "temp secret not deleted"
 
-        mkdir {files}
+        mkdir -p {files}
         # copy the config files to the working directory
         cat /tmp/{nxf_fuzzball_config_name} | base64 -d > {files}/{nxf_fuzzball_config_name}.config || exit 1
         """)
@@ -629,18 +633,18 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--nextflow-work-base",
         type=str,
-        default="nextflow/executions",
+        default=f"{DATA_MOUNT}/nextflow/executions",
         help=(
             "Name of basedirectory for nextflow execution paths. The nextflow execution path will be "
-            "/data/<nextflow-work-base>/<job-name> which would include logs and the default workdir. "
+            "<nextflow-work-base>/<job-name> which would include logs and the default workdir. "
             "[%(default)s]"
         ),
     )
     parser.add_argument(
         "--nf-fuzzball-version",
         type=str,
-        default="0.0.1",
-        help="nf-fuzzball plugin version [%(default)s]",
+        default="0.1.0",
+        help="nf-fuzzball plugin version. Note that the plugin tag includes a 'v' prefix [%(default)s]",
     )
     parser.add_argument(
         "--s3-secret",
@@ -657,7 +661,8 @@ def parse_cli() -> argparse.Namespace:
         default="https://github.com/ctrliq/nf-fuzzball/releases/download",
         help=(
             "Base URI for the nf-fuzzball plugin. The submission script expects to find a zip file at "
-            "<plugin-base-uri>/v<version>/nf-fuzzball-<version>-stable-v<fuzzball-version>.zip. "
+            "<plugin-base-uri>/v<version>/nf-fuzzball-v<version>-stable-v<fuzzball-version>.zip. "
+            "All version strings are expected to start with a v"
             "Defaults to [%(default)s]"
         ),
     )

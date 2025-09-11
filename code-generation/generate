@@ -1,6 +1,6 @@
 #! /bin/bash
 #>SYNOPSIS
-#>  generate [--keep|--src] PATH
+#>  generate [--keep] [--url=URL] [--file=FILE] PATH
 #>  generate --help
 #>DESCRIPTION
 #>  Generate a groovy fuzzball-sdk from the openapi spec. Uses several custom templates
@@ -9,6 +9,11 @@
 #>  If PATH exists it will be deleted and replaced with the generated code.
 #>  --keep
 #>      Keep the full generated project. Othewise only the groovy files are copied.
+#>  --url
+#>      URL of the OpenAPI spec to fetch (defaults to https://api.stable.fuzzball.ciq.dev/v2/schema)
+#>  --file
+#>      File of the OpenAPI spec. Defaults to none and when specified takes precedence over
+#>      --url. When defined it expects the filename to be in the format fuzzball-<VERSION>-openapi.json
 #>
 #>Copyright 2025 CIQ, Inc. All rights reserved.
 
@@ -17,10 +22,14 @@ EXIT_NODOWNLOADER=100
 EXIT_DOWNLOAD_FAILED=101
 EXIT_CODEGEN_FAILED=102
 EXIT_SED_FAILED=103
+EXIT_MISSING_FILE=104
+EXIT_BAD_SPEC_FILENAME=105
+EXIT_MISSING_JQ=106
 
 keep=false
 path="__none__"
 url="https://api.stable.fuzzball.ciq.dev/v2/schema"
+specfile="__none__"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --keep)
@@ -33,6 +42,13 @@ while [[ $# -gt 0 ]]; do
         --url=*)
             url="${1#--url=}"
             ;;
+        --file)
+            specfile="$2"
+            shift
+            ;;
+        --file=*)
+            specfile="${1#--spec=}"
+            ;;
         --help)
             awk '/^#>/{sub(/^#>/,"");print}' "$0"
             exit 0
@@ -44,6 +60,11 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+if ! command -v jq >/dev/null 2>&1 ; then
+    echo "Error: 'jq' is required for this script"
+    exit $EXIT_MISSING_JQ
+fi
+
 if [[ "${path:-__none__}" == "__none__" ]]; then
     awk '/^#>/{sub(/^#>/,"");print}' "$0"
     exit 1
@@ -51,6 +72,27 @@ fi
 if [[ ! "$path" =~ ^/ ]]; then
     path="${PWD}/${path}"
 fi
+
+spec="${url}"
+if [[ "${specfile}" != "__none__" ]]; then
+    if [[ ! "${specfile}" =~ ^/ ]]; then
+        specfile="${PWD}/${specfile}"
+    fi
+    if [[ ! -e "${specfile}" ]]; then
+        echo "Error: ${specfile} does not exist"
+        exit $EXIT_MISSING_FILE
+    fi
+    if [[ "${specfile}" =~ fuzzball-(v[^-]+)-openapi.json ]]; then
+        spec="${specfile}"
+        fb_version="${BASH_REMATCH[1]}"
+    else
+        echo "Error: If supplying an OpenAPI spect with --file the filename is expected to match fuzzball-<VERSION>-openapi.json"
+        exit $EXIT_BAD_SPEC_FILENAME
+    fi
+else
+    fb_version="$(curl -H 'Accept: application/json' -s "${url%/schema}/version" | jq -r '.version')"
+fi
+
 
 ver=7.13.0
 scriptd="$(cd "$(dirname "$0")" && pwd)"
@@ -79,7 +121,7 @@ java -jar "./${gen}" \
 	  -g groovy \
 	  -c generate_config.yaml \
 	  -o  "${tmp}/${name}" \
-	  -i "${url}" || exit $EXIT_CODEGEN_FAILED
+	  -i "${spec}" || exit $EXIT_CODEGEN_FAILED
 
 # - i could not remove the imports for io.swagger.annotations from the generated code without a custom generator
 # - the abstract java generation class that is the base class for the groovy generator includes a hardcoded mapping of URI -> java.net.URI
@@ -109,5 +151,5 @@ fi
 printf -- "------------------------------------------------\n"
 printf "Fuzzball SDK generated in %s\n" "${path}"
 printf "  source: %s\n" "${url}"
-printf "  version: %s\n" "$(curl -H 'Accept: application/json' -s "${url%/schema}/version" | jq -r '.version')"
+printf "  version: %s\n" "${fb_version}"
 printf -- "------------------------------------------------\n"

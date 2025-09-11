@@ -23,6 +23,7 @@ import argparse
 import base64
 import json
 import logging
+import os
 import pathlib
 import shlex
 import ssl
@@ -178,6 +179,7 @@ class MinimalFuzzballClient:
             ValueError: If the context is missing or the config is invalid
             IOError: If the config file cannot be read
         """
+        self._ca_cert_file = ca_cert_file
         try:
             with open(config_path, "r") as f:
                 config = yaml.safe_load(f)
@@ -225,7 +227,7 @@ class MinimalFuzzballClient:
             raise ValueError(f"Context '{context}' not found in configuration file")
 
         # Setup HTTP client with certificate verification
-        self._setup_http_client(ca_cert_file)
+        self._setup_http_client(self._ca_cert_file)
 
         # Determine version of the Fuzzball API server
         try:
@@ -317,12 +319,12 @@ class MinimalFuzzballClient:
         return response
 
     def _encode_config(self) -> str:
-        """
-        Return a base64 encoded version of the minimal Fuzzball configuration file
+        """Return a base64 encoded version of the minimal Fuzzball configuration file
         containing only the active context.
 
         Returns:
             Base64 encoded config string safe for transport
+
         Raises:
             ValueError: If encoding fails
         """
@@ -333,12 +335,35 @@ class MinimalFuzzballClient:
             logger.error(f"Failed to encode Fuzzball configuration for transport: {e}")
             raise ValueError("Failed to encode Fuzzball configuration for transport")
 
-    def create_value_secret(self, secret_name: str, secret_value: str) -> None:
+    def _encode_ca_cert(self) -> str | None:
+        """Return a base64 encoded version of the CA certificate if one was provided.
+
+        Returns:
+            Base64 encoded config string safe for transport (or None if no cert was provided)
+
+        Raises:
+            IOError: If the certificate file cannot be read.
+        """
+        if not self._ca_cert_file:
+            return None
+
+        try:
+            with open(self._ca_cert_file, "rb") as f:
+                cert_content = base64.b64encode(f.read()).decode("utf-8")
+        except IOError:
+            logger.error(f"Failed to read CA certificate file {self._ca_cert_file}")
+            raise
+        return cert_content
+
+    def create_value_secret(self, secret_name: str, secret_value: str) -> str | None:
         """Create or update a value secret in Fuzzball.
 
         Args:
             secret_name: The name to give the secret.
             secret_value: The value to store in the secret (base64 encoded config).
+
+        Returns:
+            ID of created or existing secret or None
 
         Raises:
             urllib3.exceptions.HTTPError: If the request to create or update the secret fails.
@@ -368,15 +393,16 @@ class MinimalFuzzballClient:
                 logger.error("Failed to create secret")
                 raise
             resp_data = json.loads(resp.data.decode('utf-8'))
-            self._secret_id = resp_data["id"]
+            secret_id = resp_data["id"]
         else:
-            self._secret_id = id
+            secret_id = id
             secret_data = {"value": {"value": secret_value}}
             try:
                 self._request("PATCH", f"/secrets/{id}", data=secret_data)
             except urllib3.exceptions.HTTPError:
                 logger.error("Failed to update secret")
                 raise
+        return secret_id
 
     def submit_nextflow_job(self, args: argparse.Namespace) -> None:
         """Submit a Nextflow job to the Fuzzball cluster.
@@ -447,7 +473,14 @@ class MinimalFuzzballClient:
         if args.plugin_base_uri.startswith("s3://"):
             volumes["scratch"]["ingress"][0]["source"]["secret"] = args.s3_secret
 
-        self.create_value_secret(secret_name, self._encode_config())
+        config_secret_name = f"{secret_name}-conf"
+        cert_secret_name = f"{secret_name}-cert"
+
+        config_secret_id = self.create_value_secret(config_secret_name, self._encode_config())
+        cert_secret_id = None
+        if self._ca_cert_file is not None:
+            cert_secret_id = self.create_value_secret(cert_secret_name, self._encode_ca_cert())
+
         nxf_fuzzball_config = base64.b64encode(
             textwrap.dedent(f"""\
         plugins {{ id 'nf-fuzzball@{plugin_version}' }}
@@ -482,13 +515,28 @@ class MinimalFuzzballClient:
           && echo "$FB_CONFIG" | base64 -d > $HOME/.config/fuzzball/config.yaml \\
           || exit 1
 
+        # Setup CA certificate if provided
+        if [ ! -z "$FB_CA_CERT" ]; then
+            echo "$FB_CA_CERT" | base64 -d > $HOME/.config/fuzzball/ca.crt || exit 1
+        fi
+
         # there is only a single context in the config file so it's easy to extract the token
         TOKEN="$(awk '/token:/ {{print $2}}' $HOME/.config/fuzzball/config.yaml)"
-        # clean up the secret but don't fail if there is an error
-        curl -s -X DELETE "{self._base_url}/secrets/{self._secret_id}" \\
+        # clean up the secrets but don't fail if there is an error
+        curl -s -X DELETE "{self._base_url}/secrets/{config_secret_id}" \\
             -H "Authorization: Bearer $TOKEN" \\
-            -H "Accept: application/json" &> /dev/null && echo "temp secret deleted" || echo "temp secret not deleted"
+            -H "Accept: application/json" &> /dev/null && echo "temp config secret deleted" || echo "temp config secret not deleted"
+        """)
 
+        # Add certificate secret cleanup if one was created
+        if cert_secret_id is not None:
+            setup_script += textwrap.dedent(f"""\
+        curl -s -X DELETE "{self._base_url}/secrets/{cert_secret_id}" \\
+            -H "Authorization: Bearer $TOKEN" \\
+            -H "Accept: application/json" &> /dev/null && echo "temp cert secret deleted" || echo "temp cert secret not deleted"
+        """)
+
+        setup_script += textwrap.dedent(f"""\
         mkdir -p {files}
         # copy the config files to the working directory
         cat /tmp/{nxf_fuzzball_config_name} | base64 -d > {files}/{nxf_fuzzball_config_name}.config || exit 1
@@ -526,7 +574,8 @@ class MinimalFuzzballClient:
                         "mounts": mounts,
                         "cwd": wd,
                         "script": setup_script,
-                        "env": env + [f"FB_CONFIG=secret://user/{secret_name}"],
+                        "env": env + [f"FB_CONFIG=secret://user/{config_secret_name}"] +
+                               ([f"FB_CA_CERT=secret://user/{cert_secret_name}"] if self._ca_cert_file is not None else []),
                         "policy": {"timeout": {"execute": "5m"}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
                     },
@@ -537,7 +586,7 @@ class MinimalFuzzballClient:
                         "mounts": mounts,
                         "cwd": wd,
                         "script": nextflow_script,
-                        "env": env,
+                        "env": env + ([f"FUZZBALL_CA_CERT={home}/.config/fuzzball/ca.crt"] if self._ca_cert_file is not None else []),
                         "policy": {"timeout": {"execute": args.timelimit}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
                         "requires": ["setup"],
@@ -559,7 +608,9 @@ class MinimalFuzzballClient:
             yaml.dump(workflow, sys.stdout, default_flow_style=False)
         if args.dry_run:
             logger.info("Dry run mode: not submitting the workflow.")
-            self._request("DELETE", f"/secrets/{self._secret_id}")
+            self._request("DELETE", f"/secrets/{config_secret_id}")
+            if cert_secret_id:
+                elf._request("DELETE", f"/secrets/{cert_secret_id}")
             return
         response = self._request("POST", "/workflows", data=workflow)
         response_data = json.loads(response.data.decode("utf-8"))
@@ -607,7 +658,10 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--fuzzball-config",
         type=pathlib.Path,
-        default=pathlib.Path("~/.config/fuzzball/config.yaml").expanduser(),
+        default=(
+            pathlib.Path("~/.config/fuzzball/config.yaml").expanduser() if os.environ.get("XDG_CONFIG_HOME", None) is None
+            else pathlib.Path(f"{os.environ['XDG_CONFIG_HOME']}/fuzzball/config.yaml")
+        ),
         help="Path to the fuzzball configuration file. [%(default)s]",
     )
     parser.add_argument(

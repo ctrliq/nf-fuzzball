@@ -1,19 +1,36 @@
 # Build the plugin
+SPEC_URL ?= https://api.stable.fuzzball.ciq.dev/v3/schema
+SPEC_FILE ?= __none__
 
-FB_TARGET ?= stable
-ifeq ($(FB_TARGET),integration)
-  OPENAPI_URL := https://api.integration.fuzzball.ciq.dev/v2/schema
-  VERSION_URL := https://api.integration.fuzzball.ciq.dev/v2/version
+# Check for required tools
+ifeq ($(shell command -v jq 2>/dev/null),)
+  $(error "jq is required but not installed. Please install jq to continue.")
+endif
+
+ifeq ($(SPEC_FILE),__none__)
+  ifeq ($(shell command -v curl 2>/dev/null),)
+    $(error "curl is required but not installed. Please install curl to continue.")
+  endif
+  SPEC := $(SPEC_URL)
+  FB_VERSION := $(shell curl -s "$(subst schema,version,$(SPEC_URL))" | jq -r '.version // ""')
+  BASEPATH := $(shell curl -s "$(SPEC_URL)" | jq -r '.basePath')
 else
-    OPENAPI_URL := https://api.stable.fuzzball.ciq.dev/v2/schema
-    VERSION_URL := https://api.stable.fuzzball.ciq.dev/v2/version
+  SPEC := $(SPEC_FILE)
+  FB_VERSION := $(shell basename "${SPEC_FILE}" | sed -E 's/fuzzball-(v[^-]+)-openapi.json/\1/')
+  BASEPATH := $(shell jq -r '.basePath' "$(SPEC_FILE)")
+endif
+ifeq ($(FB_VERSION),)
+  $(error "Unable to detect fuzzball version from URL or filename")
 endif
 
 VERSION := $(shell ./gradlew properties | awk '/^version:/{print $$2}')
-FB_VERSION := $(shell curl -s "$(VERSION_URL)" | jq -r '.version')
+$(info "SPEC:           $(SPEC)")
+$(info "FB VERSION:     $(FB_VERSION)")
+$(info "PLUGIN VERSION: $(VERSION)")
+$(info "BASEPATH:       $(BASEPATH)")
 
 assemble:
-	./gradlew assemble -PopenapiUrl=$(OPENAPI_URL)
+	./gradlew assemble -PopenapiUrl=$(SPEC)
 
 clean:
 	rm -rf .nextflow*
@@ -27,20 +44,24 @@ test:
 
 # Install the plugin into local nextflow plugins dir
 install:
-	./gradlew install -PopenapiUrl=$(OPENAPI_URL)
+	./gradlew install -PopenapiUrl=$(SPEC)
 
 # Publish the plugin
 release:
-	./gradlew releasePlugin -PopenapiUrl=$(OPENAPI_URL)
+	./gradlew releasePlugin -PopenapiUrl=$(SPEC)
 
 # generate the Fuzzball SDK based on the stable cluster. This generates the
 # code as it would be in a `make assemble` (i.e. only groovy sources in the build dir)
 sdk:
-	./gradlew generateSdk -PopenapiUrl=$(OPENAPI_URL)
+	./gradlew generateSdk -PopenapiUrl=$(SPEC)
 
 # generate the Fuzzball SDK as a separate project in temp/fuzzball-sdk
 sdk-full:
-	code-generation/generate --url "$(OPENAPI_URL)" --keep temp/fuzzball-sdk
+ifeq ($(SPEC_FILE),__none__)
+	code-generation/generate --url "$(SPEC)" --keep temp/fuzzball-sdk
+else
+	code-generation/generate --file "$(SPEC)" --keep temp/fuzzball-sdk
+endif
 
 # Rule for pushing dev versions of the plugin to a local plugin repository that can
 # be used with --plugin-base-uri

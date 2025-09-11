@@ -1,19 +1,23 @@
 #! /bin/bash
 #>SYNOPSIS
-#>  generate [--keep] [--url=URL] [--file=FILE] PATH
+#>  generate [--keep] [--url=URL|--file=FILE] PATH
 #>  generate --help
+#>
 #>DESCRIPTION
 #>  Generate a groovy fuzzball-sdk from the openapi spec. Uses several custom templates
 #>  to generate more modern groovy code including replacing the unmaintained httpbuilder-ng with
 #>  okhttp3.
-#>  If PATH exists it will be deleted and replaced with the generated code.
-#>  --keep
-#>      Keep the full generated project. Othewise only the groovy files are copied.
+#>
+#>  PATH
+#>      Locate to save the auto-generated SDK to. If PATH exists it will be deleted and replaced
+#>      with the generated code.
 #>  --url
-#>      URL of the OpenAPI spec to fetch (defaults to https://api.stable.fuzzball.ciq.dev/v2/schema)
+#>      URL of the OpenAPI spec to fetch (defaults to https://api.stable.fuzzball.ciq.dev/v3/schema)
 #>  --file
 #>      File of the OpenAPI spec. Defaults to none and when specified takes precedence over
-#>      --url. When defined it expects the filename to be in the format fuzzball-<VERSION>-openapi.json
+#>      --url.
+#>  --keep
+#>      Keep the full generated project. Othewise only the groovy files are copied.
 #>
 #>Copyright 2025 CIQ, Inc. All rights reserved.
 
@@ -23,12 +27,11 @@ EXIT_DOWNLOAD_FAILED=101
 EXIT_CODEGEN_FAILED=102
 EXIT_SED_FAILED=103
 EXIT_MISSING_FILE=104
-EXIT_BAD_SPEC_FILENAME=105
-EXIT_MISSING_JQ=106
+EXIT_MISSING_JQ=105
 
 keep=false
 path="__none__"
-url="https://api.stable.fuzzball.ciq.dev/v2/schema"
+url="https://api.stable.fuzzball.ciq.dev/v3/schema"
 specfile="__none__"
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -47,7 +50,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         --file=*)
-            specfile="${1#--spec=}"
+            specfile="${1#--file=}"
             ;;
         --help)
             awk '/^#>/{sub(/^#>/,"");print}' "$0"
@@ -59,11 +62,6 @@ while [[ $# -gt 0 ]]; do
     esac
     shift
 done
-
-if ! command -v jq >/dev/null 2>&1 ; then
-    echo "Error: 'jq' is required for this script"
-    exit $EXIT_MISSING_JQ
-fi
 
 if [[ "${path:-__none__}" == "__none__" ]]; then
     awk '/^#>/{sub(/^#>/,"");print}' "$0"
@@ -82,17 +80,8 @@ if [[ "${specfile}" != "__none__" ]]; then
         echo "Error: ${specfile} does not exist"
         exit $EXIT_MISSING_FILE
     fi
-    if [[ "${specfile}" =~ fuzzball-(v[^-]+)-openapi.json ]]; then
-        spec="${specfile}"
-        fb_version="${BASH_REMATCH[1]}"
-    else
-        echo "Error: If supplying an OpenAPI spect with --file the filename is expected to match fuzzball-<VERSION>-openapi.json"
-        exit $EXIT_BAD_SPEC_FILENAME
-    fi
-else
-    fb_version="$(curl -H 'Accept: application/json' -s "${url%/schema}/version" | jq -r '.version')"
+    spec="${specfile}"
 fi
-
 
 ver=7.13.0
 scriptd="$(cd "$(dirname "$0")" && pwd)"
@@ -151,5 +140,4 @@ fi
 printf -- "------------------------------------------------\n"
 printf "Fuzzball SDK generated in %s\n" "${path}"
 printf "  source: %s\n" "${url}"
-printf "  version: %s\n" "${fb_version}"
 printf -- "------------------------------------------------\n"

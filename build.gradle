@@ -1,3 +1,5 @@
+// Copyright 2025 CIQ, Inc. All rights reserved.
+
 plugins {
     // https://plugins.gradle.org/plugin/io.nextflow.nextflow-plugin
     // https://github.com/nextflow-io/nextflow-plugin-gradle
@@ -39,12 +41,21 @@ tasks.register('generateFuzzballSdk', Exec) {
     final codegenFile = codegenDir.file('generate')
     group = 'build'
     description = 'Generate Fuzzball SDK'
-    def openapiUrl = project.hasProperty('openapiUrl') ? project.property('openapiUrl') : 'https://api.stable.fuzzball.ciq.dev/v2/schema'
     inputs.files(
         fileTree(dir: codegenDir, include: ['**/*.yaml', '**/*.mustache', '**/*.sh'])
     )
     outputs.dir generatedSdkDir
-    commandLine codegenFile.getAsFile().getAbsolutePath(), "--url=${openapiUrl}", generatedSdkDir.get().getAsFile().getAbsolutePath()
+
+    // Build commandLine args based on which property was provided
+    def args = [codegenFile.getAsFile().getAbsolutePath()]
+    if (project.hasProperty('openapiFile')) {
+        args.add("--file=${project.property('openapiFile')}")
+    } else if (project.hasProperty('openapiUrl')) {
+        args.add("--url=${project.property('openapiUrl')}")
+    }
+    args.add(generatedSdkDir.get().getAsFile().getAbsolutePath())
+
+    commandLine args
 }
 compileGroovy.dependsOn tasks.named('generateFuzzballSdk')
 

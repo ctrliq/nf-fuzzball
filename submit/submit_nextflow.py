@@ -610,7 +610,7 @@ class MinimalFuzzballClient:
             logger.info("Dry run mode: not submitting the workflow.")
             self._request("DELETE", f"/secrets/{config_secret_id}")
             if cert_secret_id:
-                elf._request("DELETE", f"/secrets/{cert_secret_id}")
+               self._request("DELETE", f"/secrets/{cert_secret_id}")
             return
         response = self._request("POST", "/workflows", data=workflow)
         response_data = json.loads(response.data.decode("utf-8"))

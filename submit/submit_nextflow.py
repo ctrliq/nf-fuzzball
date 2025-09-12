@@ -534,8 +534,11 @@ class MinimalFuzzballClient:
             uuid.uuid5(NAMESPACE_CONTENT, nxf_fuzzball_config)
         )
 
+        # Note: the setup job uses /tmp as the cwd in order to manually create the working dir
+        #       for nextflow as part of the job. This makes sure ownership and permissions are as expected
         setup_script = textwrap.dedent(f"""\
         #! /bin/sh
+        mkdir -p {wd} || exit 1
         rm -rf $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} \\
           && mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball \\
           && unzip {SCRATCH_MOUNT}/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} > /dev/null \\
@@ -599,7 +602,7 @@ class MinimalFuzzballClient:
                             f"/tmp/{nxf_fuzzball_config_name}": f"file://{nxf_fuzzball_config_name}"
                         },
                         "mounts": mounts,
-                        "cwd": wd,
+                        "cwd": "/tmp",
                         "script": setup_script,
                         "env": env + [f"FB_CONFIG=secret://user/{config_secret_name}"] +
                                ([f"FB_CA_CERT=secret://user/{cert_secret_name}"] if self._ca_cert_file is not None else []),

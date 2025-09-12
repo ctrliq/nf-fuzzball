@@ -542,12 +542,12 @@ class MinimalFuzzballClient:
         rm -rf $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} \\
           && mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball \\
           && unzip {SCRATCH_MOUNT}/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} > /dev/null \\
-          && echo "$FB_CONFIG" | base64 -d > $HOME/.config/fuzzball/config.yaml \\
+          && echo "$FB_CONFIG_SECRET" | base64 -d > $HOME/.config/fuzzball/config.yaml \\
           || exit 1
 
         # Setup CA certificate if provided
-        if [ ! -z "$FB_CA_CERT" ]; then
-            echo "$FB_CA_CERT" | base64 -d > $HOME/.config/fuzzball/ca.crt || exit 1
+        if [ ! -z "$FB_CA_CERT_SECRET" ]; then
+            echo "$FB_CA_CERT_SECRET" | base64 -d > $HOME/.config/fuzzball/ca.crt || exit 1
         fi
 
         # there is only a single context in the config file so it's easy to extract the token
@@ -604,8 +604,8 @@ class MinimalFuzzballClient:
                         "mounts": mounts,
                         "cwd": "/tmp",
                         "script": setup_script,
-                        "env": env + [f"FB_CONFIG=secret://user/{config_secret_name}"] +
-                               ([f"FB_CA_CERT=secret://user/{cert_secret_name}"] if self._ca_cert_file is not None else []),
+                        "env": env + [f"FB_CONFIG_SECRET=secret://user/{config_secret_name}"] +
+                               ([f"FB_CA_CERT_SECRET=secret://user/{cert_secret_name}"] if self._ca_cert_file is not None else []),
                         "policy": {"timeout": {"execute": "5m"}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
                     },
@@ -616,7 +616,7 @@ class MinimalFuzzballClient:
                         "mounts": mounts,
                         "cwd": wd,
                         "script": nextflow_script,
-                        "env": env + ([f"FUZZBALL_CA_CERT={home}/.config/fuzzball/ca.crt"] if self._ca_cert_file is not None else []),
+                        "env": env + ([f"FB_CA_CERT={home}/.config/fuzzball/ca.crt"] if self._ca_cert_file is not None else []),
                         "policy": {"timeout": {"execute": args.timelimit}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
                         "requires": ["setup"],

@@ -211,10 +211,6 @@ class MinimalFuzzballClient:
                     self._host, self._port = c["address"].split(":")
                     self._token = c["auth"]["credentials"]["token"]
                     self._schema = "https"
-                    self._base_path = "/v2"  # API version path
-                    self._base_url = (
-                        f"{self._schema}://{self._host}:{self._port}{self._base_path}"
-                    )
                     self._config["contexts"].append(c)
                     context_found = True
                     break
@@ -228,6 +224,37 @@ class MinimalFuzzballClient:
 
         # Setup HTTP client with certificate verification
         self._setup_http_client(self._ca_cert_file)
+
+        # Auto-detect the API base path by trying common versions
+        detected_base_path = None
+        for version in ["v2", "v3", "v4"]:
+            test_base_path = f"/{version}"
+            test_base_url = f"{self._schema}://{self._host}:{self._port}{test_base_path}"
+
+            try:
+                # Test if this version works by trying the /version endpoint
+                response = self._http.request(
+                    "GET",
+                    f"{test_base_url}/version",
+                    headers={
+                        "Authorization": f"Bearer {self._token}",
+                        "Content-Type": "application/json",
+                    },
+                    timeout=30
+                )
+                if response.status < 400:
+                    detected_base_path = test_base_path
+                    break
+            except Exception:
+                continue
+
+        if detected_base_path is None:
+            logger.warning("Failed to detect API base path, falling back to /v2")
+            detected_base_path = "/v2"
+
+        self._base_path = detected_base_path
+        self._base_url = f"{self._schema}://{self._host}:{self._port}{self._base_path}"
+        logger.debug(f"Using API base path: {self._base_path}")
 
         # Determine version of the Fuzzball API server
         try:

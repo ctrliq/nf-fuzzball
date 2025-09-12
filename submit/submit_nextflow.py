@@ -233,7 +233,7 @@ class MinimalFuzzballClient:
         try:
             response = self._request("GET", "/version")
             version_data = json.loads(response.data.decode('utf-8'))
-            self._fb_version = version_data["version"]
+            self._fb_version = ".".join(version_data["version"].split(".")[0:2])
             logger.info(f"Connected to Fuzzball version {self._fb_version} API server")
         except urllib3.exceptions.HTTPError as e:
             raise ValueError(f"Failed to connect to Fuzzball API: {e}")
@@ -716,7 +716,8 @@ def parse_cli() -> argparse.Namespace:
         help=(
             "Base URI for the nf-fuzzball plugin. The submission script expects to find a zip file at "
             "<plugin-base-uri>/v<version>/nf-fuzzball-v<version>-stable-v<fuzzball-version>.zip. "
-            "All version strings are expected to start with a v"
+            "All version strings are expected to start with a v. The Fuzzball version is vMAJOR.MINOR, "
+            "the nf-fuzzball version is vMAJOR.MINOR.PATCH"
             "Defaults to [%(default)s]"
         ),
     )

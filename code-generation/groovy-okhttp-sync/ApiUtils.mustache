@@ -8,14 +8,22 @@ import groovy.json.JsonGenerator
 import groovy.json.JsonSlurper
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import java.security.KeyStore
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
-import org.apache.commons.lang3.StringUtils
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManagerFactory
+import javax.net.ssl.X509TrustManager
 import okhttp3.HttpUrl
 import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.Response
+import org.apache.commons.lang3.StringUtils
 
 import {{apiPackage}}.ApiConfig
 
@@ -25,6 +33,7 @@ import {{apiPackage}}.ApiConfig
 @Slf4j
 @CompileStatic
 class ApiUtils {
+    private static final Logger staticLog = LoggerFactory.getLogger(ApiUtils.class)
     static final String GET = 'GET'
     static final String POST = 'POST'
     static final String PUT = 'PUT'
@@ -38,10 +47,63 @@ class ApiUtils {
             }
             .build()
 
-    static final OkHttpClient CLIENT = new OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .build()
+    /**
+     * Creates an OkHttpClient with optional custom CA certificate support.
+     * Checks for FB_CA_CERT environment variable to configure SSL with custom certificates.
+     *
+     * @return Configured OkHttpClient instance
+     */
+    private static OkHttpClient createHttpClient() {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+
+        // Check for custom CA certificate
+        String caCertPath = System.getenv('FB_CA_CERT')
+        if (caCertPath) {
+            try {
+                // Load the custom CA certificate
+                File caCertFile = new File(caCertPath)
+                if (caCertFile.exists()) {
+                    staticLog.debug("Loading custom CA certificate from: ${caCertPath}")
+
+                    CertificateFactory cf = CertificateFactory.getInstance('X.509')
+                    X509Certificate caCert = (X509Certificate) cf.generateCertificate(
+                        new FileInputStream(caCertFile)
+                    )
+
+                    // Create KeyStore with the custom CA
+                    KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
+                    keyStore.load(null, null)
+                    keyStore.setCertificateEntry('ca', caCert)
+
+                    // Create TrustManager
+                    TrustManagerFactory tmf = TrustManagerFactory.getInstance(
+                        TrustManagerFactory.getDefaultAlgorithm()
+                    )
+                    tmf.init(keyStore)
+
+                    // Configure SSL context
+                    SSLContext sslContext = SSLContext.getInstance('TLS')
+                    sslContext.init(null, tmf.getTrustManagers(), null)
+
+                    builder.sslSocketFactory(sslContext.getSocketFactory(),
+                                           (X509TrustManager) tmf.getTrustManagers()[0])
+
+                    staticLog.info("Successfully configured custom CA certificate from ${caCertPath}")
+                } else {
+                    staticLog.warn("CA certificate file not found: ${caCertPath}")
+                }
+            } catch (Exception e) {
+                staticLog.error("Failed to configure custom CA certificate: ${e.message}", e)
+                // Continue with default SSL settings
+            }
+        }
+
+        return builder.build()
+    }
+
+    static final OkHttpClient CLIENT = createHttpClient()
 
     final ApiConfig config
 

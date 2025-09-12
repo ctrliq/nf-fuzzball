@@ -454,6 +454,9 @@ class MinimalFuzzballClient:
         home = f"{wd}/{home_base}"
         files_base = "files"
         files = f"{wd}/{files_base}"
+        ca_cert_path = f"{home}/.config/fuzzball/ca.crt"
+        config_path = f"{home}/.config/fuzzball/config.yaml"
+
         secret_name = str(uuid.uuid4())
         # we use a v prfix for tag but gradle idiomatically does not use a prefix
         plugin_version = args.nf_fuzzball_version
@@ -539,21 +542,26 @@ class MinimalFuzzballClient:
         setup_script = textwrap.dedent(f"""\
         #! /bin/sh
         mkdir -p {wd} || exit 1
-        rm -rf $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} \\
-          && mkdir -p $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} $HOME/.config/fuzzball \\
-          && unzip {SCRATCH_MOUNT}/nf-fuzzball.zip -d $HOME/.nextflow/plugins/nf-fuzzball-{plugin_version} > /dev/null \\
-          && echo "$FB_CONFIG_SECRET" | base64 -d > $HOME/.config/fuzzball/config.yaml \\
+        rm -rf {home}/.nextflow/plugins/nf-fuzzball-{plugin_version} \\
+          && mkdir -p {home}/.nextflow/plugins/nf-fuzzball-{plugin_version} {home}/.config/fuzzball \\
+          && unzip {SCRATCH_MOUNT}/nf-fuzzball.zip -d {home}/.nextflow/plugins/nf-fuzzball-{plugin_version} > /dev/null \\
+          && echo "$FB_CONFIG_SECRET" | base64 -d > {config_path} \\
           || exit 1
 
         # Setup CA certificate if provided
         if [ ! -z "$FB_CA_CERT_SECRET" ]; then
-            echo "$FB_CA_CERT_SECRET" | base64 -d > $HOME/.config/fuzzball/ca.crt || exit 1
+            echo "$FB_CA_CERT_SECRET" | base64 -d > {ca_cert_path} || exit 1
         fi
 
         # there is only a single context in the config file so it's easy to extract the token
         TOKEN="$(awk '/token:/ {{print $2}}' $HOME/.config/fuzzball/config.yaml)"
+        # Set up curl CA certificate option if available
+        CURL_CA_OPT=""
+        if [ ! -z "$FB_CA_CERT_SECRET" ]; then
+            CURL_CA_OPT="--cacert {ca_cert_path}"
+        fi
         # clean up the secrets but don't fail if there is an error
-        curl -s -X DELETE "{self._base_url}/secrets/{config_secret_id}" \\
+        curl -s $CURL_CA_OPT -X DELETE "{self._base_url}/secrets/{config_secret_id}" \\
             -H "Authorization: Bearer $TOKEN" \\
             -H "Accept: application/json" &> /dev/null && echo "temp config secret deleted" || echo "temp config secret not deleted"
         """)
@@ -561,7 +569,7 @@ class MinimalFuzzballClient:
         # Add certificate secret cleanup if one was created
         if cert_secret_id is not None:
             setup_script += textwrap.dedent(f"""\
-        curl -s -X DELETE "{self._base_url}/secrets/{cert_secret_id}" \\
+        curl -s $CURL_CA_OPT -X DELETE "{self._base_url}/secrets/{cert_secret_id}" \\
             -H "Authorization: Bearer $TOKEN" \\
             -H "Accept: application/json" &> /dev/null && echo "temp cert secret deleted" || echo "temp cert secret not deleted"
         """)
@@ -616,7 +624,7 @@ class MinimalFuzzballClient:
                         "mounts": mounts,
                         "cwd": wd,
                         "script": nextflow_script,
-                        "env": env + ([f"FB_CA_CERT={home}/.config/fuzzball/ca.crt"] if self._ca_cert_file is not None else []),
+                        "env": env + ([f"FB_CA_CERT={ca_cert_path}"] if self._ca_cert_file is not None else []),
                         "policy": {"timeout": {"execute": args.timelimit}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
                         "requires": ["setup"],

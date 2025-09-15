@@ -36,60 +36,63 @@ jobs:
         id: set-matrix
         run: |
           # Find available schema versions and determine latest
-          AVAILABLE_SCHEMAS=$(ls code-generation/schemas/fuzzball-v*-openapi.json | sed 's/.*fuzzball-v\([^-]*\)-.*/v\1/' | sort -V)
-          LATEST_SCHEMA=$(echo "$AVAILABLE_SCHEMAS" | tail -1)
-          echo "Available schemas: $(echo $AVAILABLE_SCHEMAS | tr '\n' ' ')"
+          mapfile -t AVAILABLE_SCHEMAS < <(find code-generation/schemas/ -name 'fuzzball-v*-openapi.json' | sed 's/.*fuzzball-v\([^-]*\)-.*/v\1/' | sort -V)
+          LATEST_SCHEMA="${AVAILABLE_SCHEMAS[-1]}"
+          echo "Available schemas: ${AVAILABLE_SCHEMAS[*]}"
           echo "Latest schema detected: $LATEST_SCHEMA"
 
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            # PR: Build only latest for testing
-            MATRIX=$(jq -n --arg v "$LATEST_SCHEMA" '{fuzzball_version: [$v]}')
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            SELECTED_VERSIONS=( "${LATEST_SCHEMA}" )
             echo "PR build: using latest schema $LATEST_SCHEMA"
           elif [ "${{ github.ref_type }}" = "tag" ]; then
-            # Tag push: Build only latest for release
-            MATRIX=$(jq -n --arg v "$LATEST_SCHEMA" '{fuzzball_version: [$v]}')
+            SELECTED_VERSIONS=( "${LATEST_SCHEMA}" )
             echo "Tag build: using latest schema $LATEST_SCHEMA"
           else
             # Manual dispatch: Parse input string
             INPUT_VERSIONS="${{ github.event.inputs.schema_versions }}"
             echo "Input versions: $INPUT_VERSIONS"
 
-            if [ "$INPUT_VERSIONS" = "all" ]; then
-              SELECTED_VERSIONS=$(echo "$AVAILABLE_SCHEMAS" | tr '\n' ' ')
-              echo "Building all available versions: $SELECTED_VERSIONS"
+            if [[ "$INPUT_VERSIONS" == "all" ]]; then
+              SELECTED_VERSIONS=( "${AVAILABLE_SCHEMAS[@]}" )
+              echo "Building all available versions: ${SELECTED_VERSIONS[*]}"
             elif [ "$INPUT_VERSIONS" = "latest" ]; then
-              SELECTED_VERSIONS="$LATEST_SCHEMA"
-              echo "Building latest version: $SELECTED_VERSIONS"
+              SELECTED_VERSIONS=( "$LATEST_SCHEMA" )
+              echo "Building latest version: ${SELECTED_VERSIONS[*]}"
             else
               # Parse comma-separated list and validate
-              SELECTED_VERSIONS=$(echo "$INPUT_VERSIONS" | tr ',' ' ' | tr -s ' ')
-              echo "Building specified versions: $SELECTED_VERSIONS"
-            fi
+              mapfile -t _VERSIONS < <( sed 's/,/\n/g' <<< "${INPUT_VERSIONS}" | tr -d " " )
 
-            # Validate selected versions exist and construct matrix
-            VALID_VERSIONS=""
-            for version in $SELECTED_VERSIONS; do
-              if echo "$AVAILABLE_SCHEMAS" | grep -q "^${version}$"; then
-                VALID_VERSIONS="$VALID_VERSIONS $version"
-              else
-                echo "Warning: Schema version '$version' not found in available schemas: $(echo $AVAILABLE_SCHEMAS | tr '\n' ' ')" >&2
-                echo "Skipping invalid version: $version" >&2
-              fi
-            done
+              # Validate selected versions exist and construct matrix
+              SELECTED_VERSIONS=()
+              for version in "${_VERSIONS[@]}"; do
+                # Check if version exists in available schemas array
+                found=false
+                for available in "${AVAILABLE_SCHEMAS[@]}"; do
+                  if [[ "$available" == "$version" ]]; then
+                    found=true
+                    break
+                  fi
+                done
+                if [[ "$found" == "true" ]]; then
+                  SELECTED_VERSIONS+=( "$version" )
+                else
+                  echo "Warning: Schema version '$version' not found in available schemas: ${AVAILABLE_SCHEMAS[*]}" >&2
+                  echo "Skipping invalid version: $version" >&2
+                fi
+              done
+            fi
 
             # If no valid versions found, default to latest
-            if [ -z "$VALID_VERSIONS" ]; then
+            if [[ "${#SELECTED_VERSIONS[@]}" -eq 0 ]]; then
               echo "No valid versions found, defaulting to latest: $LATEST_SCHEMA" >&2
-              VALID_VERSIONS="$LATEST_SCHEMA"
+              SELECTED_VERSIONS+=( "$LATEST_SCHEMA" )
             fi
 
-            # Construct matrix with valid versions
-            MATRIX=$(echo "$VALID_VERSIONS" | tr ' ' '\n' | grep -v '^$' | jq -Rs 'split("\n") | map(select(. != "")) | {fuzzball_version: .}')
-
-            echo "Manual build: building versions$(echo $VALID_VERSIONS | tr ' ' '\n' | sed 's/^/ /')"
+            echo "Manual build: building versions: ${SELECTED_VERSIONS[*]}"
           fi
 
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          # Output matrix in correct format for GitHub Actions
+          echo "matrix=$(jq -cn '{"fuzzball_version": $ARGS.positional}' --args "${SELECTED_VERSIONS[@]}")" >> "$GITHUB_OUTPUT"
 
   build:
     name: Build nf-fuzzball
@@ -112,20 +115,20 @@ jobs:
           SCHEMA_FILE="code-generation/schemas/fuzzball-${FUZZBALL_VERSION}-openapi.json"
 
           # Validate schema file exists
-          if [ ! -f "$SCHEMA_FILE" ]; then
+          if [[ ! -f "$SCHEMA_FILE" ]]; then
             echo "Error: Schema file $SCHEMA_FILE does not exist"
             exit 1
           fi
 
-          echo "FUZZBALL_VERSION=$FUZZBALL_VERSION" >> $GITHUB_ENV
-          echo "SCHEMA_FILE=$SCHEMA_FILE" >> $GITHUB_ENV
+          echo "FUZZBALL_VERSION=$FUZZBALL_VERSION" >> "$GITHUB_ENV"
+          echo "SCHEMA_FILE=$SCHEMA_FILE" >> "$GITHUB_ENV"
           echo "Building for Fuzzball version: $FUZZBALL_VERSION using $SCHEMA_FILE"
 
       - name: Set plugin version (starts with 'v')
         run: |
           # PLUGIN_VERSION always comes from gradle but we make sure it also starts with a v
-          PLUGIN_VERSION=$(grep -E "version\s*=" build.gradle | head -1 | sed -E "s/.*version\s*=\s*'([^']+)'.*/\1/")
-          echo "PLUGIN_VERSION=v${PLUGIN_VERSION#v}" >> $GITHUB_ENV
+          PLUGIN_VERSION="$(grep -E "version\s*=" build.gradle | head -1 | sed -E "s/.*version\s*=\s*'([^']+)'.*/\1/")"
+          echo "PLUGIN_VERSION=v${PLUGIN_VERSION#v}" >> "$GITHUB_ENV"
 
       - name: Check plugin in build.gradle matches tag
         if: github.ref_type == 'tag'
@@ -159,8 +162,8 @@ jobs:
         run: |
           aname="nf-fuzzball-${{ env.PLUGIN_VERSION }}-stable-${{ matrix.fuzzball_version }}.zip"
           echo "Renaming build artifact to ${aname}"
-          mv build/distributions/nf-fuzzball-*.zip build/distributions/${aname}
-          echo "ARTIFACT_NAME=${aname}" >> $GITHUB_ENV
+          mv build/distributions/nf-fuzzball-*.zip "build/distributions/${aname}"
+          echo "ARTIFACT_NAME=${aname}" >> "$GITHUB_ENV"
 
       - name: Create or update release and attach artifact
         if: github.ref_type == 'tag' && (github.event_name == 'push' || github.event.inputs.publish_release == 'true')

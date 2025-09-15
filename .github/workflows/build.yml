@@ -13,30 +13,113 @@ on:
         required: true
         default: false
         type: boolean
+      schema_versions:
+        description: 'Fuzzball versions to build - Examples: "latest", "all", "v3.0", "v2.2,v3.0"'
+        required: true
+        default: 'latest'
+        type: string
 
 jobs:
-  build:
-    name: Build nf-fuzzball
+  determine-matrix:
+    name: Determine build matrix
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Determine which schemas to build
+        id: set-matrix
+        run: |
+          # Find available schema versions and determine latest
+          AVAILABLE_SCHEMAS=$(ls code-generation/schemas/fuzzball-v*-openapi.json | sed 's/.*fuzzball-v\([^-]*\)-.*/v\1/' | sort -V)
+          LATEST_SCHEMA=$(echo "$AVAILABLE_SCHEMAS" | tail -1)
+          echo "Available schemas: $(echo $AVAILABLE_SCHEMAS | tr '\n' ' ')"
+          echo "Latest schema detected: $LATEST_SCHEMA"
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # PR: Build only latest for testing
+            MATRIX=$(jq -n --arg v "$LATEST_SCHEMA" '{fuzzball_version: [$v]}')
+            echo "PR build: using latest schema $LATEST_SCHEMA"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
+            # Tag push: Build only latest for release
+            MATRIX=$(jq -n --arg v "$LATEST_SCHEMA" '{fuzzball_version: [$v]}')
+            echo "Tag build: using latest schema $LATEST_SCHEMA"
+          else
+            # Manual dispatch: Parse input string
+            INPUT_VERSIONS="${{ github.event.inputs.schema_versions }}"
+            echo "Input versions: $INPUT_VERSIONS"
+
+            if [ "$INPUT_VERSIONS" = "all" ]; then
+              SELECTED_VERSIONS=$(echo "$AVAILABLE_SCHEMAS" | tr '\n' ' ')
+              echo "Building all available versions: $SELECTED_VERSIONS"
+            elif [ "$INPUT_VERSIONS" = "latest" ]; then
+              SELECTED_VERSIONS="$LATEST_SCHEMA"
+              echo "Building latest version: $SELECTED_VERSIONS"
+            else
+              # Parse comma-separated list and validate
+              SELECTED_VERSIONS=$(echo "$INPUT_VERSIONS" | tr ',' ' ' | tr -s ' ')
+              echo "Building specified versions: $SELECTED_VERSIONS"
+            fi
+
+            # Validate selected versions exist and construct matrix
+            VALID_VERSIONS=""
+            for version in $SELECTED_VERSIONS; do
+              if echo "$AVAILABLE_SCHEMAS" | grep -q "^${version}$"; then
+                VALID_VERSIONS="$VALID_VERSIONS $version"
+              else
+                echo "Warning: Schema version '$version' not found in available schemas: $(echo $AVAILABLE_SCHEMAS | tr '\n' ' ')" >&2
+                echo "Skipping invalid version: $version" >&2
+              fi
+            done
+
+            # If no valid versions found, default to latest
+            if [ -z "$VALID_VERSIONS" ]; then
+              echo "No valid versions found, defaulting to latest: $LATEST_SCHEMA" >&2
+              VALID_VERSIONS="$LATEST_SCHEMA"
+            fi
+
+            # Construct matrix with valid versions
+            MATRIX=$(echo "$VALID_VERSIONS" | tr ' ' '\n' | grep -v '^$' | jq -Rs 'split("\n") | map(select(. != "")) | {fuzzball_version: .}')
+
+            echo "Manual build: building versions$(echo $VALID_VERSIONS | tr ' ' '\n' | sed 's/^/ /')"
+          fi
+
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+  build:
+    name: Build nf-fuzzball
+    needs: determine-matrix
+    runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      matrix: ${{fromJson(needs.determine-matrix.outputs.matrix)}}
 
     steps:
-
-      - name: Get Fuzzball version on stable (starts with 'v')
-        run: |
-          FUZZBALL_VERSION=$(curl -s https://api.stable.fuzzball.ciq.dev/v2/version | jq -r '.version')
-          # make sure Fuzzball version starts with a v
-          echo "FUZZBALL_VERSION=v${FUZZBALL_VERSION#v}" >> $GITHUB_ENV
-
-      - name: Environment
-        run: env | sort
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           submodules: true
+
+      - name: Set Fuzzball version and validate schema
+        run: |
+          FUZZBALL_VERSION="${{ matrix.fuzzball_version }}"
+          SCHEMA_FILE="code-generation/schemas/fuzzball-${FUZZBALL_VERSION}-openapi.json"
+
+          # Validate schema file exists
+          if [ ! -f "$SCHEMA_FILE" ]; then
+            echo "Error: Schema file $SCHEMA_FILE does not exist"
+            exit 1
+          fi
+
+          echo "FUZZBALL_VERSION=$FUZZBALL_VERSION" >> $GITHUB_ENV
+          echo "SCHEMA_FILE=$SCHEMA_FILE" >> $GITHUB_ENV
+          echo "Building for Fuzzball version: $FUZZBALL_VERSION using $SCHEMA_FILE"
 
       - name: Set plugin version (starts with 'v')
         run: |
@@ -65,7 +148,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Compile
-        run: ./gradlew assemble
+        run: ./gradlew assemble -PopenapiFile="${{ env.SCHEMA_FILE }}"
 
       - name: Tests
         run: ./gradlew check
@@ -74,9 +157,10 @@ jobs:
 
       - name: Update name of build artifact
         run: |
-          aname="nf-fuzzball-${{ env.PLUGIN_VERSION }}-stable-${{ env.FUZZBALL_VERSION }}.zip"
+          aname="nf-fuzzball-${{ env.PLUGIN_VERSION }}-stable-${{ matrix.fuzzball_version }}.zip"
           echo "Renaming build artifact to ${aname}"
           mv build/distributions/nf-fuzzball-*.zip build/distributions/${aname}
+          echo "ARTIFACT_NAME=${aname}" >> $GITHUB_ENV
 
       - name: Create or update release and attach artifact
         if: github.ref_type == 'tag' && (github.event_name == 'push' || github.event.inputs.publish_release == 'true')
@@ -86,5 +170,5 @@ jobs:
           tag: ${{ env.PLUGIN_VERSION }}
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
-          artifacts: "build/distributions/nf-fuzzball-${{ env.PLUGIN_VERSION }}-stable-${{ env.FUZZBALL_VERSION }}.zip"
+          artifacts: "build/distributions/${{ env.ARTIFACT_NAME }}"
           artifactContentType: "application/zip"

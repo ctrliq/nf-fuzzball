@@ -1,5 +1,9 @@
+// Copyright 2025 CIQ, Inc. All rights reserved.
+
 plugins {
-    id 'io.nextflow.nextflow-plugin' version '0.0.1-alpha6'
+    // https://plugins.gradle.org/plugin/io.nextflow.nextflow-plugin
+    // https://github.com/nextflow-io/nextflow-plugin-gradle
+    id 'io.nextflow.nextflow-plugin' version '1.0.0-beta.6'
 }
 
 dependencies {
@@ -10,8 +14,9 @@ dependencies {
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.1'
 }
 
-// plugin version
-version = '0.0.1'
+// plugin version - gradle by convention seems to not use v prefixes. That does
+// cause some issues in other places but we'll stick with convention
+version = '0.1.0'
 
 nextflowPlugin {
     // minimum nextflow version
@@ -25,12 +30,6 @@ nextflowPlugin {
         'com.ciq.fuzzball.FuzzballExecutor'
     ]
 
-    publishing {
-        registry {
-            url = 'https://plugins.nextflow.io/api'
-            authToken = project.findProperty('registry_access_token')
-        }
-    }
 }
 
 
@@ -42,12 +41,21 @@ tasks.register('generateFuzzballSdk', Exec) {
     final codegenFile = codegenDir.file('generate')
     group = 'build'
     description = 'Generate Fuzzball SDK'
-    def openapiUrl = project.hasProperty('openapiUrl') ? project.property('openapiUrl') : 'https://api.stable.fuzzball.ciq.dev/v2/schema'
     inputs.files(
         fileTree(dir: codegenDir, include: ['**/*.yaml', '**/*.mustache', '**/*.sh'])
     )
     outputs.dir generatedSdkDir
-    commandLine codegenFile.getAsFile().getAbsolutePath(), "--url=${openapiUrl}", generatedSdkDir.get().getAsFile().getAbsolutePath()
+
+    // Build commandLine args based on which property was provided
+    def args = [codegenFile.getAsFile().getAbsolutePath()]
+    if (project.hasProperty('openapiFile')) {
+        args.add("--file=${project.property('openapiFile')}")
+    } else if (project.hasProperty('openapiUrl')) {
+        args.add("--url=${project.property('openapiUrl')}")
+    }
+    args.add(generatedSdkDir.get().getAsFile().getAbsolutePath())
+
+    commandLine args
 }
 compileGroovy.dependsOn tasks.named('generateFuzzballSdk')
 

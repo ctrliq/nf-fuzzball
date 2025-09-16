@@ -7,6 +7,11 @@
 .venv
 .ruff_cache
 .envrc
+*.pyc
+
+# locally customizable script to push a build of a development version to a s3/http accessible location for testing
+push_dev.local
+claude.md
 
 # ignore the code generator jars downloaded by the fuzzball api generation script
 openapi-generator-cli*.jar

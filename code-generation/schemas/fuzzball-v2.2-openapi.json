@@ -1,0 +1,6335 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Fuzzball API",
+    "version": "2.0",
+    "contact": {
+      "name": "CtrlIQ, Inc",
+      "url": "https://ciq.co",
+      "email": "info@ciq.co"
+    }
+  },
+  "tags": [
+    {
+      "name": "AccountService"
+    },
+    {
+      "name": "ApplicationService"
+    },
+    {
+      "name": "ClusterService"
+    },
+    {
+      "name": "OrganizationService"
+    },
+    {
+      "name": "ProvisionService"
+    },
+    {
+      "name": "SecretService"
+    },
+    {
+      "name": "StorageClassService"
+    },
+    {
+      "name": "StorageVolumeService"
+    },
+    {
+      "name": "UserService"
+    },
+    {
+      "name": "VersionService"
+    },
+    {
+      "name": "WorkflowService"
+    },
+    {
+      "name": "WorkflowGatewayService"
+    },
+    {
+      "name": "WorkflowGenerateService"
+    }
+  ],
+  "basePath": "/v2",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/accounts": {
+      "get": {
+        "operationId": "ListAccounts",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListAccountsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "showUserAccounts",
+            "description": "only valid for org/platform owners, by default all users/owners will only\nsee their own user account",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          }
+        ],
+        "tags": [
+          "AccountService"
+        ]
+      },
+      "post": {
+        "operationId": "CreateAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Account"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateAccountRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AccountService"
+        ]
+      }
+    },
+    "/accounts/update-user-account": {
+      "get": {
+        "operationId": "UpdateUserAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UpdateUserAccountResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "tags": [
+          "AccountService"
+        ]
+      }
+    },
+    "/accounts/{id}": {
+      "get": {
+        "operationId": "GetAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Account"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AccountService"
+        ]
+      },
+      "delete": {
+        "operationId": "DeleteAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AccountService"
+        ]
+      },
+      "patch": {
+        "operationId": "UpdateAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Account"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateAccountBody"
+            }
+          }
+        ],
+        "tags": [
+          "AccountService"
+        ]
+      }
+    },
+    "/accounts/{id}/members": {
+      "get": {
+        "operationId": "ListAccountMembers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UserListResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "relationship",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "ACCOUNT_MEMBER",
+              "ACCOUNT_OWNER"
+            ],
+            "default": "ACCOUNT_MEMBER"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AccountService"
+        ]
+      },
+      "post": {
+        "operationId": "AddAccountMember",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AddAccountMemberBody"
+            }
+          }
+        ],
+        "tags": [
+          "AccountService"
+        ]
+      },
+      "put": {
+        "operationId": "UpdateAccountMember",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateAccountMemberBody"
+            }
+          }
+        ],
+        "tags": [
+          "AccountService"
+        ]
+      }
+    },
+    "/accounts/{id}/members/{userId}": {
+      "delete": {
+        "operationId": "RemoveAccountMember",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "relationship",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "ACCOUNT_MEMBER",
+              "ACCOUNT_OWNER"
+            ],
+            "default": "ACCOUNT_MEMBER"
+          }
+        ],
+        "tags": [
+          "AccountService"
+        ]
+      }
+    },
+    "/accounts/{id}/token": {
+      "get": {
+        "operationId": "SelectAccount",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/SelectAccountResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "AccountService"
+        ]
+      }
+    },
+    "/applications": {
+      "get": {
+        "operationId": "ListApplications",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListApplicationsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      },
+      "post": {
+        "operationId": "CreateApplication",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Application"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateApplicationRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/applications/categories": {
+      "get": {
+        "operationId": "ListApplicationCategories",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListApplicationCategoriesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/applications/{id}": {
+      "get": {
+        "operationId": "GetApplication",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Application"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      },
+      "delete": {
+        "operationId": "DeleteApplication",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      },
+      "patch": {
+        "operationId": "UpdateApplication",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Application"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateApplicationBody"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/applications/{id}:bundle": {
+      "get": {
+        "operationId": "GetApplicationBundle",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetApplicationBundleResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "excludedParts",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "TEMPLATE",
+                "VALUES",
+                "METADATA"
+              ]
+            },
+            "collectionFormat": "multi"
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/applications/{id}:disable": {
+      "put": {
+        "operationId": "DisableApplication",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationMetadata"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/applications/{id}:enable": {
+      "put": {
+        "operationId": "EnableApplication",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ApplicationMetadata"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/applications/{id}:render": {
+      "post": {
+        "operationId": "RenderApplication",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/RenderApplicationTemplateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RenderApplicationBody"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/applications/{id}:upsert": {
+      "patch": {
+        "operationId": "UpsertApplication",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Application"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpsertApplicationBody"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/applications:copy": {
+      "post": {
+        "operationId": "CopyApplication",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Application"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CopyApplicationRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/applications:render": {
+      "post": {
+        "operationId": "RenderApplicationTemplate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/RenderApplicationTemplateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RenderApplicationTemplateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/applications:start": {
+      "post": {
+        "operationId": "StartApplication",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/WorkflowIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/StartApplicationRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/catalog/repositories": {
+      "get": {
+        "operationId": "ListCatalogRepositories",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListCatalogRepositoriesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "tags": [
+          "ApplicationService"
+        ]
+      },
+      "post": {
+        "operationId": "AddCatalogRepository",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/CatalogRepository"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AddCatalogRepositoryRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/catalog/repositories/{id}": {
+      "get": {
+        "operationId": "GetCatalogRepository",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/CatalogRepository"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      },
+      "delete": {
+        "operationId": "DeleteCatalogRepository",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      },
+      "patch": {
+        "operationId": "UpdateCatalogRepository",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/CatalogRepositorySummary"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateCatalogRepositoryBody"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/catalog/repositories/{id}:reload": {
+      "post": {
+        "operationId": "ReloadCatalogRepository",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ReloadCatalogRepositoryResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ReloadCatalogRepositoryBody"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/catalog/repositories:import": {
+      "post": {
+        "operationId": "ImportCatalogRepository",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ImportCatalogRepositoryResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ImportCatalogRepositoryRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/catalog/sync:updateSchedule": {
+      "post": {
+        "operationId": "ScheduleCatalogSync",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ScheduleCatalogSyncRequest"
+            }
+          }
+        ],
+        "tags": [
+          "ApplicationService"
+        ]
+      }
+    },
+    "/cluster/{id}": {
+      "get": {
+        "operationId": "GetCluster",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Cluster"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ClusterService"
+        ]
+      }
+    },
+    "/clusters": {
+      "get": {
+        "operationId": "ListClusters",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListClustersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ClusterService"
+        ]
+      }
+    },
+    "/organization": {
+      "get": {
+        "operationId": "GetOrganization",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Organization"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "tags": [
+          "OrganizationService"
+        ]
+      },
+      "patch": {
+        "operationId": "UpdateOrganization",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Organization"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateOrganizationRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OrganizationService"
+        ]
+      }
+    },
+    "/organization/members": {
+      "get": {
+        "operationId": "ListOrganizationMembers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UserListResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "relationship",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "ORGANIZATION_MEMBER",
+              "ORGANIZATION_OWNER"
+            ],
+            "default": "ORGANIZATION_MEMBER"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "OrganizationService"
+        ]
+      },
+      "post": {
+        "operationId": "AddOrganizationMember",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AddOrganizationMemberRequest"
+            }
+          }
+        ],
+        "tags": [
+          "OrganizationService"
+        ]
+      }
+    },
+    "/organization/members/{id}": {
+      "delete": {
+        "operationId": "RemoveOrganizationMember",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "object",
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "OrganizationService"
+        ]
+      },
+      "put": {
+        "operationId": "UpdateOrganizationMember",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "relationship",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "ORGANIZATION_MEMBER",
+              "ORGANIZATION_OWNER"
+            ],
+            "default": "ORGANIZATION_MEMBER"
+          }
+        ],
+        "tags": [
+          "OrganizationService"
+        ]
+      }
+    },
+    "/organization/secrets": {
+      "get": {
+        "operationId": "ListOrganizationSecrets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListSecretsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SecretService"
+        ]
+      },
+      "put": {
+        "operationId": "CreateOrganizationSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/SecretIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateSecretRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SecretService"
+        ]
+      }
+    },
+    "/organization/secrets/{id}": {
+      "get": {
+        "operationId": "GetOrganizationSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Secret"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SecretService"
+        ]
+      },
+      "delete": {
+        "operationId": "DeleteOrganizationSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/SecretIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SecretService"
+        ]
+      },
+      "patch": {
+        "operationId": "UpdateOrganizationSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/SecretIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateOrganizationSecretBody"
+            }
+          }
+        ],
+        "tags": [
+          "SecretService"
+        ]
+      }
+    },
+    "/profile": {
+      "get": {
+        "operationId": "GetUserProfile",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UserProfile"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "tags": [
+          "UserService"
+        ]
+      },
+      "patch": {
+        "operationId": "UpdateUserProfile",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UserProfile"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateUserProfileRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/profile/avatar": {
+      "patch": {
+        "operationId": "UpdateUserProfileAvatar",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UserProfile"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateUserProfileAvatarRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/profile/settings": {
+      "patch": {
+        "summary": "TODO: given this is more of a backend support item we may want to remove this from the public api.",
+        "operationId": "UpdateUserProfileSettings",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UserProfile"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "TODO: given this is more of a backend support item we may want to remove this from the public api.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateUserProfileSettingsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "UserService"
+        ]
+      }
+    },
+    "/provision/definitions": {
+      "get": {
+        "operationId": "ListProvisionDefinitions",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListProvisionDefinitionsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "inactive",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProvisionService"
+        ]
+      }
+    },
+    "/provision/definitions/{id}": {
+      "get": {
+        "operationId": "GetProvisionDefinition",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ProvisionDefinition"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "ProvisionService"
+        ]
+      }
+    },
+    "/secrets": {
+      "get": {
+        "operationId": "ListSecrets",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListSecretsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SecretService"
+        ]
+      },
+      "put": {
+        "operationId": "CreateSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/SecretIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateSecretRequest"
+            }
+          }
+        ],
+        "tags": [
+          "SecretService"
+        ]
+      }
+    },
+    "/secrets/{id}": {
+      "get": {
+        "operationId": "GetSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Secret"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SecretService"
+        ]
+      },
+      "delete": {
+        "operationId": "DeleteSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/SecretIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "SecretService"
+        ]
+      },
+      "patch": {
+        "operationId": "UpdateSecret",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/SecretIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateSecretBody"
+            }
+          }
+        ],
+        "tags": [
+          "SecretService"
+        ]
+      }
+    },
+    "/storage-classes": {
+      "get": {
+        "operationId": "ListStorageClasses",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListStorageClassesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "StorageClassService"
+        ]
+      }
+    },
+    "/storage-classes/{id}": {
+      "get": {
+        "operationId": "GetStorageClass",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/StorageClassInfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "StorageClassService"
+        ]
+      }
+    },
+    "/stream/workflow/attach": {
+      "post": {
+        "operationId": "WorkflowGatewayAttach",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/WorkflowGatewayAttachResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/Status"
+                }
+              },
+              "title": "Stream result of WorkflowGatewayAttachResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": " (streaming inputs)",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/WorkflowGatewayAttachRequest"
+            }
+          }
+        ],
+        "tags": [
+          "WorkflowGatewayService"
+        ]
+      }
+    },
+    "/stream/workflow/exec": {
+      "post": {
+        "operationId": "WorkflowGatewayExec",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/WorkflowGatewayExecResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/Status"
+                }
+              },
+              "title": "Stream result of WorkflowGatewayExecResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": " (streaming inputs)",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/WorkflowGatewayExecRequest"
+            }
+          }
+        ],
+        "tags": [
+          "WorkflowGatewayService"
+        ]
+      }
+    },
+    "/stream/workflow/generate": {
+      "post": {
+        "operationId": "GenerateWorkflow",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/GenerateWorkflowServerMessage"
+                },
+                "error": {
+                  "$ref": "#/definitions/Status"
+                }
+              },
+              "title": "Stream result of GenerateWorkflowServerMessage"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": " (streaming inputs)",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/GenerateWorkflowClientMessage"
+            }
+          }
+        ],
+        "tags": [
+          "WorkflowGenerateService"
+        ]
+      }
+    },
+    "/version": {
+      "get": {
+        "summary": "Get the fuzzball agent version",
+        "operationId": "VersionGet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/VersionGetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "tags": [
+          "VersionService"
+        ]
+      }
+    },
+    "/volumes": {
+      "get": {
+        "operationId": "ListVolumes",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListVolumesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "StorageVolumeService"
+        ]
+      },
+      "post": {
+        "operationId": "CreateVolume",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/VolumeIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CreateVolumeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "StorageVolumeService"
+        ]
+      }
+    },
+    "/volumes/{id}": {
+      "get": {
+        "operationId": "GetVolume",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/VolumeInfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "StorageVolumeService"
+        ]
+      },
+      "delete": {
+        "operationId": "DeleteVolume",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/VolumeIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "StorageVolumeService"
+        ]
+      },
+      "put": {
+        "operationId": "UpdateVolume",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/VolumeIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/UpdateVolumeBody"
+            }
+          }
+        ],
+        "tags": [
+          "StorageVolumeService"
+        ]
+      }
+    },
+    "/volumes/{id}:set-status": {
+      "patch": {
+        "operationId": "SetVolumeStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/SetVolumeStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/SetVolumeStatusBody"
+            }
+          }
+        ],
+        "tags": [
+          "StorageVolumeService"
+        ]
+      }
+    },
+    "/workflows": {
+      "get": {
+        "summary": "List workflows",
+        "operationId": "ListWorkflows",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ListWorkflowsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "status",
+            "description": "Deprecated as this was not used and we need ability to filter by multiple statuses.\n\n - STAGE_STATUS_UNSPECIFIED: also used for pending",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "STAGE_STATUS_UNSPECIFIED",
+              "STAGE_STATUS_STARTED",
+              "STAGE_STATUS_FINISHED",
+              "STAGE_STATUS_FAILED",
+              "STAGE_STATUS_CANCELED"
+            ],
+            "default": "STAGE_STATUS_UNSPECIFIED"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "requestedStatuses",
+            "description": "Allows multiple statuses to be requested.\n\n - STAGE_STATUS_UNSPECIFIED: also used for pending",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "STAGE_STATUS_UNSPECIFIED",
+                "STAGE_STATUS_STARTED",
+                "STAGE_STATUS_FINISHED",
+                "STAGE_STATUS_FAILED",
+                "STAGE_STATUS_CANCELED"
+              ]
+            },
+            "collectionFormat": "multi"
+          },
+          {
+            "name": "scope",
+            "description": " - SCOPE_USER: Only return workflows for the user for the currently selected account\n - SCOPE_ACCOUNT: Return workflows for the account",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "SCOPE_UNSPECIFIED",
+              "SCOPE_USER",
+              "SCOPE_ACCOUNT"
+            ],
+            "default": "SCOPE_UNSPECIFIED"
+          },
+          {
+            "name": "aipFilter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      },
+      "post": {
+        "summary": "Start a new workflow",
+        "operationId": "StartWorkflow",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/WorkflowIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/StartWorkflowRequest"
+            }
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      }
+    },
+    "/workflows/summary": {
+      "get": {
+        "summary": "Get a summary of workflows",
+        "operationId": "GetWorkflowsSummary",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetWorkflowsSummaryResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "daysPrior",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "userWorkflowPageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "otherOwnerWorkflowPageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      }
+    },
+    "/workflows/summary/account-owner/details": {
+      "get": {
+        "summary": "Get workflow summary details",
+        "operationId": "GetAccountOwnerWorkflowsSummaryDetails",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetAccountOwnerWorkflowsSummaryDetailsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "daysPrior",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "requestedStatus",
+            "description": " - STAGE_STATUS_UNSPECIFIED: also used for pending",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "STAGE_STATUS_UNSPECIFIED",
+              "STAGE_STATUS_STARTED",
+              "STAGE_STATUS_FINISHED",
+              "STAGE_STATUS_FAILED",
+              "STAGE_STATUS_CANCELED"
+            ],
+            "default": "STAGE_STATUS_UNSPECIFIED"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      }
+    },
+    "/workflows/summary/account-owner/users": {
+      "get": {
+        "summary": "Account owners request workflows in some state.",
+        "operationId": "GetAccountOwnerWorkflowsUsers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetAccountOwnerWorkflowsUsersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "daysPrior",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "requestedStatus",
+            "description": " - STAGE_STATUS_UNSPECIFIED: also used for pending",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "STAGE_STATUS_UNSPECIFIED",
+              "STAGE_STATUS_STARTED",
+              "STAGE_STATUS_FINISHED",
+              "STAGE_STATUS_FAILED",
+              "STAGE_STATUS_CANCELED"
+            ],
+            "default": "STAGE_STATUS_UNSPECIFIED"
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      }
+    },
+    "/workflows/{id}": {
+      "get": {
+        "summary": "Get details on a workflow",
+        "operationId": "GetWorkflow",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/Workflow"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      }
+    },
+    "/workflows/{id}/owners": {
+      "get": {
+        "operationId": "ListWorkflowOwners",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/UserListResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "orderBy",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "filter",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      },
+      "post": {
+        "operationId": "AddWorkflowOwner",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AddWorkflowOwnerBody"
+            }
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      }
+    },
+    "/workflows/{id}/owners/{userId}": {
+      "delete": {
+        "operationId": "RemoveWorkflowOwner",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      }
+    },
+    "/workflows/{id}:log": {
+      "get": {
+        "operationId": "WorkflowGatewayLog",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/WorkflowGatewayLogResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/Status"
+                }
+              },
+              "title": "Stream result of WorkflowGatewayLogResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "show.tail",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "show.follow",
+            "in": "query",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "name": "command",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "WORKFLOW_GATEWAY_LOG_COMMAND_UNSPECIFIED"
+            ],
+            "default": "WORKFLOW_GATEWAY_LOG_COMMAND_UNSPECIFIED"
+          },
+          {
+            "name": "name",
+            "description": "Name of the container to execute the command in.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "rank",
+            "description": "Rank of the container to execute the command in.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "WorkflowGatewayService"
+        ]
+      }
+    },
+    "/workflows/{id}:status": {
+      "get": {
+        "summary": "Get the status on a workflow",
+        "operationId": "GetWorkflowStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/GetWorkflowStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      }
+    },
+    "/workflows/{id}:stop": {
+      "patch": {
+        "summary": "Stop a workflow",
+        "operationId": "StopWorkflow",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/WorkflowIDResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      }
+    },
+    "/workflows:score": {
+      "patch": {
+        "summary": "ScoreWorkflow returns the score for a workflow definition.",
+        "operationId": "ScoreWorkflow",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ScoreWorkflowResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ScoreWorkflowRequest"
+            }
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      }
+    },
+    "/workflows:validate": {
+      "post": {
+        "summary": "Validate a workflow definition",
+        "operationId": "ValidateWorkflow",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/ValidateWorkflowResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/Status"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ValidateWorkflowRequest"
+            }
+          }
+        ],
+        "tags": [
+          "WorkflowService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "Access": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/Access.Type"
+        },
+        "mode": {
+          "$ref": "#/definitions/Mode"
+        }
+      }
+    },
+    "Access.Type": {
+      "type": "string",
+      "enum": [
+        "TYPE_UNSPECIFIED",
+        "FILESYSTEM",
+        "BLOCK"
+      ],
+      "default": "TYPE_UNSPECIFIED",
+      "title": "- BLOCK: BLOCK is not supported yet"
+    },
+    "Account": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "AccountOwnerWorkflowsSummary": {
+      "type": "object",
+      "properties": {
+        "currentWorkflowsStarted": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "currentWorkflowsPending": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "averageWorkflowPendingMilliseconds": {
+          "type": "number",
+          "format": "double"
+        },
+        "workflowsCompleted": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "totalAccountUsers": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "AccountOwnerWorkflowsSummaryDetails": {
+      "type": "object",
+      "properties": {
+        "workflowsResponse": {
+          "$ref": "#/definitions/SummarizedWorkflowResponse"
+        }
+      }
+    },
+    "AccountRelationship": {
+      "type": "string",
+      "enum": [
+        "ACCOUNT_MEMBER",
+        "ACCOUNT_OWNER"
+      ],
+      "default": "ACCOUNT_MEMBER"
+    },
+    "AddAccountMemberBody": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "relationship": {
+          "$ref": "#/definitions/AccountRelationship"
+        }
+      }
+    },
+    "AddCatalogRepositoryRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "accessToken": {
+          "type": "string"
+        },
+        "lastSyncedSha": {
+          "type": "string"
+        },
+        "ownerKind": {
+          "$ref": "#/definitions/ApplicationOwnerKind"
+        }
+      }
+    },
+    "AddOrganizationMemberRequest": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "relationship": {
+          "$ref": "#/definitions/OrganizationRelationship"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "AddWorkflowOwnerBody": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        }
+      }
+    },
+    "Affinity": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/Affinity.Type"
+        },
+        "key": {
+          "type": "string"
+        },
+        "filter": {
+          "type": "string"
+        }
+      }
+    },
+    "Affinity.Type": {
+      "type": "string",
+      "enum": [
+        "AFFINITY_UNSPECIFIED",
+        "ANNOTATION",
+        "RESOURCE"
+      ],
+      "default": "AFFINITY_UNSPECIFIED"
+    },
+    "Any": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "Application": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "ownerKind": {
+          "$ref": "#/definitions/ApplicationOwnerKind"
+        },
+        "template": {
+          "type": "string",
+          "format": "byte"
+        },
+        "supportedValues": {
+          "$ref": "#/definitions/SupportedTemplateValues"
+        },
+        "category": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "templateSha": {
+          "type": "string"
+        },
+        "supportedValueSha": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "createdByEmail": {
+          "type": "string"
+        }
+      }
+    },
+    "ApplicationBundlePart": {
+      "type": "string",
+      "enum": [
+        "TEMPLATE",
+        "VALUES",
+        "METADATA"
+      ],
+      "default": "TEMPLATE"
+    },
+    "ApplicationCategory": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string"
+        }
+      }
+    },
+    "ApplicationMetadata": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "ownerKind": {
+          "$ref": "#/definitions/ApplicationOwnerKind"
+        },
+        "category": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        }
+      }
+    },
+    "ApplicationOwnerKind": {
+      "type": "string",
+      "enum": [
+        "ACCOUNT",
+        "ORGANIZATION",
+        "PROVIDER"
+      ],
+      "default": "ACCOUNT",
+      "title": "- ACCOUNT: default\n - ORGANIZATION: must be an organization owner to use\n - PROVIDER: only available via direct sql updates (for now)"
+    },
+    "Capability": {
+      "type": "string",
+      "enum": [
+        "CAPABILITY_UNSPECIFIED",
+        "SELINUX"
+      ],
+      "default": "CAPABILITY_UNSPECIFIED"
+    },
+    "Capacity": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "unit": {
+          "$ref": "#/definitions/Unit"
+        }
+      }
+    },
+    "CatalogRepository": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "accessToken": {
+          "type": "string"
+        },
+        "lastSyncedSha": {
+          "type": "string"
+        },
+        "ownerKind": {
+          "$ref": "#/definitions/ApplicationOwnerKind"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "CatalogRepositorySummary": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "lastSyncedSha": {
+          "type": "string"
+        },
+        "ownerKind": {
+          "$ref": "#/definitions/ApplicationOwnerKind"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "Cluster": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/definitions/ClusterKind"
+        },
+        "status": {
+          "$ref": "#/definitions/ClusterStatus"
+        },
+        "apiEndpoint": {
+          "type": "string"
+        },
+        "openapiEndpoint": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "ClusterKind": {
+      "type": "string",
+      "enum": [
+        "CLUSTER_KIND_UNSPECIFIED",
+        "CLUSTER_KIND_ORCHESTRATE",
+        "CLUSTER_KIND_FEDERATE"
+      ],
+      "default": "CLUSTER_KIND_UNSPECIFIED"
+    },
+    "ClusterStatus": {
+      "type": "string",
+      "enum": [
+        "CLUSTER_STATUS_UNSPECIFIED",
+        "CLUSTER_STATUS_UNSYNCED",
+        "CLUSTER_STATUS_SYNCING",
+        "CLUSTER_STATUS_READY",
+        "CLUSTER_STATUS_UNREACHABLE",
+        "CLUSTER_STATUS_ERROR",
+        "CLUSTER_STATUS_DISABLED"
+      ],
+      "default": "CLUSTER_STATUS_UNSPECIFIED"
+    },
+    "Completed": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string"
+        }
+      },
+      "description": "TODO: Remove from public API as this is just an anchor for DAG execution."
+    },
+    "CopyApplicationRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "ownerKind": {
+          "$ref": "#/definitions/ApplicationOwnerKind"
+        }
+      }
+    },
+    "CreateAccountRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "CreateApplicationRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "ownerKind": {
+          "$ref": "#/definitions/ApplicationOwnerKind"
+        },
+        "template": {
+          "type": "string",
+          "format": "byte"
+        },
+        "supportedValues": {
+          "$ref": "#/definitions/SupportedTemplateValues"
+        },
+        "category": {
+          "type": "string",
+          "title": "if not provided a default will be set"
+        }
+      }
+    },
+    "CreateSecretRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/definitions/SecretScope"
+        },
+        "private": {
+          "type": "boolean",
+          "title": "used for organization scoped secrets"
+        },
+        "value": {
+          "$ref": "#/definitions/ValueSecret"
+        },
+        "s3": {
+          "$ref": "#/definitions/S3Secret"
+        },
+        "http": {
+          "$ref": "#/definitions/HTTPSecret"
+        },
+        "image": {
+          "$ref": "#/definitions/ImageSecret"
+        },
+        "map": {
+          "$ref": "#/definitions/MapSecret"
+        },
+        "decryption": {
+          "$ref": "#/definitions/ImageDecryptionSecret"
+        }
+      }
+    },
+    "CreateVolumeRequest": {
+      "type": "object",
+      "properties": {
+        "volume": {
+          "$ref": "#/definitions/VolumeDefinition"
+        },
+        "clusterId": {
+          "type": "string"
+        }
+      }
+    },
+    "Defaults": {
+      "type": "object",
+      "properties": {
+        "job": {
+          "$ref": "#/definitions/Defaults.Job"
+        }
+      },
+      "description": "Default defines the default settings that should be applied to all jobs in the workflow.\nThese can be overridden at the job level."
+    },
+    "Defaults.Job": {
+      "type": "object",
+      "properties": {
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "env is a list of environment variables to be exposed inside all job\ncontainers.  Will be overridden by job level env variables."
+        },
+        "mounts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Defaults.Job.Mount"
+          },
+          "description": "mounts is a map containing a key that references a volume by name and\nvalue containing a specification with details of how that volume should\nbe mounted into the job container."
+        },
+        "policy": {
+          "$ref": "#/definitions/Policy",
+          "description": "policy contains configurable rules that define high level execution\nbehavior of a job such as max execution time and retries on failure."
+        },
+        "resource": {
+          "$ref": "#/definitions/Defaults.Job.Resource",
+          "description": "resource specifies the hardware requirements that must be met for the job\nto be executed. This is used by the scheduler to determine if and where a\njob can be scheduled to run."
+        }
+      }
+    },
+    "Defaults.Job.Mount": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string",
+          "description": "location specifies the destination within the container filesystem to\nmount a volume directory. This must be an absolute path."
+        }
+      },
+      "description": "Mount is the specification for how a volume gets mounted into a job\ncontainer."
+    },
+    "Defaults.Job.Resource": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "$ref": "#/definitions/Defaults.Job.Resource.Cpu",
+          "description": "cpu details CPU resource requirements for the job."
+        },
+        "memory": {
+          "$ref": "#/definitions/Defaults.Job.Resource.Memory",
+          "description": "memory details memory requirements for the job."
+        },
+        "devices": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "description": "device details device resource requirements for the job."
+        },
+        "exclusive": {
+          "type": "boolean",
+          "description": "exclusive sets the requirement that this job is the only one running on\na node."
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "annotations is a map of string key value pairs that can be used to\nspecify custom behavior implemented by the workflow system to meet\nneeds beyond what the first class resource parameters currently\nprovide. Potential use cases could be along the lines of:matching a job\nto a specfic node pool, requiring a specific CPU microarchitecture or\nGPU family, etc."
+        }
+      },
+      "description": "Resource specifies hardware requirements that must be met for the\nexecution of a job."
+    },
+    "Defaults.Job.Resource.Cpu": {
+      "type": "object",
+      "properties": {
+        "affinity": {
+          "type": "string",
+          "description": "affinity dictates how the binding of tasks to the specific hardware\nlayout occurs. Must be one of \"NUMA\", \"SOCKET\", or \"CORE\". An unset\naffinity defaults to \"CORE\"."
+        },
+        "cores": {
+          "type": "integer",
+          "format": "int64",
+          "description": "cores is the number of processor cores required."
+        },
+        "threads": {
+          "type": "boolean",
+          "description": "threads dictates if hardware threads of allocated cores are exposed\nto the job container."
+        },
+        "sockets": {
+          "type": "integer",
+          "format": "int64",
+          "description": "sockets is the number of sockets required."
+        }
+      },
+      "description": "CPU contains relevant details about CPU requirements."
+    },
+    "Defaults.Job.Resource.Memory": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "string",
+          "description": "size is the amount of memory required for the job. If no unit is\nspecified, byte is the default. E.g. 32KiB, 1GB, 32GiB."
+        },
+        "byCore": {
+          "type": "boolean",
+          "description": "by_core defines if the memory is specified per CPU core."
+        }
+      },
+      "description": "Memory contains relevant details about RAM requirements."
+    },
+    "Export": {
+      "type": "string",
+      "enum": [
+        "WORKFLOW",
+        "ACCOUNT",
+        "CLUSTER",
+        "PUBLIC"
+      ],
+      "default": "WORKFLOW"
+    },
+    "File": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/definitions/URI",
+          "description": "Source is the origin of the data. The type of URIs supported are\ndetermined by whether this is specified under ingress or egress."
+        },
+        "destination": {
+          "$ref": "#/definitions/URI",
+          "description": "Destination is the location to move the data. The type of URIs\nsupported are determined by whether this is specified under ingress or\negress."
+        },
+        "policy": {
+          "$ref": "#/definitions/Policy",
+          "description": "policy contains configurable rules that define high level execution\nbehavior of a data transfer such as max execution time and retries on\nfailure."
+        }
+      },
+      "description": "File specifies details of workflow volume data movement."
+    },
+    "GenerateWorkflowClientMessage": {
+      "type": "object",
+      "properties": {
+        "prompt": {
+          "type": "string"
+        }
+      }
+    },
+    "GenerateWorkflowServerMessage": {
+      "type": "object",
+      "properties": {
+        "workflowYaml": {
+          "type": "string"
+        },
+        "response": {
+          "type": "string"
+        }
+      }
+    },
+    "GetAccountOwnerWorkflowsSummaryDetailsResponse": {
+      "type": "object",
+      "properties": {
+        "accountOwnerWorkflowsSummaryDetails": {
+          "$ref": "#/definitions/AccountOwnerWorkflowsSummaryDetails"
+        }
+      }
+    },
+    "GetAccountOwnerWorkflowsUsersResponse": {
+      "type": "object",
+      "properties": {
+        "workflowEmails": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "GetApplicationBundleResponse": {
+      "type": "object",
+      "properties": {
+        "template": {
+          "type": "string"
+        },
+        "values": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "string"
+        }
+      }
+    },
+    "GetWorkflowStatusResponse": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/WorkflowPlan"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "workflowStatus": {
+          "$ref": "#/definitions/WorkflowStatus"
+        },
+        "email": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "GetWorkflowsSummaryResponse": {
+      "type": "object",
+      "properties": {
+        "userWorkflows": {
+          "$ref": "#/definitions/SummarizedWorkflowResponse"
+        },
+        "otherOwnerWorkflows": {
+          "$ref": "#/definitions/SummarizedWorkflowResponse"
+        },
+        "accountOwnerWorkflowsSummary": {
+          "$ref": "#/definitions/AccountOwnerWorkflowsSummary"
+        }
+      }
+    },
+    "HTTPSecret": {
+      "type": "object",
+      "properties": {
+        "trustedDomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "HTTPSecretInfo": {
+      "type": "object",
+      "properties": {
+        "trustedDomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "username": {
+          "type": "string"
+        }
+      }
+    },
+    "ImageDecryptionSecret": {
+      "type": "object",
+      "properties": {
+        "passphrase": {
+          "type": "string"
+        },
+        "pem": {
+          "type": "string"
+        }
+      }
+    },
+    "ImageSecret": {
+      "type": "object",
+      "properties": {
+        "trustedDomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "ImageSecretInfo": {
+      "type": "object",
+      "properties": {
+        "trustedDomains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "username": {
+          "type": "string"
+        }
+      }
+    },
+    "ImportCatalogRepositoryRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "accessToken": {
+          "type": "string"
+        },
+        "ownerKind": {
+          "$ref": "#/definitions/ApplicationOwnerKind"
+        }
+      }
+    },
+    "ImportCatalogRepositoryResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "updated": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "Job.Multinode": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "integer",
+          "format": "int64",
+          "description": "nodes is the number of nodes to run job across in parallel."
+        },
+        "implementation": {
+          "type": "string",
+          "title": "implementation is the specific implementation of multinode to be used.\nThis must match the implementation used by the application within your\njob container because different multinode implementations require\nslightly different wire up configurations. Must be one of: \"ompi\",\n\"openmpi\", \"mpich\", \"gasnet\""
+        },
+        "procsPerNode": {
+          "type": "integer",
+          "format": "int64",
+          "description": "procs_per_node specifies the number of processes to spawn\nwithin each job container. If not specified, this value defaults to\nthe number of CPUs allocated to the job container. The total number\nof processes spawned for a job can be calculated by multiplying\nthis value by the number of nodes requested."
+        }
+      },
+      "description": "Multinode enables a job to run multiple containers across multiple nodes\nin parallel by leveraging various implementation for communication and\nsynchronization."
+    },
+    "Job.Network": {
+      "type": "object",
+      "properties": {
+        "isolated": {
+          "type": "boolean",
+          "description": "isolated forces the use of a container network namespace.\nThis is required for reaching a job container port with port\nforwarding."
+        },
+        "exposeTcp": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "description": "expose_tcp is a list of container TCP ports to expose."
+        },
+        "exposeUdp": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "description": "expose_udp is a list of container UDP ports to expose."
+        }
+      },
+      "description": "Network defines if the job should be run inside its own network namespace\nand enabled optional exposure of job container ports.\nThis is required if you want to expose ports from the job container\ndirectly or via port forwarding."
+    },
+    "Job.TaskArray": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "integer",
+          "format": "int64",
+          "description": "start is the start of the range for Task ID values. Inclusive."
+        },
+        "end": {
+          "type": "integer",
+          "format": "int64",
+          "description": "end is the end of the Task ID values. Inclusive."
+        },
+        "concurrency": {
+          "type": "integer",
+          "format": "int64",
+          "description": "concurrency is a limit on the number of tasks that can be run in\nparallel. The max concurrency for a workflow job is 200."
+        }
+      },
+      "description": "TaskArray allows a job to be broken up in an embarrassingly parallel\nmanner for more effective execution. TaskArray jobs are automatically\npopulated with a `FB_TASK_ID` environment variable to indicate the index\nwithin the task array range of the currently executing task to the\napplication."
+    },
+    "ListAccountsResponse": {
+      "type": "object",
+      "properties": {
+        "accounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Account"
+          }
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "ListApplicationCategoriesResponse": {
+      "type": "object",
+      "properties": {
+        "categories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ApplicationCategory"
+          }
+        }
+      }
+    },
+    "ListApplicationsResponse": {
+      "type": "object",
+      "properties": {
+        "applications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ApplicationMetadata"
+          }
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "ListCatalogRepositoriesResponse": {
+      "type": "object",
+      "properties": {
+        "repositories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/CatalogRepositorySummary"
+          }
+        }
+      }
+    },
+    "ListClustersResponse": {
+      "type": "object",
+      "properties": {
+        "clusters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Cluster"
+          }
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "ListProvisionDefinitionsResponse": {
+      "type": "object",
+      "properties": {
+        "definitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/ProvisionDefinition"
+          }
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "ListSecretsResponse": {
+      "type": "object",
+      "properties": {
+        "secrets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Secret"
+          }
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "ListStorageClassesResponse": {
+      "type": "object",
+      "properties": {
+        "classes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/StorageClassInfoResponse"
+          }
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "ListVolumesResponse": {
+      "type": "object",
+      "properties": {
+        "volumes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/VolumeInfoResponse"
+          }
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "ListWorkflowsResponse": {
+      "type": "object",
+      "properties": {
+        "workflows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Workflow"
+          }
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "ListWorkflowsScope": {
+      "type": "string",
+      "enum": [
+        "SCOPE_UNSPECIFIED",
+        "SCOPE_USER",
+        "SCOPE_ACCOUNT"
+      ],
+      "default": "SCOPE_UNSPECIFIED",
+      "title": "- SCOPE_USER: Only return workflows for the user for the currently selected account\n - SCOPE_ACCOUNT: Return workflows for the account"
+    },
+    "MapSecret": {
+      "type": "object",
+      "properties": {
+        "map": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Mode": {
+      "type": "string",
+      "enum": [
+        "MODE_UNSPECIFIED",
+        "SINGLE_NODE_WRITER",
+        "SINGLE_NODE_READER_ONLY",
+        "MULTI_NODE_READER_ONLY",
+        "MULTI_NODE_SINGLE_WRITER",
+        "MULTI_NODE_MULTI_WRITER",
+        "SINGLE_NODE_SINGLE_WRITER",
+        "SINGLE_NODE_MULTI_WRITER"
+      ],
+      "default": "MODE_UNSPECIFIED",
+      "title": "- MODE_UNSPECIFIED: SINGLE_NODE_XXX are not supported yet\n - MULTI_NODE_SINGLE_WRITER: not supported yet"
+    },
+    "NameArg": {
+      "type": "string",
+      "enum": [
+        "NAME_ARG_UNSPECIFIED",
+        "USERNAME",
+        "ORGANIZATION_ID",
+        "ACCOUNT_ID",
+        "WORKFLOW_ID",
+        "CUSTOM_NAME"
+      ],
+      "default": "NAME_ARG_UNSPECIFIED"
+    },
+    "NullValue": {
+      "type": "string",
+      "enum": [
+        "NULL_VALUE"
+      ],
+      "default": "NULL_VALUE",
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\nThe JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+    },
+    "OptionsInput": {
+      "type": "object",
+      "properties": {
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "list of options for the input"
+        }
+      }
+    },
+    "Organization": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "OrganizationRelationship": {
+      "type": "string",
+      "enum": [
+        "ORGANIZATION_MEMBER",
+        "ORGANIZATION_OWNER"
+      ],
+      "default": "ORGANIZATION_MEMBER"
+    },
+    "Ownership": {
+      "type": "string",
+      "enum": [
+        "OWNERSHIP_UNSPECIFIED",
+        "ROOT",
+        "USER",
+        "ACCOUNT"
+      ],
+      "default": "OWNERSHIP_UNSPECIFIED",
+      "title": "- ACCOUNT: ACCOUNT is supported with group ownership only"
+    },
+    "Policy": {
+      "type": "object",
+      "properties": {
+        "timeout": {
+          "$ref": "#/definitions/Timeout",
+          "description": "timeout specifies rules related to the duration of a workflow step."
+        },
+        "retry": {
+          "$ref": "#/definitions/Retry",
+          "description": "retry specifies rules related to rerunning a workflow step in case of\nfailure."
+        }
+      },
+      "description": "Policy contains configurable rules for the execution of a workflow step.\nThe default policy for a step will set a value for timeout if a custom one\nis not specified."
+    },
+    "Port": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "export": {
+          "$ref": "#/definitions/Export"
+        }
+      }
+    },
+    "Properties": {
+      "type": "object",
+      "properties": {
+        "retainOnDelete": {
+          "type": "boolean"
+        },
+        "persistent": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ProvisionDefinition": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "memory": {
+          "type": "string"
+        },
+        "cpus": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "devices": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "cpuType": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "inactive": {
+          "type": "boolean"
+        },
+        "provider": {
+          "$ref": "#/definitions/ProvisionProvider"
+        },
+        "topologyZones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "name": {
+          "type": "string"
+        },
+        "clusterId": {
+          "type": "string",
+          "title": "networking bandwidths, not today, someday\n io/storage bandwidths, not today, someday"
+        }
+      },
+      "description": "ProvisionDefinition is the object representing a specific resource\n configuration spec that is supported by the cluster."
+    },
+    "ProvisionProvider": {
+      "type": "string",
+      "enum": [
+        "PROVISION_PROVIDER_UNSPECIFIED",
+        "PROVISION_PROVIDER_AWS",
+        "PROVISION_PROVIDER_AZURE",
+        "PROVISION_PROVIDER_DOCKER",
+        "PROVISION_PROVIDER_KUBERNETES",
+        "PROVISION_PROVIDER_VSPHERE",
+        "PROVISION_PROVIDER_GCP"
+      ],
+      "default": "PROVISION_PROVIDER_UNSPECIFIED"
+    },
+    "Proxy": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "port": {
+          "type": "string"
+        },
+        "protocol": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      }
+    },
+    "ReloadCatalogRepositoryBody": {
+      "type": "object"
+    },
+    "ReloadCatalogRepositoryResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "updated": {
+          "type": "boolean"
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "RenderApplicationBody": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/TemplateValues"
+          }
+        }
+      }
+    },
+    "RenderApplicationTemplateRequest": {
+      "type": "object",
+      "properties": {
+        "template": {
+          "type": "string"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/TemplateValues"
+          }
+        }
+      }
+    },
+    "RenderApplicationTemplateResponse": {
+      "type": "object",
+      "properties": {
+        "renderedWorkflow": {
+          "type": "string"
+        }
+      }
+    },
+    "Retry": {
+      "type": "object",
+      "properties": {
+        "attempts": {
+          "type": "integer",
+          "format": "int32",
+          "description": "attempts is the number of retry attemps before failing the step\ncompletely."
+        }
+      },
+      "description": "Retry specifies rules related to rerunning a workflow step in case of\nfailure."
+    },
+    "S3Secret": {
+      "type": "object",
+      "properties": {
+        "accessKeyId": {
+          "type": "string"
+        },
+        "accessKey": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "sessionToken": {
+          "type": "string"
+        }
+      }
+    },
+    "S3SecretInfo": {
+      "type": "object",
+      "properties": {
+        "region": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        }
+      },
+      "title": "Non-sensitive information about secrets"
+    },
+    "ScheduleCatalogSyncRequest": {
+      "type": "object",
+      "properties": {
+        "cron": {
+          "type": "string"
+        },
+        "suspend": {
+          "type": "boolean"
+        }
+      }
+    },
+    "Scope": {
+      "type": "string",
+      "enum": [
+        "SCOPE_UNSPECIFIED",
+        "ALL",
+        "USER",
+        "ACCOUNT"
+      ],
+      "default": "SCOPE_UNSPECIFIED"
+    },
+    "ScoreWorkflowRequest": {
+      "type": "object",
+      "properties": {
+        "definition": {
+          "$ref": "#/definitions/WorkflowDefinition"
+        },
+        "withChecks": {
+          "type": "boolean"
+        },
+        "secretsMap": {
+          "$ref": "#/definitions/WorkflowSecretsMap"
+        },
+        "clusterId": {
+          "type": "string",
+          "title": "optional cluster ID when submitting jobs from a federate cluster"
+        }
+      }
+    },
+    "ScoreWorkflowResponse": {
+      "type": "object",
+      "properties": {
+        "score": {
+          "type": "number",
+          "format": "float"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Secret": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "name": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/definitions/SecretScope"
+        },
+        "type": {
+          "$ref": "#/definitions/SecretType"
+        },
+        "reference": {
+          "type": "string"
+        },
+        "private": {
+          "type": "boolean",
+          "title": "used for organization scoped secrets"
+        },
+        "s3": {
+          "$ref": "#/definitions/S3SecretInfo"
+        },
+        "http": {
+          "$ref": "#/definitions/HTTPSecretInfo"
+        },
+        "image": {
+          "$ref": "#/definitions/ImageSecretInfo"
+        }
+      }
+    },
+    "SecretIDResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "SecretScope": {
+      "type": "string",
+      "enum": [
+        "SECRET_SCOPE_UNSPECIFIED",
+        "SECRET_SCOPE_USER",
+        "SECRET_SCOPE_ACCOUNT",
+        "SECRET_SCOPE_ORGANIZATION",
+        "SECRET_SCOPE_CLUSTER"
+      ],
+      "default": "SECRET_SCOPE_UNSPECIFIED"
+    },
+    "SecretTemplateValue": {
+      "type": "object",
+      "properties": {
+        "reference": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/SecretType"
+        }
+      }
+    },
+    "SecretType": {
+      "type": "string",
+      "enum": [
+        "SECRET_TYPE_UNSPECIFIED",
+        "SECRET_TYPE_VALUE",
+        "SECRET_TYPE_S3",
+        "SECRET_TYPE_HTTP",
+        "SECRET_TYPE_IMAGE",
+        "SECRET_TYPE_MAP",
+        "SECRET_TYPE_DECRYPTION_SIF",
+        "UNSPECIFIED",
+        "VALUE",
+        "S3",
+        "HTTP",
+        "IMAGE",
+        "MAP",
+        "DECRYPTION_SIF"
+      ],
+      "default": "SECRET_TYPE_UNSPECIFIED"
+    },
+    "Secrets": {
+      "type": "object",
+      "properties": {
+        "default": {
+          "type": "string"
+        }
+      }
+    },
+    "SelectAccountResponse": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string"
+        }
+      }
+    },
+    "Service": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Used internally to store the job name.  If this field is present in a\ndefinition then it will be ignored in preference for the map key used in\nthe `jobs` field."
+        },
+        "image": {
+          "$ref": "#/definitions/URI",
+          "title": "Image is the URI to the container image to be used for this job.\nSupported uri formats are: \"docker://...\" and \"oras://\" for OCI\nand SIF(Singularity Image Format) images respectively.\nE.g. docker://alpine:latest"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "command is the arguments executed by the container process."
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "env is a list of environment variables to be exposed inside of the job\ncontainer."
+        },
+        "mounts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Service.Mount"
+          },
+          "description": "mounts is a map containing a key that references a volume by name and\nvalue containing a specification with details of how that volume should\nbe mounted into the job container."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "cwd allows the specification of the the working dirctory used by the job.\nThis must be an absolute path. If unset the working directory defaults\nfirst to the working directory in the OCI image config if present and\nthen to \"/\"."
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "requires is a list of prerequisite jobs in the workflow that must be\ncompleted before this job may be started. This allows jobs within a\nworkflow to be formed into a directed asyclic graph. If requirements\nspecified by different jobs results in a cycle, the workflow will fail to\nstart."
+        },
+        "policy": {
+          "$ref": "#/definitions/Policy",
+          "description": "policy contains configurable rules that define high level execution\nbehavior of a job such as max execution time and retries on failure."
+        },
+        "resource": {
+          "$ref": "#/definitions/Service.Resource",
+          "description": "resource specifies the hardware requirements that must be met for the job\nto be executed. This is used by the scheduler to determine if and where a\njob can be scheduled to run."
+        },
+        "multinode": {
+          "$ref": "#/definitions/Service.Multinode",
+          "description": "multinode enables a job to run across multiple nodes in parallel."
+        },
+        "taskArray": {
+          "$ref": "#/definitions/Service.TaskArray",
+          "description": "task_array enables a job to be broken up into multiple tasks that run\nconcurrently. This is useful for doing embarassingly parallel compute\nwork."
+        },
+        "network": {
+          "$ref": "#/definitions/Service.Network",
+          "title": "network defines if the job should run inside its own netowrk namespace"
+        },
+        "script": {
+          "type": "string",
+          "title": "shellbang script executed via command"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "args passed to above script field, can also be passed to existing command"
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "persist": {
+          "type": "boolean",
+          "description": "defines if the service should run even if there are no running or waiting jobs in the workflow. If persist: false then services are stopped when all jobs are finished (or do not start if there are no jobs at all). If persist: true then services run even if there are no jobs in the workflow and continue running if all jobs run, even if they fail."
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Port"
+          }
+        },
+        "proxy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Proxy"
+          },
+          "description": "configures web UI reverse proxies for the specified port. In the example above, https://ui.stable.fuzzball.ciq.dev/accounts/${account}/workflows/${workflow}/jupyter proxies internally to http://jupyter.${workflow}.${account}.fuzzball:8888/."
+        }
+      }
+    },
+    "Service.Mount": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string",
+          "description": "location specifies the destination within the container filesystem to\nmount a volume directory. This must be an absolute path."
+        }
+      },
+      "description": "Mount is the specification for how a volume gets mounted into a job\ncontainer."
+    },
+    "Service.Multinode": {
+      "type": "object",
+      "properties": {
+        "nodes": {
+          "type": "integer",
+          "format": "int64",
+          "description": "nodes is the number of nodes to run job across in parallel."
+        },
+        "implementation": {
+          "type": "string",
+          "title": "implementation is the specific implementation of multinode to be used.\nThis must match the implementation used by the application within your\njob container because different multinode implementations require\nslightly different wire up configurations. Must be one of: \"ompi\",\n\"openmpi\", \"mpich\", \"gasnet\""
+        },
+        "procsPerNode": {
+          "type": "integer",
+          "format": "int64",
+          "description": "procs_per_node specifies the number of processes to spawn\nwithin each job container. If not specified, this value defaults to\nthe number of CPUs allocated to the job container. The total number\nof processes spawned for a job can be calculated by multiplying\nthis value by the number of nodes requested."
+        }
+      },
+      "description": "Multinode enables a job to run multiple containers across multiple nodes\nin parallel by leveraging various implementation for communication and\nsynchronization."
+    },
+    "Service.Network": {
+      "type": "object",
+      "properties": {
+        "isolated": {
+          "type": "boolean",
+          "description": "isolated forces the use of a container network namespace.\nThis is required for reaching a job container port with port\nforwarding."
+        },
+        "exposeTcp": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "description": "expose_tcp is a list of container TCP ports to expose."
+        },
+        "exposeUdp": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "description": "expose_udp is a list of container UDP ports to expose."
+        }
+      },
+      "description": "Network defines if the job should be run inside its own network namespace\nand enabled optional exposure of job container ports.\nThis is required if you want to expose ports from the job container\ndirectly or via port forwarding."
+    },
+    "Service.Resource": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "$ref": "#/definitions/Service.Resource.Cpu",
+          "description": "cpu details CPU resource requirements for the job."
+        },
+        "memory": {
+          "$ref": "#/definitions/Service.Resource.Memory",
+          "description": "memory details memory requirements for the job."
+        },
+        "devices": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "description": "device details device resource requirements for the job."
+        },
+        "exclusive": {
+          "type": "boolean",
+          "description": "exclusive sets the requirement that this job is the only one running on\na node."
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "annotations is a map of string key value pairs that can be used to\nspecify custom behavior implemented by the workflow system to meet\nneeds beyond what the first class resource parameters currently\nprovide. Potential use cases could be along the lines of:matching a job\nto a specfic node pool, requiring a specific CPU microarchitecture or\nGPU family, etc."
+        }
+      },
+      "description": "Resource specifies hardware requirements that must be met for the\nexecution of a job."
+    },
+    "Service.Resource.Cpu": {
+      "type": "object",
+      "properties": {
+        "affinity": {
+          "type": "string",
+          "description": "affinity dictates how the binding of tasks to the specific hardware\nlayout occurs. Must be one of \"NUMA\", \"SOCKET\", or \"CORE\". An unset\naffinity defaults to \"CORE\"."
+        },
+        "cores": {
+          "type": "integer",
+          "format": "int64",
+          "description": "cores is the number of processor cores required."
+        },
+        "threads": {
+          "type": "boolean",
+          "description": "threads dictates if hardware threads of allocated cores are exposed\nto the job container."
+        },
+        "sockets": {
+          "type": "integer",
+          "format": "int64",
+          "description": "sockets is the number of sockets required."
+        }
+      },
+      "description": "CPU contains relevant details about CPU requirements."
+    },
+    "Service.Resource.Memory": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "string",
+          "description": "size is the amount of memory required for the job. If no unit is\nspecified, byte is the default. E.g. 32KiB, 1GB, 32GiB."
+        },
+        "byCore": {
+          "type": "boolean",
+          "description": "by_core defines if the memory is specified per CPU core."
+        }
+      },
+      "description": "Memory contains relevant details about RAM requirements."
+    },
+    "Service.TaskArray": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "integer",
+          "format": "int64",
+          "description": "start is the start of the range for Task ID values. Inclusive."
+        },
+        "end": {
+          "type": "integer",
+          "format": "int64",
+          "description": "end is the end of the Task ID values. Inclusive."
+        },
+        "concurrency": {
+          "type": "integer",
+          "format": "int64",
+          "description": "concurrency is a limit on the number of tasks that can be run in\nparallel. The max concurrency for a workflow job is 200."
+        }
+      },
+      "description": "TaskArray allows a job to be broken up in an embarrassingly parallel\nmanner for more effective execution. TaskArray jobs are automatically\npopulated with a `FB_TASK_ID` environment variable to indicate the index\nwithin the task array range of the currently executing task to the\napplication."
+    },
+    "SetVolumeStatusBody": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/VolumeStatus"
+        }
+      }
+    },
+    "SetVolumeStatusResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/VolumeStatus"
+        }
+      }
+    },
+    "StageKind": {
+      "type": "string",
+      "enum": [
+        "STAGE_KIND_UNSPECIFIED",
+        "STAGE_KIND_WORKFLOW",
+        "STAGE_KIND_JOB",
+        "STAGE_KIND_FILE",
+        "STAGE_KIND_IMAGE",
+        "STAGE_KIND_VOLUME",
+        "STAGE_KIND_COMPLETED"
+      ],
+      "default": "STAGE_KIND_UNSPECIFIED"
+    },
+    "StartApplicationRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string",
+          "title": "name to assign the workflow"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/TemplateValues"
+          }
+        }
+      }
+    },
+    "StartWorkflowRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "definition": {
+          "$ref": "#/definitions/WorkflowDefinition"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "secretsMap": {
+          "$ref": "#/definitions/WorkflowSecretsMap"
+        },
+        "clusterId": {
+          "type": "string",
+          "title": "optional cluster ID when submitting jobs from a federate cluster"
+        },
+        "rawSpecification": {
+          "type": "string"
+        }
+      }
+    },
+    "Status": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Any"
+          }
+        }
+      }
+    },
+    "StorageClassDefinition": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "driver": {
+          "type": "string"
+        },
+        "mount": {
+          "$ref": "#/definitions/StorageClassDefinition.Mount"
+        },
+        "access": {
+          "$ref": "#/definitions/Access"
+        },
+        "parameters": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "secrets": {
+          "$ref": "#/definitions/Secrets"
+        },
+        "properties": {
+          "$ref": "#/definitions/Properties"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Capability"
+          }
+        },
+        "scope": {
+          "$ref": "#/definitions/Scope"
+        },
+        "capacity": {
+          "$ref": "#/definitions/Capacity"
+        },
+        "affinities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/Affinity"
+          }
+        },
+        "volumes": {
+          "$ref": "#/definitions/Volumes"
+        },
+        "restricted": {
+          "type": "boolean"
+        }
+      }
+    },
+    "StorageClassDefinition.Mount": {
+      "type": "object",
+      "properties": {
+        "filesystem": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "user": {
+          "$ref": "#/definitions/Ownership"
+        },
+        "group": {
+          "$ref": "#/definitions/Ownership"
+        },
+        "permissions": {
+          "type": "string"
+        }
+      }
+    },
+    "StorageClassInfoResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "driverId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "class": {
+          "$ref": "#/definitions/StorageClassDefinition"
+        },
+        "scope": {
+          "$ref": "#/definitions/Scope"
+        },
+        "status": {
+          "$ref": "#/definitions/StorageClassStatus"
+        },
+        "restricted": {
+          "type": "boolean"
+        },
+        "persistent": {
+          "type": "boolean"
+        },
+        "retain": {
+          "type": "boolean"
+        },
+        "clusterId": {
+          "type": "string"
+        }
+      }
+    },
+    "StorageClassStatus": {
+      "type": "string",
+      "enum": [
+        "STORAGE_CLASS_STATUS_UNSPECIFIED",
+        "STORAGE_CLASS_STATUS_NOT_READY",
+        "STORAGE_CLASS_STATUS_READY",
+        "STORAGE_CLASS_STATUS_DISABLED",
+        "STORAGE_CLASS_STATUS_ERROR"
+      ],
+      "default": "STORAGE_CLASS_STATUS_UNSPECIFIED"
+    },
+    "SummarizedWorkflow": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "specification": {
+          "type": "string",
+          "format": "byte"
+        },
+        "status": {
+          "$ref": "#/definitions/WorkflowStatus"
+        },
+        "email": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "clusterId": {
+          "type": "string"
+        },
+        "runningStages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/WorkflowStage"
+          }
+        }
+      }
+    },
+    "SummarizedWorkflowResponse": {
+      "type": "object",
+      "properties": {
+        "workflows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/SummarizedWorkflow"
+          }
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "SupportedTemplateValues": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/TemplateValues"
+          }
+        }
+      }
+    },
+    "TemplateValues": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "stringValue": {
+          "type": "string"
+        },
+        "uintValue": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "boolValue": {
+          "type": "boolean"
+        },
+        "secretValue": {
+          "$ref": "#/definitions/SecretTemplateValue"
+        },
+        "volumeValue": {
+          "$ref": "#/definitions/VolumeTemplateValue"
+        },
+        "displayCategory": {
+          "type": "string",
+          "title": "optional, used for UI grouping"
+        },
+        "optionsInput": {
+          "$ref": "#/definitions/OptionsInput",
+          "title": "optional, used for enum input"
+        }
+      }
+    },
+    "TerminalSize": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "cols": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "x": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "y": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "Timeout": {
+      "type": "object",
+      "properties": {
+        "execute": {
+          "type": "string",
+          "description": "execute  is the maximum allowed duration of a workflow step to run\nbefore it is failed."
+        }
+      },
+      "description": "Timeout specifies rules related to the duration of a workflow step."
+    },
+    "URI": {
+      "type": "object",
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "uri is the uri of the resource to be accessed."
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "secrets is a map of key value pairs to use to access resource.\nThe key specifies the type of data that is being used and the value\nspecifies raw data or a template for the workflow system to populate with\ndata internally from the secrets engine."
+        },
+        "secret": {
+          "type": "string"
+        },
+        "decryptionSecret": {
+          "type": "string"
+        }
+      },
+      "description": "URI contains the specification for a resource to access as well as\nadditional data necessary for access such as credentials."
+    },
+    "Unit": {
+      "type": "string",
+      "enum": [
+        "UNIT_UNSPECIFIED",
+        "MIB",
+        "GIB",
+        "TIB",
+        "PIB",
+        "EIB"
+      ],
+      "default": "UNIT_UNSPECIFIED"
+    },
+    "UpdateAccountBody": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "UpdateAccountMemberBody": {
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string"
+        },
+        "relationship": {
+          "$ref": "#/definitions/AccountRelationship"
+        }
+      }
+    },
+    "UpdateApplicationBody": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "ownerKind": {
+          "$ref": "#/definitions/ApplicationOwnerKind"
+        },
+        "template": {
+          "type": "string",
+          "format": "byte"
+        },
+        "supportedValues": {
+          "$ref": "#/definitions/SupportedTemplateValues"
+        },
+        "category": {
+          "type": "string"
+        }
+      }
+    },
+    "UpdateCatalogRepositoryBody": {
+      "type": "object",
+      "properties": {
+        "branch": {
+          "type": "string"
+        },
+        "accessToken": {
+          "type": "string"
+        },
+        "lastSyncedSha": {
+          "type": "string"
+        }
+      }
+    },
+    "UpdateOrganizationRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "UpdateOrganizationSecretBody": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "$ref": "#/definitions/ValueSecret"
+        },
+        "s3": {
+          "$ref": "#/definitions/S3Secret"
+        },
+        "http": {
+          "$ref": "#/definitions/HTTPSecret"
+        },
+        "image": {
+          "$ref": "#/definitions/ImageSecret"
+        },
+        "map": {
+          "$ref": "#/definitions/MapSecret"
+        }
+      }
+    },
+    "UpdateSecretBody": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "$ref": "#/definitions/ValueSecret"
+        },
+        "s3": {
+          "$ref": "#/definitions/S3Secret"
+        },
+        "http": {
+          "$ref": "#/definitions/HTTPSecret"
+        },
+        "image": {
+          "$ref": "#/definitions/ImageSecret"
+        },
+        "map": {
+          "$ref": "#/definitions/MapSecret"
+        }
+      }
+    },
+    "UpdateUserAccountResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "UpdateUserProfileAvatarRequest": {
+      "type": "object",
+      "properties": {
+        "avatar": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "UpdateUserProfileRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        }
+      }
+    },
+    "UpdateUserProfileSettingsRequest": {
+      "type": "object",
+      "properties": {
+        "settings": {
+          "type": "object"
+        }
+      },
+      "description": "TODO: given this is more of a backend support item we may want to remove this from the public api."
+    },
+    "UpdateVolumeBody": {
+      "type": "object",
+      "properties": {
+        "volume": {
+          "$ref": "#/definitions/VolumeDefinition"
+        }
+      }
+    },
+    "UpsertApplicationBody": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean"
+        },
+        "ownerKind": {
+          "$ref": "#/definitions/ApplicationOwnerKind"
+        },
+        "template": {
+          "type": "string",
+          "format": "byte"
+        },
+        "supportedValues": {
+          "$ref": "#/definitions/SupportedTemplateValues"
+        },
+        "category": {
+          "type": "string"
+        },
+        "templateSha": {
+          "type": "string"
+        },
+        "supportedValuesSha": {
+          "type": "string"
+        }
+      }
+    },
+    "User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastActiveTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "UserListResponse": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/User"
+          }
+        },
+        "pageToken": {
+          "type": "string"
+        }
+      }
+    },
+    "UserProfile": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "organizationId": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string",
+          "format": "byte"
+        },
+        "settings": {
+          "type": "object"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastActiveTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "ValidateWorkflowRequest": {
+      "type": "object",
+      "properties": {
+        "definition": {
+          "$ref": "#/definitions/WorkflowDefinition"
+        }
+      }
+    },
+    "ValidateWorkflowResponse": {
+      "type": "object"
+    },
+    "ValueSecret": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "VersionGetResponse": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "Volume": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name is the key value of the volume in the volume map containing this\nstruct. This is normally set internally by client side code when parsing\nworkflow DSLs, but will need to be set when calling the API directly."
+        },
+        "type": {
+          "type": "string",
+          "title": "type is the kind of volume. This currently determines the lifetime of the\nvolume and the data contained within it.\nEphemeral volumes are empty upon creation and have a lifespan of the\nworkflow duration. Upon workflow completion the volume and its data are\ndeleted. Host volumes represent directories on the shared filesystems of\nthe nodes themselves. They must be pre-existing and fall under\ndirectories specified in the shared-fs-roots config property of the\nVolume service. Must be one of \"EPHEMERAL\" or \"HOST\".\nDeprecated in favor of reference"
+        },
+        "ingress": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/File"
+          },
+          "description": "Ingress specifies data that should be fetched and made available within\nthe volume."
+        },
+        "egress": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/File"
+          },
+          "description": "Egress specifies data that exists within the volume that should be\nexported to another storage location."
+        },
+        "path": {
+          "type": "string",
+          "title": "Path is specified for host volume types with the absolute path to the\ndirectory to mount.\nDeprecated: will be removed"
+        },
+        "reference": {
+          "type": "string",
+          "description": "Volume reference this volume is referring to."
+        }
+      },
+      "description": "Volume is an instance of a data volume used within the scope of a workflow.\nThere are a couple different types of volumes that have different data\nretention behavior. Volumes are the means of managing data for compute\napplications to process over the course of a workflow and orchestrate\ndata movement to bring injest data into the bounds of a workflow for\ncomputation or export data generated from computation it to other storage\nlocations.\n\nTODO(cedric): deprecate type/path fields\n reserved 2, 5;\n reserved \"type\", \"path\";"
+    },
+    "VolumeDefinition": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "storageClassName": {
+          "type": "string"
+        }
+      }
+    },
+    "VolumeIDResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "VolumeInfoResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "accessTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "$ref": "#/definitions/VolumeStatus"
+        },
+        "clusterId": {
+          "type": "string"
+        }
+      }
+    },
+    "VolumeStatus": {
+      "type": "string",
+      "enum": [
+        "VOLUME_STATUS_UNSPECIFIED",
+        "VOLUME_STATUS_ENABLED",
+        "VOLUME_STATUS_DISABLED"
+      ],
+      "default": "VOLUME_STATUS_UNSPECIFIED"
+    },
+    "VolumeTemplateValue": {
+      "type": "object",
+      "properties": {
+        "reference": {
+          "type": "string"
+        }
+      }
+    },
+    "Volumes": {
+      "type": "object",
+      "properties": {
+        "nameArgs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/NameArg"
+          }
+        },
+        "nameFormat": {
+          "type": "string"
+        },
+        "maxByAccount": {
+          "type": "integer",
+          "format": "int64"
+        }
+      }
+    },
+    "Workflow": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "specification": {
+          "type": "string",
+          "format": "byte"
+        },
+        "status": {
+          "$ref": "#/definitions/WorkflowStatus"
+        },
+        "email": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "clusterId": {
+          "type": "string"
+        },
+        "rawSpecification": {
+          "type": "string"
+        },
+        "accountId": {
+          "type": "string"
+        },
+        "jobs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/WorkflowStage"
+          }
+        },
+        "totalJobs": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "WorkflowDefinition": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "version defines the version of the workflow document."
+        },
+        "volumes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Volume"
+          },
+          "description": "volumes is a map defining volumes to use for this workflow by name.\nMap keys define the name of the volume and values are specifications\ndetailing the data volume. Volume names are used by different\ncomponents of the workflow to reference a particular volume instance."
+        },
+        "jobs": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/WorkflowDefinition.Job"
+          },
+          "description": "jobs is a map defining jobs to run as a part of the workflow.\nMap keys define the name of the job and values are specifications\ndetailing the compute job. Job names are used by different components\nof the workflow to reference a particular compute job instance."
+        },
+        "completed": {
+          "$ref": "#/definitions/Completed",
+          "description": "TODO: Remove from public API as this is just an anchor for DAG execution."
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Annotations for the whole workflow. Currently, this is used by the\nscheduler to place jobs in a certain topology zone"
+        },
+        "defaults": {
+          "$ref": "#/definitions/Defaults"
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "files is a map defining files that may be injected into volumes and jobs.\nMap keys define the name of the file and values are the file's contents.\nFiles names are used by job and volume.ingress components\nto reference a specific file."
+        },
+        "services": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/Service"
+          }
+        }
+      },
+      "description": "WorkflowDefinition is the highest level unit of work for a Fuzzball cluster.\nWorkflows consist of orchestrating data volumes, container images and\ncontainer execution across a compute cluster."
+    },
+    "WorkflowDefinition.Job": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Used internally to store the job name.  If this field is present in a\ndefinition then it will be ignored in preference for the map key used in\nthe `jobs` field."
+        },
+        "image": {
+          "$ref": "#/definitions/URI",
+          "title": "Image is the URI to the container image to be used for this job.\nSupported uri formats are: \"docker://...\" and \"oras://\" for OCI\nand SIF(Singularity Image Format) images respectively.\nE.g. docker://alpine:latest"
+        },
+        "command": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "command is the arguments executed by the container process."
+        },
+        "env": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "env is a list of environment variables to be exposed inside of the job\ncontainer."
+        },
+        "mounts": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/WorkflowDefinition.Job.Mount"
+          },
+          "description": "mounts is a map containing a key that references a volume by name and\nvalue containing a specification with details of how that volume should\nbe mounted into the job container."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "cwd allows the specification of the the working dirctory used by the job.\nThis must be an absolute path. If unset the working directory defaults\nfirst to the working directory in the OCI image config if present and\nthen to \"/\"."
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "requires is a list of prerequisite jobs in the workflow that must be\ncompleted before this job may be started. This allows jobs within a\nworkflow to be formed into a directed asyclic graph. If requirements\nspecified by different jobs results in a cycle, the workflow will fail to\nstart."
+        },
+        "policy": {
+          "$ref": "#/definitions/Policy",
+          "description": "policy contains configurable rules that define high level execution\nbehavior of a job such as max execution time and retries on failure."
+        },
+        "resource": {
+          "$ref": "#/definitions/WorkflowDefinition.Job.Resource",
+          "description": "resource specifies the hardware requirements that must be met for the job\nto be executed. This is used by the scheduler to determine if and where a\njob can be scheduled to run."
+        },
+        "multinode": {
+          "$ref": "#/definitions/Job.Multinode",
+          "description": "multinode enables a job to run across multiple nodes in parallel."
+        },
+        "taskArray": {
+          "$ref": "#/definitions/Job.TaskArray",
+          "description": "task_array enables a job to be broken up into multiple tasks that run\nconcurrently. This is useful for doing embarassingly parallel compute\nwork."
+        },
+        "network": {
+          "$ref": "#/definitions/Job.Network",
+          "title": "network defines if the job should run inside its own netowrk namespace"
+        },
+        "script": {
+          "type": "string",
+          "title": "shellbang script executed via command"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "args passed to above script field, can also be passed to existing command"
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Job is a single compute \"step\" in a workflow.\nThere are a variety of different types of jobs that\nresult in one or more containers being spawned.\nBy default, a single container is spawned unless the\nTaskArray or Multinode fields are specified."
+    },
+    "WorkflowDefinition.Job.Mount": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "type": "string",
+          "description": "location specifies the destination within the container filesystem to\nmount a volume directory. This must be an absolute path."
+        }
+      },
+      "description": "Mount is the specification for how a volume gets mounted into a job\ncontainer."
+    },
+    "WorkflowDefinition.Job.Resource": {
+      "type": "object",
+      "properties": {
+        "cpu": {
+          "$ref": "#/definitions/WorkflowDefinition.Job.Resource.Cpu",
+          "description": "cpu details CPU resource requirements for the job."
+        },
+        "memory": {
+          "$ref": "#/definitions/WorkflowDefinition.Job.Resource.Memory",
+          "description": "memory details memory requirements for the job."
+        },
+        "devices": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "description": "device details device resource requirements for the job."
+        },
+        "exclusive": {
+          "type": "boolean",
+          "description": "exclusive sets the requirement that this job is the only one running on\na node."
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "annotations is a map of string key value pairs that can be used to\nspecify custom behavior implemented by the workflow system to meet\nneeds beyond what the first class resource parameters currently\nprovide. Potential use cases could be along the lines of:matching a job\nto a specfic node pool, requiring a specific CPU microarchitecture or\nGPU family, etc."
+        }
+      },
+      "description": "Resource specifies hardware requirements that must be met for the\nexecution of a job."
+    },
+    "WorkflowDefinition.Job.Resource.Cpu": {
+      "type": "object",
+      "properties": {
+        "affinity": {
+          "type": "string",
+          "description": "affinity dictates how the binding of tasks to the specific hardware\nlayout occurs. Must be one of \"NUMA\", \"SOCKET\", or \"CORE\". An unset\naffinity defaults to \"CORE\"."
+        },
+        "cores": {
+          "type": "integer",
+          "format": "int64",
+          "description": "cores is the number of processor cores required."
+        },
+        "threads": {
+          "type": "boolean",
+          "description": "threads dictates if hardware threads of allocated cores are exposed\nto the job container."
+        },
+        "sockets": {
+          "type": "integer",
+          "format": "int64",
+          "description": "sockets is the number of sockets required."
+        }
+      },
+      "description": "CPU contains relevant details about CPU requirements."
+    },
+    "WorkflowDefinition.Job.Resource.Memory": {
+      "type": "object",
+      "properties": {
+        "size": {
+          "type": "string",
+          "description": "size is the amount of memory required for the job. If no unit is\nspecified, byte is the default. E.g. 32KiB, 1GB, 32GiB."
+        },
+        "byCore": {
+          "type": "boolean",
+          "description": "by_core defines if the memory is specified per CPU core."
+        }
+      },
+      "description": "Memory contains relevant details about RAM requirements."
+    },
+    "WorkflowGatewayAttachRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "stdin": {
+          "type": "boolean"
+        },
+        "input": {
+          "type": "string",
+          "format": "byte"
+        },
+        "ws": {
+          "$ref": "#/definitions/TerminalSize"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the container to execute the command in."
+        },
+        "rank": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Rank of the container to execute the command in."
+        }
+      }
+    },
+    "WorkflowGatewayAttachResponse": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string",
+          "format": "byte"
+        },
+        "error": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "WorkflowGatewayExecRequest": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "arguments": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ws": {
+          "$ref": "#/definitions/TerminalSize"
+        },
+        "input": {
+          "type": "string",
+          "format": "byte"
+        },
+        "terminal": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the container to execute the command in."
+        },
+        "rank": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Rank of the container to execute the command in."
+        }
+      }
+    },
+    "WorkflowGatewayExecResponse": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string",
+          "format": "byte"
+        },
+        "error": {
+          "type": "string",
+          "format": "byte"
+        },
+        "exitCode": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "WorkflowGatewayLogCommand": {
+      "type": "string",
+      "enum": [
+        "WORKFLOW_GATEWAY_LOG_COMMAND_UNSPECIFIED"
+      ],
+      "default": "WORKFLOW_GATEWAY_LOG_COMMAND_UNSPECIFIED"
+    },
+    "WorkflowGatewayLogResponse": {
+      "type": "object",
+      "properties": {
+        "output": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "WorkflowGatewayLogShow": {
+      "type": "object",
+      "properties": {
+        "tail": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "follow": {
+          "type": "boolean"
+        }
+      }
+    },
+    "WorkflowGatewayPortForwardResponse": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "WorkflowIDResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      }
+    },
+    "WorkflowPlan": {
+      "type": "object",
+      "properties": {
+        "stages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/WorkflowStage"
+          }
+        }
+      }
+    },
+    "WorkflowSecret": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "$ref": "#/definitions/ValueSecret"
+        },
+        "s3": {
+          "$ref": "#/definitions/S3Secret"
+        },
+        "http": {
+          "$ref": "#/definitions/HTTPSecret"
+        },
+        "image": {
+          "$ref": "#/definitions/ImageSecret"
+        },
+        "decryption": {
+          "$ref": "#/definitions/ImageDecryptionSecret"
+        }
+      }
+    },
+    "WorkflowSecretsMap": {
+      "type": "object",
+      "properties": {
+        "secrets": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/WorkflowSecret"
+          }
+        }
+      }
+    },
+    "WorkflowStage": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/WorkflowStatus"
+        },
+        "kind": {
+          "$ref": "#/definitions/StageKind"
+        },
+        "error": {
+          "type": "string"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "details": {
+          "type": "object"
+        },
+        "rank": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    },
+    "WorkflowStatus": {
+      "type": "string",
+      "enum": [
+        "STAGE_STATUS_UNSPECIFIED",
+        "STAGE_STATUS_STARTED",
+        "STAGE_STATUS_FINISHED",
+        "STAGE_STATUS_FAILED",
+        "STAGE_STATUS_CANCELED"
+      ],
+      "default": "STAGE_STATUS_UNSPECIFIED",
+      "title": "- STAGE_STATUS_UNSPECIFIED: also used for pending"
+    }
+  }
+}

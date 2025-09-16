@@ -43,6 +43,7 @@ help: ## Show this help message
 	@echo ""
 	@echo "Available targets:"
 	@echo ""
+	# assemble make target descriptions from special comments starting with '##' appended to the target line
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ""
 	@echo "Environment Variables:"

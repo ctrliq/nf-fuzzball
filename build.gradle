@@ -16,7 +16,7 @@ dependencies {
 
 // plugin version - gradle by convention seems to not use v prefixes. That does
 // cause some issues in other places but we'll stick with convention
-version = '0.1.0'
+version = '0.1.1'
 
 nextflowPlugin {
     // minimum nextflow version

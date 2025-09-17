@@ -735,7 +735,7 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--nf-fuzzball-version",
         type=str,
-        default="0.1.0",
+        default="0.2.0",
         help="nf-fuzzball plugin version. Note that the plugin tag includes a 'v' prefix [%(default)s]",
     )
     parser.add_argument(

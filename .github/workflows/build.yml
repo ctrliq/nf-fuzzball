@@ -1,8 +1,7 @@
 name: nf-fuzzball CI
 on:
   pull_request:
-    branches:
-      - '*'
+    types: [synchronize]
   push:
     tags:
       - "v*.*.*"
@@ -41,21 +40,20 @@ jobs:
           echo "Available schemas: ${AVAILABLE_SCHEMAS[*]}"
           echo "Latest schema detected: $LATEST_SCHEMA"
 
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            SELECTED_VERSIONS=( "${LATEST_SCHEMA}" )
-            echo "PR build: using latest schema $LATEST_SCHEMA"
-          elif [ "${{ github.ref_type }}" = "tag" ]; then
-            SELECTED_VERSIONS=( "${LATEST_SCHEMA}" )
-            echo "Tag build: using latest schema $LATEST_SCHEMA"
-          else
-            # Manual dispatch: Parse input string
+          #-- START manual_dispatch on tag --------------------------------------------------
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ github.ref_type }}" != "tag" ]]; then
+              echo "Manual artefact builds are only allowed to add new artefacts to existing tags and should not be run on anything but a tag"
+              exit 1
+            fi
+
             INPUT_VERSIONS="${{ github.event.inputs.schema_versions }}"
             echo "Input versions: $INPUT_VERSIONS"
 
             if [[ "$INPUT_VERSIONS" == "all" ]]; then
               SELECTED_VERSIONS=( "${AVAILABLE_SCHEMAS[@]}" )
               echo "Building all available versions: ${SELECTED_VERSIONS[*]}"
-            elif [ "$INPUT_VERSIONS" = "latest" ]; then
+            elif [[ "$INPUT_VERSIONS" = "latest" ]]; then
               SELECTED_VERSIONS=( "$LATEST_SCHEMA" )
               echo "Building latest version: ${SELECTED_VERSIONS[*]}"
             else
@@ -89,7 +87,19 @@ jobs:
             fi
 
             echo "Manual build: building versions: ${SELECTED_VERSIONS[*]}"
+          #-- END manual_dispatch on tag ----------------------------------------------------
+          #-- START automatic dispatch ------------------------------------------------------
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            SELECTED_VERSIONS=( "${LATEST_SCHEMA}" )
+            echo "PR build: using latest schema $LATEST_SCHEMA"
+          elif [[ "${{ github.ref_type }}" = "tag" ]]; then
+            SELECTED_VERSIONS=( "${LATEST_SCHEMA}" )
+            echo "New tag build: using latest schema $LATEST_SCHEMA"
+          else
+            echo "Unknown event type"
+            exit 1
           fi
+          #-- END automatic dispatch --------------------------------------------------------
 
           # Output matrix in correct format for GitHub Actions
           echo "matrix=$(jq -cn '{"fuzzball_version": $ARGS.positional}' --args "${SELECTED_VERSIONS[@]}")" >> "$GITHUB_OUTPUT"

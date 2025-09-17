@@ -51,7 +51,7 @@ uv run python submit_nextflow.py [OPTIONS] -- [nextflow_cmd]
 | `-n`, `--dry-run`         | No       | False                            | Don't submit the workflow, just print it.                                                                                          |
 | `--job-name`              | No       | (UUID from command)              | Name of the Fuzzball workflow running the Nextflow controller job. Defaults to a UUID seeded by the full Nextflow command.         |
 | `--nextflow-work-base`    | No       | `/data/nextflow/executions`      | Base directory for Nextflow execution paths in the persistent volume mounted at /data                                              |
-| `--nf-fuzzball-version`   | No       | `0.1.0`                          | nf-fuzzball plugin version.                                                                                                        |
+| `--nf-fuzzball-version`   | No       | `0.2.0`                          | nf-fuzzball plugin version.                                                                                                        |
 | `--nextflow-version`      | No       | `25.05.0-edge`                   | Nextflow version to use in the Fuzzball job.                                                                                       |
 | `--timelimit`             | No       | `8h`                             | Timelimit for the pipeline job.                                                                                                    |
 | `--scratch-volume`        | No       | `volume://user/ephemeral`        | Ephemeral scratch volume reference.                                                                                                |

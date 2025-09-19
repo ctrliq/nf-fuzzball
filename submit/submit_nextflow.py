@@ -31,7 +31,6 @@ import sys
 import textwrap
 from typing import Dict, Any
 import uuid
-from urllib.parse import urlparse
 
 import yaml
 import urllib3
@@ -166,7 +165,12 @@ class MinimalFuzzballClient:
     for Nextflow pipelines to the Fuzzball cluster.
     """
 
-    def __init__(self, config_path: pathlib.Path, context: str | None = None, ca_cert_file: str | None = None):
+    def __init__(
+        self,
+        config_path: pathlib.Path,
+        context: str | None = None,
+        ca_cert_file: str | None = None,
+    ):
         """
         Initialize the Fuzzball client with configuration from a YAML file.
 
@@ -229,7 +233,9 @@ class MinimalFuzzballClient:
         detected_base_path = None
         for version in ["v2", "v3", "v4"]:
             test_base_path = f"/{version}"
-            test_base_url = f"{self._schema}://{self._host}:{self._port}{test_base_path}"
+            test_base_url = (
+                f"{self._schema}://{self._host}:{self._port}{test_base_path}"
+            )
 
             try:
                 # Test if this version works by trying the /version endpoint
@@ -240,7 +246,7 @@ class MinimalFuzzballClient:
                         "Authorization": f"Bearer {self._token}",
                         "Content-Type": "application/json",
                     },
-                    timeout=30
+                    timeout=30,
                 )
                 if response.status < 400:
                     detected_base_path = test_base_path
@@ -259,7 +265,7 @@ class MinimalFuzzballClient:
         # Determine version of the Fuzzball API server
         try:
             response = self._request("GET", "/version")
-            version_data = json.loads(response.data.decode('utf-8'))
+            version_data = json.loads(response.data.decode("utf-8"))
             self._fb_version = ".".join(version_data["version"].split(".")[0:2])
             logger.info(f"Connected to Fuzzball version {self._fb_version} API server")
         except urllib3.exceptions.HTTPError as e:
@@ -281,18 +287,14 @@ class MinimalFuzzballClient:
             self._http = urllib3.PoolManager(
                 ssl_context=ssl_context,
                 retries=Retry(
-                    total=3,
-                    backoff_factor=0.1,
-                    status_forcelist=[500, 502, 503, 504]
-                )
+                    total=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504]
+                ),
             )
         else:
             # Use default SSL verification
             self._http = urllib3.PoolManager(
                 retries=Retry(
-                    total=3,
-                    backoff_factor=0.1,
-                    status_forcelist=[500, 502, 503, 504]
+                    total=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504]
                 )
             )
 
@@ -310,7 +312,7 @@ class MinimalFuzzballClient:
 
     def _request(
         self, method: str, endpoint: str, data: Dict[str, Any] | None = None
-    ) -> urllib3.HTTPResponse:
+    ) -> urllib3.BaseHTTPResponse:
         """
         Make an API request to the Fuzzball server with retry logic.
 
@@ -329,19 +331,17 @@ class MinimalFuzzballClient:
 
         body = None
         if data is not None:
-            body = json.dumps(data).encode('utf-8')
+            body = json.dumps(data).encode("utf-8")
 
         response = self._http.request(
-            method.upper(),
-            url,
-            body=body,
-            headers=self._headers,
-            timeout=30
+            method.upper(), url, body=body, headers=self._headers, timeout=30
         )
 
         # Check for HTTP errors
         if response.status >= 400:
-            raise urllib3.exceptions.HTTPError(f"HTTP {response.status}: {response.reason}")
+            raise urllib3.exceptions.HTTPError(
+                f"HTTP {response.status}: {response.reason}"
+            )
 
         return response
 
@@ -362,17 +362,17 @@ class MinimalFuzzballClient:
             logger.error(f"Failed to encode Fuzzball configuration for transport: {e}")
             raise ValueError("Failed to encode Fuzzball configuration for transport")
 
-    def _encode_ca_cert(self) -> str | None:
+    def _encode_ca_cert(self) -> str:
         """Return a base64 encoded version of the CA certificate if one was provided.
 
         Returns:
-            Base64 encoded config string safe for transport (or None if no cert was provided)
+            Base64 encoded config string safe for transport. Empty string if no cert was passed
 
         Raises:
             IOError: If the certificate file cannot be read.
         """
         if not self._ca_cert_file:
-            return None
+            return ""
 
         try:
             with open(self._ca_cert_file, "rb") as f:
@@ -402,7 +402,7 @@ class MinimalFuzzballClient:
             logger.error("Failed to retrieve existing secrets")
             raise
         id = None
-        secrets_data = json.loads(response.data.decode('utf-8'))
+        secrets_data = json.loads(response.data.decode("utf-8"))
         for secret in secrets_data["secrets"]:
             if secret["name"] == secret_name:
                 id = secret["id"]
@@ -419,7 +419,7 @@ class MinimalFuzzballClient:
             except urllib3.exceptions.HTTPError:
                 logger.error("Failed to create secret")
                 raise
-            resp_data = json.loads(resp.data.decode('utf-8'))
+            resp_data = json.loads(resp.data.decode("utf-8"))
             secret_id = resp_data["id"]
         else:
             secret_id = id
@@ -448,7 +448,10 @@ class MinimalFuzzballClient:
             if len(args.job_name) > 0
             else str(uuid.uuid5(NAMESPACE_CONTENT, nextflow_cmd_str))
         )
-        mounts = {"data": {"location": DATA_MOUNT}, "scratch": {"location": SCRATCH_MOUNT}}
+        mounts = {
+            "data": {"location": DATA_MOUNT},
+            "scratch": {"location": SCRATCH_MOUNT},
+        }
         wd = f"{args.nextflow_work_base}/{job_name}"
         home_base = "home"
         home = f"{wd}/{home_base}"
@@ -472,11 +475,15 @@ class MinimalFuzzballClient:
         # check that the URL exists
         if plugin_uri.startswith("http://") or plugin_uri.startswith("https://"):
             try:
-                response = self._http.request('HEAD', plugin_uri, timeout=10)
+                response = self._http.request("HEAD", plugin_uri, timeout=10)
                 if response.status >= 400:
-                    raise urllib3.exceptions.HTTPError(f"HTTP {response.status}: {response.reason}")
+                    raise urllib3.exceptions.HTTPError(
+                        f"HTTP {response.status}: {response.reason}"
+                    )
             except urllib3.exceptions.HTTPError:
-                raise Exception(f"Failed to access nf-fuzzball plugin for this version of Fuzzball at {plugin_uri}")
+                raise Exception(
+                    f"Failed to access nf-fuzzball plugin for this version of Fuzzball at {plugin_uri}"
+                )
 
         env = [
             f"HOME={home}",
@@ -506,10 +513,14 @@ class MinimalFuzzballClient:
         config_secret_name = f"{secret_name}-conf"
         cert_secret_name = f"{secret_name}-cert"
 
-        config_secret_id = self.create_value_secret(config_secret_name, self._encode_config())
+        config_secret_id = self.create_value_secret(
+            config_secret_name, self._encode_config()
+        )
         cert_secret_id = None
         if self._ca_cert_file is not None:
-            cert_secret_id = self.create_value_secret(cert_secret_name, self._encode_ca_cert())
+            cert_secret_id = self.create_value_secret(
+                cert_secret_name, self._encode_ca_cert()
+            )
 
         nxf_fuzzball_config = base64.b64encode(
             textwrap.dedent(f"""\
@@ -612,8 +623,13 @@ class MinimalFuzzballClient:
                         "mounts": mounts,
                         "cwd": "/tmp",
                         "script": setup_script,
-                        "env": env + [f"FB_CONFIG_SECRET=secret://user/{config_secret_name}"] +
-                               ([f"FB_CA_CERT_SECRET=secret://user/{cert_secret_name}"] if self._ca_cert_file is not None else []),
+                        "env": env
+                        + [f"FB_CONFIG_SECRET=secret://user/{config_secret_name}"]
+                        + (
+                            [f"FB_CA_CERT_SECRET=secret://user/{cert_secret_name}"]
+                            if self._ca_cert_file is not None
+                            else []
+                        ),
                         "policy": {"timeout": {"execute": "5m"}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
                     },
@@ -624,7 +640,12 @@ class MinimalFuzzballClient:
                         "mounts": mounts,
                         "cwd": wd,
                         "script": nextflow_script,
-                        "env": env + ([f"FB_CA_CERT={ca_cert_path}"] if self._ca_cert_file is not None else []),
+                        "env": env
+                        + (
+                            [f"FB_CA_CERT={ca_cert_path}"]
+                            if self._ca_cert_file is not None
+                            else []
+                        ),
                         "policy": {"timeout": {"execute": args.timelimit}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
                         "requires": ["setup"],
@@ -648,7 +669,7 @@ class MinimalFuzzballClient:
             logger.info("Dry run mode: not submitting the workflow.")
             self._request("DELETE", f"/secrets/{config_secret_id}")
             if cert_secret_id:
-               self._request("DELETE", f"/secrets/{cert_secret_id}")
+                self._request("DELETE", f"/secrets/{cert_secret_id}")
             return
         response = self._request("POST", "/workflows", data=workflow)
         response_data = json.loads(response.data.decode("utf-8"))
@@ -697,7 +718,8 @@ def parse_cli() -> argparse.Namespace:
         "--fuzzball-config",
         type=pathlib.Path,
         default=(
-            pathlib.Path("~/.config/fuzzball/config.yaml").expanduser() if os.environ.get("XDG_CONFIG_HOME", None) is None
+            pathlib.Path("~/.config/fuzzball/config.yaml").expanduser()
+            if os.environ.get("XDG_CONFIG_HOME", None) is None
             else pathlib.Path(f"{os.environ['XDG_CONFIG_HOME']}/fuzzball/config.yaml")
         ),
         help="Path to the fuzzball configuration file. [%(default)s]",
@@ -808,9 +830,7 @@ def parse_cli() -> argparse.Namespace:
     if args.nextflow_cmd[0] == "--":
         args.nextflow_cmd.pop(0)
     if args.nextflow_cmd[0] != "nextflow":
-        parser.error(
-            "Your nextflow command does not start with 'nextflow'"
-        )
+        parser.error("Your nextflow command does not start with 'nextflow'")
     if args.verbose or args.dry_run:
         logging.getLogger().setLevel(logging.DEBUG)
 

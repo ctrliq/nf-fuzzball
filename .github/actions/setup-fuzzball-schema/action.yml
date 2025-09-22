@@ -1,0 +1,24 @@
+name: 'Setup Fuzzball Schema'
+description: 'Set Fuzzball version and validate schema file'
+inputs:
+  fuzzball_version:
+    description: 'Fuzzball version (e.g., v2.1)'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Set Fuzzball version and validate schema
+      shell: bash
+      run: |
+        FUZZBALL_VERSION="${{ inputs.fuzzball_version }}"
+        SCHEMA_FILE="code-generation/schemas/fuzzball-${FUZZBALL_VERSION}-openapi.json"
+
+        # Validate schema file exists
+        if [[ ! -f "$SCHEMA_FILE" ]]; then
+          echo "Error: Schema file $SCHEMA_FILE does not exist"
+          exit 1
+        fi
+
+        echo "FUZZBALL_VERSION=$FUZZBALL_VERSION" >> "$GITHUB_ENV"
+        echo "SCHEMA_FILE=$SCHEMA_FILE" >> "$GITHUB_ENV"
+        echo "Using Fuzzball version: $FUZZBALL_VERSION with schema: $SCHEMA_FILE"

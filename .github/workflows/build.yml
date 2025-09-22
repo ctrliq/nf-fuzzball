@@ -33,7 +33,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - name: Determine which schemas to build
         id: set-matrix
         run: |
@@ -45,10 +44,6 @@ jobs:
 
           #-- START manual_dispatch on tag --------------------------------------------------
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            if [[ "${{ github.ref_type }}" != "tag" ]]; then
-              echo "Manual artefact builds are only allowed to add new artefacts to existing tags and should not be run on anything but a tag"
-              exit 1
-            fi
 
             INPUT_VERSIONS="${{ github.event.inputs.schema_versions }}"
             echo "Input versions: $INPUT_VERSIONS"
@@ -107,6 +102,35 @@ jobs:
           # Output matrix in correct format for GitHub Actions
           echo "matrix=$(jq -cn '{"fuzzball_version": $ARGS.positional}' --args "${SELECTED_VERSIONS[@]}")" >> "$GITHUB_OUTPUT"
 
+  test:
+    name: Run tests
+    needs: determine-matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'pull_request'
+    strategy:
+      matrix: ${{fromJson(needs.determine-matrix.outputs.matrix)}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+      - name: Setup Fuzzball Schema
+        uses: ./.github/actions/setup-fuzzball-schema
+        with:
+          fuzzball_version: ${{ matrix.fuzzball_version }}
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: 21
+          architecture: x64
+          distribution: 'temurin'
+      - name: Run tests
+        run: ./gradlew test -PopenapiFile="${{ env.SCHEMA_FILE }}"
+        env:
+          GRADLE_OPTS: '-Dorg.gradle.daemon=false'
+
   build:
     name: Build nf-fuzzball
     needs: determine-matrix
@@ -114,35 +138,21 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix: ${{fromJson(needs.determine-matrix.outputs.matrix)}}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
           submodules: true
-
-      - name: Set Fuzzball version and validate schema
-        run: |
-          FUZZBALL_VERSION="${{ matrix.fuzzball_version }}"
-          SCHEMA_FILE="code-generation/schemas/fuzzball-${FUZZBALL_VERSION}-openapi.json"
-
-          # Validate schema file exists
-          if [[ ! -f "$SCHEMA_FILE" ]]; then
-            echo "Error: Schema file $SCHEMA_FILE does not exist"
-            exit 1
-          fi
-
-          echo "FUZZBALL_VERSION=$FUZZBALL_VERSION" >> "$GITHUB_ENV"
-          echo "SCHEMA_FILE=$SCHEMA_FILE" >> "$GITHUB_ENV"
-          echo "Building for Fuzzball version: $FUZZBALL_VERSION using $SCHEMA_FILE"
-
+      - name: Setup Fuzzball Schema
+        uses: ./.github/actions/setup-fuzzball-schema
+        with:
+          fuzzball_version: ${{ matrix.fuzzball_version }}
       - name: Set plugin version (starts with 'v')
         run: |
           # PLUGIN_VERSION always comes from gradle but we make sure it also starts with a v
           PLUGIN_VERSION="$(grep -E "version\s*=" build.gradle | head -1 | sed -E "s/.*version\s*=\s*'([^']+)'.*/\1/")"
           echo "PLUGIN_VERSION=v${PLUGIN_VERSION#v}" >> "$GITHUB_ENV"
-
       - name: Check plugin in build.gradle matches tag
         if: github.ref_type == 'tag'
         run: |
@@ -155,29 +165,20 @@ jobs:
           else
             echo "Plugin version in build.gradle matches tag"
           fi
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
         with:
-          java-version: 17
+          java-version: 21
           architecture: x64
           distribution: 'temurin'
-
       - name: Compile
         run: ./gradlew assemble -PopenapiFile="${{ env.SCHEMA_FILE }}"
-
-      - name: Tests
-        run: ./gradlew check
-        env:
-          GRADLE_OPTS: '-Dorg.gradle.daemon=false'
-
       - name: Update name of build artifact
         run: |
           aname="nf-fuzzball-${{ env.PLUGIN_VERSION }}-stable-${{ matrix.fuzzball_version }}.zip"
           echo "Renaming build artifact to ${aname}"
           mv build/distributions/nf-fuzzball-*.zip "build/distributions/${aname}"
           echo "ARTIFACT_NAME=${aname}" >> "$GITHUB_ENV"
-
       - name: Create or update release and attach artifact
         if: github.ref_type == 'tag' && (github.event_name == 'push' || github.event.inputs.publish_release == 'true')
         uses: ncipollo/release-action@v1

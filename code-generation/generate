@@ -139,5 +139,7 @@ fi
 
 printf -- "------------------------------------------------\n"
 printf "Fuzzball SDK generated in %s\n" "${path}"
-printf "  source: %s\n" "${url}"
+printf "  source:    %s\n" "${spec}"
+printf "  generator: %s\n" "${gen}"
+printf "  scriptd:   %s\n" "${scriptd}"
 printf -- "------------------------------------------------\n"

@@ -159,13 +159,13 @@ jobs:
           architecture: x64
           distribution: 'temurin'
 
-      - name: Compile
-        run: ./gradlew assemble -PopenapiFile="${{ env.SCHEMA_FILE }}"
-
       - name: Tests
-        run: ./gradlew check
+        run: ./gradlew check -PopenapiFile="${{ env.SCHEMA_FILE }}"
         env:
           GRADLE_OPTS: '-Dorg.gradle.daemon=false'
+
+      - name: Compile
+        run: ./gradlew assemble -PopenapiFile="${{ env.SCHEMA_FILE }}"
 
       - name: Update name of build artifact
         run: |

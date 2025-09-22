@@ -45,10 +45,6 @@ jobs:
 
           #-- START manual_dispatch on tag --------------------------------------------------
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            if [[ "${{ github.ref_type }}" != "tag" ]]; then
-              echo "Manual artefact builds are only allowed to add new artefacts to existing tags and should not be run on anything but a tag"
-              exit 1
-            fi
 
             INPUT_VERSIONS="${{ github.event.inputs.schema_versions }}"
             echo "Input versions: $INPUT_VERSIONS"
@@ -156,10 +152,10 @@ jobs:
             echo "Plugin version in build.gradle matches tag"
           fi
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
         with:
-          java-version: 17
+          java-version: 21
           architecture: x64
           distribution: 'temurin'
 

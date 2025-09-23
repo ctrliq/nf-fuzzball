@@ -22,6 +22,7 @@ Notes:
 
 import argparse
 import base64
+import getpass
 import json
 import logging
 import os
@@ -30,7 +31,7 @@ import shlex
 import ssl
 import sys
 import textwrap
-from typing import Dict, Any
+from typing import Any
 import uuid
 from urllib.parse import urlencode, urlparse
 
@@ -208,7 +209,6 @@ class MinimalFuzzballClient:
         self._setup_http_client(self._ca_cert_file)
 
         if self._user:
-            #self._init_direct_login()
             # Direct login flow
             if not all(
                 [
@@ -428,7 +428,7 @@ class MinimalFuzzballClient:
         self._token = api_response_data["token"]
 
     @property
-    def _headers(self) -> Dict[str, str]:
+    def _headers(self) -> dict[str, str]:
         """Return the headers required for API requests."""
         if not self._token:
             raise ValueError("Authentication token is not available.")
@@ -441,8 +441,8 @@ class MinimalFuzzballClient:
         self,
         method: str,
         endpoint: str,
-        data: Dict[str, Any] | None = None,
-        headers: Dict[str, str] | None = None,
+        data: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
         base_url: str | None = None,
     ) -> urllib3.HTTPResponse:
         """Make an API request to the Fuzzball server."""

@@ -1,0 +1,53 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nf-fuzzball-submit"
+version = "0.2.0"
+description = "Submit Nextflow pipelines to Fuzzball clusters"
+authors = [{name = "CIQ", email = "info@ciq.com"}]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "urllib3>=2.0.0",
+    "pyyaml>=6.0",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.scripts]
+nf-fuzzball-submit = "nf_fuzzball_submit.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/ctrliq/nf-fuzzball"
+Repository = "https://github.com/ctrliq/nf-fuzzball.git"
+Issues = "https://github.com/ctrliq/nf-fuzzball/issues"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "isort>=5.0",
+    "mypy>=1.0",
+    "ruff",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+#[tool.ruff.lint]
+#select = ["ALL"]
+#ignore = [
+#    "E501", # line-too-long
+#]
+#preview = true

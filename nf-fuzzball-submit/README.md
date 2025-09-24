@@ -16,9 +16,9 @@ Helper to submit Nextflow pipelines to Fuzzball using the nf-fuzzball plugin.
 Installation as a tool (see the [uv tool documentation](https://docs.astral.sh/uv/concepts/tools/#tool-versions))
 ```sh
 # from the main branch
-uv tool install git+https://github.com/ctrliq/nf-fuzzball.git@main#subdirectory=nf-fuzzball-submit
+uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@main#subdirectory=nf-fuzzball-submit"
 # from a release
-uv tool install git+https://github.com/ctrliq/nf-fuzzball.git@v0.2.0#subdirectory=nf-fuzzball-submit
+uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@v0.2.0#subdirectory=nf-fuzzball-submit"
 
 nf-fuzzball-submit --help
 ```
@@ -31,7 +31,7 @@ uv tool uninstall nf-fuzzball-submit
 Installation into a virtual environment
 ```sh
 uv venv
-uv pip install git+https://github.com/ctrliq/nf-fuzzball.git@main#subdirectory=nf-fuzzball-submit
+uv pip install "git+https://github.com/ctrliq/nf-fuzzball.git@main#subdirectory=nf-fuzzball-submit"
 uv run nf-fuzzball-submit --help
 ## or
 source .venv/bin/activate
@@ -44,7 +44,7 @@ Install into a virtual environment
 ```bash
 python -m venv nf-fuzzball
 source nf-fuzzball/bin/activate
-python -m pip install git+https://github.com/ctrliq/nf-fuzzball.git@main#subdirectory=nf-fuzzball-submit
+python -m pip install "git+https://github.com/ctrliq/nf-fuzzball.git@main#subdirectory=nf-fuzzball-submit"
 ```
 
 ## Configuration

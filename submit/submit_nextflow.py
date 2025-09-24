@@ -19,8 +19,11 @@ Notes:
     needs to be specified to allow TLS certificate verification.
 """
 
+from abc import ABC, abstractmethod
 import argparse
 import base64
+from dataclasses import dataclass
+import getpass
 import json
 import logging
 import os
@@ -29,13 +32,14 @@ import shlex
 import ssl
 import sys
 import textwrap
-from typing import Dict, Any
+from typing import Any
+from urllib.parse import urlencode, urlparse
 import uuid
-from urllib.parse import urlparse
 
-import yaml
 import urllib3
 from urllib3.util import Retry
+import yaml
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,6 +47,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 NAMESPACE_CONTENT = uuid.UUID("71c91ef2-0f9b-47f3-988b-5725d2f67599")
 DATA_MOUNT = "/data"
@@ -78,17 +83,25 @@ def die(error: str) -> None:
 
 
 class LocalFile:
-    """
-    Represents a local file that should be included in the Nextflow job. The remote name
-    is derived from the file content using a UUID based on a hash of the content.
+    """Represents a local file that should be included in the Nextflow job.
+
+    The remote name is derived from the file content using a UUID based on a hash
+    of the content.
+
+    Attributes:
+        local_path: Path to the local file.
+        content: Base64 encoded file content.
+        remote_name: Generated remote filename.
+        remote_path: Full remote path including prefix.
     """
 
     def __init__(self, local_path: pathlib.Path, remote_prefix: str = "") -> None:
-        """
-        Initialize a LocalFile instance.
+        """Initialize a LocalFile instance.
+
         Args:
             local_path: Path to the local file to be included in the Nextflow job.
             remote_prefix: Optional prefix for the remote file name.
+
         Raises:
             IOError: If the file cannot be read.
             Exception: If there is an error processing the file.
@@ -113,15 +126,17 @@ class LocalFile:
 def find_and_import_local_files(
     nextflow_cmd: list[str], remote_prefix: str = ""
 ) -> tuple[list[str], list[LocalFile]]:
-    """
-    Find local files in the Nextflow command and prepare them for upload to Fuzzball.
+    """Find local files in the Nextflow command and prepare them for upload to Fuzzball.
+
     Args:
         nextflow_cmd: The Nextflow command as a list of arguments.
         remote_prefix: Optional prefix for the remote file names.
+
     Returns:
         A tuple containing:
         - A modified command list with local file paths replaced by their remote equivalents.
         - A list of LocalFile objects representing the local files found.
+
     Raises:
         IOError: If a local file cannot be read.
         Exception: If there is an error processing a local file.
@@ -157,8 +172,346 @@ def find_and_import_local_files(
             mangled_command.append(arg)
     return mangled_command, local_files
 
+###
+### Fuzzball
+###
 
-class MinimalFuzzballClient:
+def make_url_canonical(url: str, http_client: urllib3.PoolManager) -> str:
+    """Returns full API url including base path.
+
+    Args:
+        url: Base URL to test for API versioning.
+        http_client: HTTP client for making requests.
+
+    Returns:
+        The full API URL with the correct base path.
+
+    Raises:
+        ValueError: If unable to determine the API base path.
+    """
+    base_url = url.rstrip("/")
+    if not url.startswith("http"):
+        base_url = f"https://{url.rstrip('/')}"
+    candidates = ["/v2", "/v3", "/v4", "/v5", "/v6"]
+    if base_url[-3:] in candidates:
+        return base_url
+
+    for path in candidates:
+        test_url = f"{base_url}{path}"
+
+        try:
+            response = http_client.request(
+                "GET",
+                f"{test_url}/version",
+                timeout=30,
+            )
+            if response.status < 400:
+                return test_url
+        except Exception:
+            continue
+    raise ValueError("Unable to sniff API base path")
+
+
+@dataclass
+class ApiConfig:
+    api_url: str     # full url with schema and basepath for the API
+    auth_url: str    # full url with schema and path
+    token: str
+    account_id: str
+    user: str | None = None
+    password: str | None = None
+
+    @property
+    def api_host(self) -> str:
+        """
+        Hostname of the API Server.
+
+        If the URL does not specify a port, returns 443 as the default port.
+
+        Returns:
+            str: Host name of the api.
+        """
+        return urlparse(self.api_url).hostname or "unknown"
+
+    @property
+    def api_port(self) -> int:
+        """
+        Port number of the API.
+
+        If the URL does not specify a port, returns 443 as the default port.
+
+        Returns:
+            int: The port number extracted from the API URL, or 443 if not specified.
+        """
+        return urlparse(self.api_url).port or 443
+
+    @property
+    def cli_config(self) -> dict[str, Any]:
+        """Return a Fuzzball compatible config dict with a single active context"""
+        return {
+            "activeContext": "nextflow",
+            "contexts": [
+                {
+                    "name": "nextflow",
+                    "address": f"{self.api_host}:{self.api_port}",
+                    "oidcServerURL": self.auth_url,
+                    "oidcClientID": "fuzzball-cli",
+                    "auth": {
+                        "oidc_client_id": "fuzzball-cli",
+                        "oidc_well_known_endpoint": f"{self.auth_url}/.well-known/openid-configuration",
+                        "overrides": None,
+                        "credentials": {"token": self.token}
+                    },
+                    "realm": "",
+                    "currentaccountid": self.account_id,
+                    "accounts": [
+                        {
+                            "accountid": self.account_id,
+                            "accountalias": "n/a"
+                        }
+                    ]
+                }
+            ]
+        }
+
+
+class FuzzballAuthenticator(ABC):
+    """Abstract base class for Fuzzball authentication methods.
+
+    This class defines the interface that all authentication methods must implement.
+    """
+
+    @abstractmethod
+    def authenticate(self, http_client: urllib3.PoolManager) -> ApiConfig:
+        """Authenticate and return connection configuration.
+
+        Args:
+            http_client: HTTP client for making requests.
+
+        Returns:
+            ApiConfig with authentication details.
+        """
+        pass
+
+
+class DirectLoginAuthenticator(FuzzballAuthenticator):
+    """Authenticator for direct login using username/password.
+
+    This authenticator uses OAuth2 password flow to authenticate with Keycloak
+    and obtain API tokens for Fuzzball.
+    """
+
+    def __init__(
+        self,
+        api_url: str,
+        auth_url: str,
+        user: str,
+        password: str,
+        account_id: str,
+    ):
+        self._raw_api_url = api_url # can leave off the API base path
+        self._api_url: str | None = None # canonical URL
+        self._auth_url = auth_url
+        self._user = user
+        self._password = password
+        self._account_id = account_id
+
+        self._validate_params()
+
+    def _validate_params(self) -> None:
+        """Validate that all required parameters are provided.
+
+        Raises:
+            ValueError: If validation fails.
+        """
+        required_params = [self._raw_api_url, self._auth_url, self._user, self._password, self._account_id]
+        if not all(required_params):
+            raise ValueError(
+                "For direct login, api-url, auth-url, user, password, and account-id are required."
+            )
+
+    def _get_auth_token(self, http_client: urllib3.PoolManager) -> str:
+        """Get authentication token from Keycloak.
+
+        Args:
+            http_client: HTTP client for making requests.
+
+        Returns:
+            The authentication token from Keycloak.
+
+        Raises:
+            ValueError: If authentication fails or token is not in response.
+        """
+        data = {
+            "client_id": "fuzzball-cli",
+            "grant_type": "password",
+            "username": self._user,
+            "password": self._password,
+        }
+
+        response = http_client.request(
+            "POST",
+            f"{self._auth_url.rstrip('/')}/protocol/openid-connect/token",
+            body = urlencode(data).encode("utf-8"),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30,
+        )
+
+        if response.status >= 400:
+            raise ValueError(f"Failed to obtain auth token: HTTP {response.status}")
+
+        response_data = json.loads(response.data.decode("utf-8"))
+        if "access_token" not in response_data:
+            raise ValueError("No access token in response from auth server")
+
+        return response_data["access_token"]
+
+    def _get_api_token(self, http_client: urllib3.PoolManager, auth_token: str) -> str:
+        """Get API token using auth token from Keycloak.
+
+        Args:
+            http_client: HTTP client for making requests.
+            auth_token: Authentication token from Keycloak.
+
+        Returns:
+            The API token for Fuzzball.
+
+        Raises:
+            ValueError: If API token request fails or token is not in response.
+        """
+        response = http_client.request(
+            "GET",
+            f"{self._api_url}/accounts/{self._account_id}/token",
+            headers={
+                "Authorization": f"Bearer {auth_token}",
+                "Accept": "application/json",
+            },
+            timeout=30,
+        )
+
+        if response.status >= 400:
+            raise ValueError(f"Failed to obtain API token: HTTP {response.status}")
+
+        response_data = json.loads(response.data.decode("utf-8"))
+        if "token" not in response_data:
+            raise ValueError("No API token in response from API server")
+        return response_data["token"]
+
+    def authenticate(self, http_client: urllib3.PoolManager) -> ApiConfig:
+        """Perform direct login authentication.
+
+        Args:
+            http_client: HTTP client for making requests.
+
+        Returns:
+            ApiConfig with authentication details.
+        """
+
+        if not self._api_url:
+            self._api_url = make_url_canonical(self._raw_api_url, http_client)
+        auth_token = self._get_auth_token(http_client)
+        token = self._get_api_token(http_client, auth_token)
+        return ApiConfig(
+            api_url=self._api_url,
+            auth_url=self._auth_url,
+            token=token,
+            account_id=self._account_id,
+            user=self._user,
+            password=self._password
+        )
+
+
+class ConfigFileAuthenticator(FuzzballAuthenticator):
+    """Authenticator using configuration file.
+
+    This authenticator reads authentication details from a YAML configuration
+    file compatible with the Fuzzball CLI.
+    """
+
+    def __init__(self, config_path: pathlib.Path, context: str | None = None):
+        self._config_path = config_path
+        self._context = context
+        self._config = self._load_config_file()
+
+    def _load_config_file(self) -> dict[str, Any]:
+        """Load and parse the configuration file.
+
+        Returns:
+            The parsed configuration as a dictionary.
+
+        Raises:
+            IOError: If the file cannot be read.
+            ValueError: If the file cannot be parsed or has invalid format.
+        """
+        try:
+            with open(self._config_path, "r") as f:
+                config = yaml.safe_load(f)
+        except IOError as e:
+            raise IOError(f"Failed to read configuration file {self._config_path}: {e}")
+        except yaml.YAMLError as e:
+            raise ValueError(f"Failed to parse configuration file {self._config_path}: {e}")
+
+        if not isinstance(config, dict):
+            raise ValueError("Configuration file has invalid format (not a dictionary)")
+
+        return config
+
+    def _determine_context(self) -> str:
+        """Determine which context to use.
+
+        Returns:
+            The name of the context to use.
+
+        Raises:
+            ValueError: If no context is specified.
+        """
+        context = self._context or self._config.get("activeContext")
+        if context is None:
+            raise ValueError(
+                "No active context specified in config or provided as argument"
+            )
+        return context
+
+    def _extract_context_info(self, context_name: str) -> dict[str, Any]:
+        """Extract connection information from the specified context.
+
+        Args:
+            context_name: Name of the context to extract.
+
+        Returns:
+            The context configuration dictionary.
+
+        Raises:
+            ValueError: If the context is not found.
+        """
+        for context in self._config.get("contexts", []):
+            if context["name"] == context_name:
+                return context
+        raise ValueError(f"Context '{context_name}' not found in configuration file")
+
+
+    def authenticate(self, http_client: urllib3.PoolManager) -> ApiConfig:
+        """Perform config file authentication.
+
+        Args:
+            http_client: HTTP client for making requests.
+
+        Returns:
+            ApiConfig with authentication details.
+        """
+
+        context_name = self._determine_context()
+        context = self._extract_context_info(context_name)
+        api_url = make_url_canonical(context["address"], http_client)
+        return ApiConfig(
+            api_url=api_url,
+            auth_url=context["oidcServerURL"],
+            token=context["auth"]["credentials"]["token"],
+            account_id=context["currentaccountid"]
+        )
+
+
+class FuzzballClient:
     """
     A minimal client for interacting with the Fuzzball API.
 
@@ -166,100 +519,57 @@ class MinimalFuzzballClient:
     for Nextflow pipelines to the Fuzzball cluster.
     """
 
-    def __init__(self, config_path: pathlib.Path, context: str | None = None, ca_cert_file: str | None = None):
-        """
-        Initialize the Fuzzball client with configuration from a YAML file.
+    def __init__(self, authenticator: FuzzballAuthenticator, ca_cert_file: str | None = None):
+        """Initialize client with an authenticator.
 
         Args:
-            config_path: Path to the fuzzball configuration file
-            context: Optional context name to use, defaults to activeContext in config
-            ca_cert_file: Path to CA certificate file for SSL verification
-
-        Raises:
-            ValueError: If the context is missing or the config is invalid
-            IOError: If the config file cannot be read
+            authenticator: Authentication strategy to use.
+            ca_cert_file: Optional CA certificate file path.
         """
+        self._authenticator = authenticator
         self._ca_cert_file = ca_cert_file
-        try:
-            with open(config_path, "r") as f:
-                config = yaml.safe_load(f)
-        except IOError as e:
-            raise IOError(f"Failed to read configuration file {config_path}: {e}")
-        except yaml.YAMLError as e:
-            raise ValueError(f"Failed to parse configuration file {config_path}: {e}")
 
-        if not isinstance(config, dict):
-            raise ValueError("Configuration file has invalid format (not a dictionary)")
+        # These will be set during initialization
+        self._api_config: ApiConfig
+        self._fb_version: str
+        self._http: urllib3.PoolManager
 
-        # Get active context
-        if context is None:
-            context = config.get("activeContext")
-        if context is None:
-            raise ValueError(
-                "No active context specified in config or provided as argument"
+        self._initialize()
+
+    def _initialize(self) -> None:
+        """Initialize the client using the provided authenticator."""
+        self._setup_http_client()
+        self._api_config = self._authenticator.authenticate(self._http)
+        self._validate_connection()
+
+    def _setup_http_client(self) -> None:
+        """Setup urllib3 HTTP client with appropriate SSL configuration."""
+        if self._ca_cert_file:
+            ssl_context = ssl.create_default_context()
+            ssl_context.load_verify_locations(self._ca_cert_file)
+            self._http = urllib3.PoolManager(
+                ssl_context=ssl_context,
+                retries=Retry(
+                    total=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504]
+                ),
+            )
+        else:
+            self._http = urllib3.PoolManager(
+                retries=Retry(
+                    total=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504]
+                )
             )
 
-        # Initialize minimal config
-        self._config = {"activeContext": context, "contexts": []}
-        logger.debug(f"Using context: {context}")
+    def _validate_connection(self) -> None:
+        """Validate connection to Fuzzball API and get version.
 
-        # Find matching context in config
-        context_found = False
-        for c in config.get("contexts", []):
-            if c["name"] == context:
-                try:
-                    self._host, self._port = c["address"].split(":")
-                    self._token = c["auth"]["credentials"]["token"]
-                    self._schema = "https"
-                    self._config["contexts"].append(c)
-                    context_found = True
-                    break
-                except (KeyError, ValueError) as e:
-                    raise ValueError(
-                        f"Invalid context configuration for '{context}': {e}"
-                    )
+        Raises:
+            ValueError: If connection fails or version cannot be retrieved.
+        """
 
-        if not context_found:
-            raise ValueError(f"Context '{context}' not found in configuration file")
-
-        # Setup HTTP client with certificate verification
-        self._setup_http_client(self._ca_cert_file)
-
-        # Auto-detect the API base path by trying common versions
-        detected_base_path = None
-        for version in ["v2", "v3", "v4"]:
-            test_base_path = f"/{version}"
-            test_base_url = f"{self._schema}://{self._host}:{self._port}{test_base_path}"
-
-            try:
-                # Test if this version works by trying the /version endpoint
-                response = self._http.request(
-                    "GET",
-                    f"{test_base_url}/version",
-                    headers={
-                        "Authorization": f"Bearer {self._token}",
-                        "Content-Type": "application/json",
-                    },
-                    timeout=30
-                )
-                if response.status < 400:
-                    detected_base_path = test_base_path
-                    break
-            except Exception:
-                continue
-
-        if detected_base_path is None:
-            logger.warning("Failed to detect API base path, falling back to /v2")
-            detected_base_path = "/v2"
-
-        self._base_path = detected_base_path
-        self._base_url = f"{self._schema}://{self._host}:{self._port}{self._base_path}"
-        logger.debug(f"Using API base path: {self._base_path}")
-
-        # Determine version of the Fuzzball API server
         try:
             response = self._request("GET", "/version")
-            version_data = json.loads(response.data.decode('utf-8'))
+            version_data = json.loads(response.data.decode("utf-8"))
             self._fb_version = ".".join(version_data["version"].split(".")[0:2])
             logger.info(f"Connected to Fuzzball version {self._fb_version} API server")
         except urllib3.exceptions.HTTPError as e:
@@ -267,81 +577,67 @@ class MinimalFuzzballClient:
         except Exception as e:
             raise ValueError(f"Unexpected error occurred: {e}")
 
-    def _setup_http_client(self, ca_cert_file: str | None = None) -> None:
-        """Setup urllib3 HTTP client with appropriate SSL configuration.
-
-        Args:
-            ca_cert_file: Path to CA certificate file for verification.
-        """
-        # Create SSL context
-        if ca_cert_file:
-            # Use custom CA certificate
-            ssl_context = ssl.create_default_context()
-            ssl_context.load_verify_locations(ca_cert_file)
-            self._http = urllib3.PoolManager(
-                ssl_context=ssl_context,
-                retries=Retry(
-                    total=3,
-                    backoff_factor=0.1,
-                    status_forcelist=[500, 502, 503, 504]
-                )
-            )
-        else:
-            # Use default SSL verification
-            self._http = urllib3.PoolManager(
-                retries=Retry(
-                    total=3,
-                    backoff_factor=0.1,
-                    status_forcelist=[500, 502, 503, 504]
-                )
-            )
-
     @property
-    def _headers(self) -> Dict[str, str]:
-        """Return the headers required for API requests, including the authorization token.
+    def _headers(self) -> dict[str, str]:
+        """Return the headers required for API requests.
 
         Returns:
-            Dictionary containing the required HTTP headers.
+            Dictionary of HTTP headers for API requests.
+
+        Raises:
+            ValueError: If authentication token is not available.
         """
+        if not self._api_config:
+            raise ValueError("Authentication token is not available.")
         return {
-            "Authorization": f"Bearer {self._token}",
+            "Authorization": f"Bearer {self._api_config.token}",
             "Content-Type": "application/json",
         }
 
     def _request(
-        self, method: str, endpoint: str, data: Dict[str, Any] | None = None
+        self,
+        method: str,
+        endpoint: str,
+        data: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> urllib3.HTTPResponse:
-        """
-        Make an API request to the Fuzzball server with retry logic.
+        """Make an API request to the Fuzzball server.
 
         Args:
-            method: HTTP method to use (GET, POST, etc.)
-            endpoint: API endpoint path
-            data: Optional JSON data to send with the request
+            method: HTTP method (GET, POST, etc.).
+            endpoint: API endpoint path.
+            data: Optional data to send in request body.
+            headers: Optional custom headers.
 
         Returns:
-            HTTPResponse object from urllib3
+            HTTP response from the server.
 
         Raises:
-            urllib3.exceptions.HTTPError: If the request fails
+            urllib3.exceptions.HTTPError: If the request fails.
         """
-        url = f"{self._base_url}/{endpoint.lstrip('/')}"
-
+        url = f"{self._api_config.api_url.rstrip('/')}/{endpoint.lstrip('/')}"
         body = None
+        request_headers = headers if headers is not None else self._headers
+
         if data is not None:
-            body = json.dumps(data).encode('utf-8')
+            if request_headers.get("Content-Type") == "application/json":
+                body = json.dumps(data).encode("utf-8")
+            elif (
+                request_headers.get("Content-Type")
+                == "application/x-www-form-urlencoded"
+            ):
+                body = urlencode(data).encode("utf-8")
+            else:
+                body = json.dumps(data).encode("utf-8")
 
         response = self._http.request(
-            method.upper(),
-            url,
-            body=body,
-            headers=self._headers,
-            timeout=30
+            method.upper(), url, body=body, headers=request_headers, timeout=30
         )
 
-        # Check for HTTP errors
         if response.status >= 400:
-            raise urllib3.exceptions.HTTPError(f"HTTP {response.status}: {response.reason}")
+            raise urllib3.exceptions.HTTPError(
+                f"HTTP {response.status}: {response.reason} {response.data.decode('utf-8')}"
+            )
 
         return response
 
@@ -356,31 +652,29 @@ class MinimalFuzzballClient:
             ValueError: If encoding fails
         """
         try:
-            yaml_str = yaml.dump(self._config)
+            yaml_str = yaml.dump(self._api_config.cli_config)
             return base64.b64encode(yaml_str.encode("utf-8")).decode("utf-8")
         except Exception as e:
-            logger.error(f"Failed to encode Fuzzball configuration for transport: {e}")
-            raise ValueError("Failed to encode Fuzzball configuration for transport")
+            raise ValueError(f"Failed to encode Fuzzball configuration: {e}")
 
-    def _encode_ca_cert(self) -> str | None:
+    def _encode_ca_cert(self) -> str:
         """Return a base64 encoded version of the CA certificate if one was provided.
 
         Returns:
-            Base64 encoded config string safe for transport (or None if no cert was provided)
+            Base64 encoded config string safe for transport. Empty string if no cert was passed
 
         Raises:
             IOError: If the certificate file cannot be read.
         """
         if not self._ca_cert_file:
-            return None
+            return ""
 
         try:
             with open(self._ca_cert_file, "rb") as f:
-                cert_content = base64.b64encode(f.read()).decode("utf-8")
+                return base64.b64encode(f.read()).decode("utf-8")
         except IOError:
             logger.error(f"Failed to read CA certificate file {self._ca_cert_file}")
             raise
-        return cert_content
 
     def create_value_secret(self, secret_name: str, secret_value: str) -> str | None:
         """Create or update a value secret in Fuzzball.
@@ -398,38 +692,26 @@ class MinimalFuzzballClient:
         # Check if the secret already exists
         try:
             response = self._request("GET", "/secrets")
-        except urllib3.exceptions.HTTPError:
-            logger.error("Failed to retrieve existing secrets")
-            raise
-        id = None
-        secrets_data = json.loads(response.data.decode('utf-8'))
-        for secret in secrets_data["secrets"]:
-            if secret["name"] == secret_name:
-                id = secret["id"]
-                break
+            secrets_data = json.loads(response.data.decode("utf-8"))
+            for secret in secrets_data.get("secrets", []):
+                if secret["name"] == secret_name:
+                    secret_id = secret["id"]
+                    secret_data = {"value": {"value": secret_value}}
+                    self._request("PATCH", f"/secrets/{secret_id}", data=secret_data)
+                    return secret_id
+        except urllib3.exceptions.HTTPError as e:
+            logger.warning(
+                f"Could not list secrets, assuming secret does not exist: {e}"
+            )
 
-        if id is None:
-            secret_data = {
-                "name": secret_name,
-                "scope": "SECRET_SCOPE_USER",
-                "value": {"value": secret_value},
-            }
-            try:
-                resp = self._request("PUT", "/secrets", data=secret_data)
-            except urllib3.exceptions.HTTPError:
-                logger.error("Failed to create secret")
-                raise
-            resp_data = json.loads(resp.data.decode('utf-8'))
-            secret_id = resp_data["id"]
-        else:
-            secret_id = id
-            secret_data = {"value": {"value": secret_value}}
-            try:
-                self._request("PATCH", f"/secrets/{id}", data=secret_data)
-            except urllib3.exceptions.HTTPError:
-                logger.error("Failed to update secret")
-                raise
-        return secret_id
+        secret_data = {
+            "name": secret_name,
+            "scope": "SECRET_SCOPE_USER",
+            "value": {"value": secret_value},
+        }
+        resp = self._request("PUT", "/secrets", data=secret_data)
+        resp_data = json.loads(resp.data.decode("utf-8"))
+        return resp_data["id"]
 
     def submit_nextflow_job(self, args: argparse.Namespace) -> None:
         """Submit a Nextflow job to the Fuzzball cluster.
@@ -448,7 +730,10 @@ class MinimalFuzzballClient:
             if len(args.job_name) > 0
             else str(uuid.uuid5(NAMESPACE_CONTENT, nextflow_cmd_str))
         )
-        mounts = {"data": {"location": DATA_MOUNT}, "scratch": {"location": SCRATCH_MOUNT}}
+        mounts = {
+            "data": {"location": DATA_MOUNT},
+            "scratch": {"location": SCRATCH_MOUNT},
+        }
         wd = f"{args.nextflow_work_base}/{job_name}"
         home_base = "home"
         home = f"{wd}/{home_base}"
@@ -472,11 +757,15 @@ class MinimalFuzzballClient:
         # check that the URL exists
         if plugin_uri.startswith("http://") or plugin_uri.startswith("https://"):
             try:
-                response = self._http.request('HEAD', plugin_uri, timeout=10)
+                response = self._http.request("HEAD", plugin_uri, timeout=10)
                 if response.status >= 400:
-                    raise urllib3.exceptions.HTTPError(f"HTTP {response.status}: {response.reason}")
+                    raise urllib3.exceptions.HTTPError(
+                        f"HTTP {response.status}: {response.reason}"
+                    )
             except urllib3.exceptions.HTTPError:
-                raise Exception(f"Failed to access nf-fuzzball plugin for this version of Fuzzball at {plugin_uri}")
+                raise Exception(
+                    f"Failed to access nf-fuzzball plugin for this version of Fuzzball at {plugin_uri}"
+                )
 
         env = [
             f"HOME={home}",
@@ -503,13 +792,41 @@ class MinimalFuzzballClient:
         if args.plugin_base_uri.startswith("s3://"):
             volumes["scratch"]["ingress"][0]["source"]["secret"] = args.s3_secret
 
-        config_secret_name = f"{secret_name}-conf"
-        cert_secret_name = f"{secret_name}-cert"
-
-        config_secret_id = self.create_value_secret(config_secret_name, self._encode_config())
+        config_secret_id = None
         cert_secret_id = None
-        if self._ca_cert_file is not None:
-            cert_secret_id = self.create_value_secret(cert_secret_name, self._encode_ca_cert())
+        user_secret_id = None
+        pass_secret_id = None
+
+        setup_env = env.copy()
+
+        if self._api_config.user:  # Direct login
+            user_secret_name = f"{secret_name}-user"
+            pass_secret_name = f"{secret_name}-pass"
+            user_secret_id = self.create_value_secret(
+                user_secret_name, base64.b64encode(self._api_config.user.encode()).decode()
+            )
+            pass_secret_id = self.create_value_secret(
+                pass_secret_name, base64.b64encode(self._api_config.password.encode()).decode()
+            )
+            setup_env.extend(
+                [
+                    f"FB_USER_SECRET=secret://user/{user_secret_name}",
+                    f"FB_PASS_SECRET=secret://user/{pass_secret_name}",
+                ]
+            )
+        # Config file login
+        config_secret_name = f"{secret_name}-conf"
+        config_secret_id = self.create_value_secret(
+            config_secret_name, self._encode_config()
+        )
+        setup_env.append(f"FB_CONFIG_SECRET=secret://user/{config_secret_name}")
+
+        if self._ca_cert_file:
+            cert_secret_name = f"{secret_name}-cert"
+            cert_secret_id = self.create_value_secret(
+                cert_secret_name, self._encode_ca_cert()
+            )
+            setup_env.append(f"FB_CA_CERT_SECRET=secret://user/{cert_secret_name}")
 
         nxf_fuzzball_config = base64.b64encode(
             textwrap.dedent(f"""\
@@ -527,7 +844,7 @@ class MinimalFuzzballClient:
                 }}
                 {"docker { registry = 'quay.io' }" if args.nf_core else ""}
                 fuzzball {{
-                    cfgFile = '{home}/.config/fuzzball/config.yaml'
+                    cfgFile = '{config_path}'
                 }}
             }}
         }}
@@ -553,28 +870,23 @@ class MinimalFuzzballClient:
             echo "$FB_CA_CERT_SECRET" | base64 -d > {ca_cert_path} || exit 1
         fi
 
-        # there is only a single context in the config file so it's easy to extract the token
-        TOKEN="$(awk '/token:/ {{print $2}}' $HOME/.config/fuzzball/config.yaml)"
-        # Set up curl CA certificate option if available
+        TOKEN="$(awk '/token:/ {{print $2}}' {config_path})"
         CURL_CA_OPT=""
-        if [ ! -z "$FB_CA_CERT_SECRET" ]; then
+        if [ -n "$FB_CA_CERT_SECRET" ]; then
             CURL_CA_OPT="--cacert {ca_cert_path}"
         fi
-        # clean up the secrets but don't fail if there is an error
-        curl -s $CURL_CA_OPT -X DELETE "{self._base_url}/secrets/{config_secret_id}" \\
-            -H "Authorization: Bearer $TOKEN" \\
-            -H "Accept: application/json" &> /dev/null && echo "temp config secret deleted" || echo "temp config secret not deleted"
-        """)
 
-        # Add certificate secret cleanup if one was created
-        if cert_secret_id is not None:
-            setup_script += textwrap.dedent(f"""\
-        curl -s $CURL_CA_OPT -X DELETE "{self._base_url}/secrets/{cert_secret_id}" \\
-            -H "Authorization: Bearer $TOKEN" \\
-            -H "Accept: application/json" &> /dev/null && echo "temp cert secret deleted" || echo "temp cert secret not deleted"
-        """)
+        cleanup() {{
+            echo "Cleaning up secrets..."
+            {f'curl -s $CURL_CA_OPT -X DELETE "{self._api_config.api_url}/secrets/{config_secret_id}" -H "Authorization: Bearer $TOKEN" &' if config_secret_id else ""}
+            {f'curl -s $CURL_CA_OPT -X DELETE "{self._api_config.api_url}/secrets/{cert_secret_id}" -H "Authorization: Bearer $TOKEN" &' if cert_secret_id else ""}
+            {f'curl -s $CURL_CA_OPT -X DELETE "{self._api_config.api_url}/secrets/{user_secret_id}" -H "Authorization: Bearer $TOKEN" &' if user_secret_id else ""}
+            {f'curl -s $CURL_CA_OPT -X DELETE "{self._api_config.api_url}/secrets/{pass_secret_id}" -H "Authorization: Bearer $TOKEN" &' if pass_secret_id else ""}
+            wait
+            echo "Cleanup finished."
+        }}
+        trap cleanup EXIT
 
-        setup_script += textwrap.dedent(f"""\
         mkdir -p {files}
         # copy the config files to the working directory
         cat /tmp/{nxf_fuzzball_config_name} | base64 -d > {files}/{nxf_fuzzball_config_name}.config || exit 1
@@ -612,8 +924,7 @@ class MinimalFuzzballClient:
                         "mounts": mounts,
                         "cwd": "/tmp",
                         "script": setup_script,
-                        "env": env + [f"FB_CONFIG_SECRET=secret://user/{config_secret_name}"] +
-                               ([f"FB_CA_CERT_SECRET=secret://user/{cert_secret_name}"] if self._ca_cert_file is not None else []),
+                        "env": setup_env,
                         "policy": {"timeout": {"execute": "5m"}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
                     },
@@ -624,7 +935,12 @@ class MinimalFuzzballClient:
                         "mounts": mounts,
                         "cwd": wd,
                         "script": nextflow_script,
-                        "env": env + ([f"FB_CA_CERT={ca_cert_path}"] if self._ca_cert_file is not None else []),
+                        "env": env
+                        + (
+                            [f"FB_CA_CERT={ca_cert_path}"]
+                            if self._ca_cert_file is not None
+                            else []
+                        ),
                         "policy": {"timeout": {"execute": args.timelimit}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
                         "requires": ["setup"],
@@ -646,14 +962,118 @@ class MinimalFuzzballClient:
             yaml.dump(workflow, sys.stdout, default_flow_style=False)
         if args.dry_run:
             logger.info("Dry run mode: not submitting the workflow.")
-            self._request("DELETE", f"/secrets/{config_secret_id}")
+            # Clean up secrets created during dry run
+            if config_secret_id:
+                self._request("DELETE", f"/secrets/{config_secret_id}")
             if cert_secret_id:
-               self._request("DELETE", f"/secrets/{cert_secret_id}")
+                self._request("DELETE", f"/secrets/{cert_secret_id}")
+            if user_secret_id:
+                self._request("DELETE", f"/secrets/{user_secret_id}")
+            if pass_secret_id:
+                self._request("DELETE", f"/secrets/{pass_secret_id}")
             return
         response = self._request("POST", "/workflows", data=workflow)
         response_data = json.loads(response.data.decode("utf-8"))
         logger.info(f"Submitted nextflow workflow {response_data['id']}")
 
+# Factory functions for easy client creation
+def create_direct_login_client(
+    api_url: str,
+    auth_url: str,
+    user: str,
+    password: str,
+    account_id: str,
+    ca_cert_file: str | None = None,
+) -> FuzzballClient:
+    """Create a client using direct login authentication.
+
+    Args:
+        api_url: API URL of the Fuzzball cluster.
+        auth_url: Authentication URL of the Fuzzball cluster.
+        user: Username for authentication.
+        password: Password for authentication.
+        account_id: Fuzzball account ID.
+        ca_cert_file: Optional CA certificate file path.
+
+    Returns:
+        Configured FuzzballClient instance.
+    """
+    authenticator = DirectLoginAuthenticator(
+        api_url=api_url,
+        auth_url=auth_url,
+        user=user,
+        password=password,
+        account_id=account_id,
+    )
+    return FuzzballClient(authenticator, ca_cert_file)
+
+
+def create_config_file_client(
+    config_path: pathlib.Path,
+    context: str | None = None,
+    ca_cert_file: str | None = None,
+) -> FuzzballClient:
+    """Create a client using config file authentication.
+
+    Args:
+        config_path: Path to the Fuzzball configuration file.
+        context: Optional context name to use from config.
+        ca_cert_file: Optional CA certificate file path.
+
+    Returns:
+        Configured FuzzballClient instance.
+    """
+    authenticator = ConfigFileAuthenticator(config_path, context)
+    return FuzzballClient(authenticator, ca_cert_file)
+
+
+def create_fuzzball_client(
+    config_path: pathlib.Path | None = None,
+    context: str | None = None,
+    ca_cert_file: str | None = None,
+    api_url: str | None = None,
+    auth_url: str | None = None,
+    user: str | None = None,
+    password: str | None = None,
+    account_id: str | None = None,
+) -> FuzzballClient:
+    """Factory function to create appropriate client type based on parameters.
+
+    Args:
+        config_path: Path to the Fuzzball configuration file.
+        context: Optional context name to use from config.
+        ca_cert_file: Optional CA certificate file path.
+        api_url: API URL for direct login.
+        auth_url: Authentication URL for direct login.
+        user: Username for direct login.
+        password: Password for direct login.
+        account_id: Account ID for direct login.
+
+    Returns:
+        Configured FuzzballClient instance.
+
+    Raises:
+        ValueError: If required parameters are missing.
+    """
+    if user:
+        if not all([api_url, auth_url, password, account_id]):
+            raise ValueError("For direct login, all credentials must be provided")
+        return create_direct_login_client(
+            api_url=api_url,
+            auth_url=auth_url,
+            user=user,
+            password=password,
+            account_id=account_id,
+            ca_cert_file=ca_cert_file,
+        )
+    else:
+        if not config_path:
+            raise ValueError("Config path must be provided for config file authentication")
+        return create_config_file_client(
+            config_path=config_path,
+            context=context,
+            ca_cert_file=ca_cert_file,
+        )
 
 def parse_cli() -> argparse.Namespace:
     """Parse command line arguments for the Nextflow submission script.
@@ -671,7 +1091,7 @@ def parse_cli() -> argparse.Namespace:
         epilog=textwrap.dedent(
             """\
             Example:
-              %(prog)s -- nextflow run \\
+              %(prog)s -- nextflow run -profile fuzzball \\
                   -with-report report.html \\
                   -with-trace \\
                   -with-timeline timeline.html \\
@@ -680,144 +1100,145 @@ def parse_cli() -> argparse.Namespace:
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
+    auth_group = parser.add_argument_group("Fuzzball config based authentication")
+    auth_group.add_argument(
         "-c",
         "--context",
         type=str,
-        help="Name of the secret context to use from config.yaml. Defaults to the active context in the config file.",
+        help="Name of the context to use from config.yaml.",
         default=None,
     )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="Dump the workflow before submitting and add debug logging",
-    )
-    parser.add_argument(
+    auth_group.add_argument(
         "--fuzzball-config",
         type=pathlib.Path,
         default=(
-            pathlib.Path("~/.config/fuzzball/config.yaml").expanduser() if os.environ.get("XDG_CONFIG_HOME", None) is None
-            else pathlib.Path(f"{os.environ['XDG_CONFIG_HOME']}/fuzzball/config.yaml")
+            pathlib.Path("~/.config/fuzzball/config.yaml").expanduser()
+            if os.environ.get("XDG_CONFIG_HOME") is None
+            else pathlib.Path(f"{os.environ['XDG_CONFIG_HOME']}/fuzzball/config.yaml").expanduser()
         ),
         help="Path to the fuzzball configuration file. [%(default)s]",
     )
-    parser.add_argument(
-        "--ca-cert",
+    direct_login_group = parser.add_argument_group("Direct Login based authentication")
+    direct_login_group.add_argument(
+        "--api-url",
         type=str,
-        help="Path to CA certificate file for SSL verification of self-signed certificates",
+        help=(
+            "API URL of Fuzzball cluster [$FUZZBALL_API_URL]."
+            " e.g. https://api.example.com"
+        ),
+        default=os.environ.get("FUZZBALL_API_URL", ""),
+    )
+    direct_login_group.add_argument(
+        "--auth-url",
+        type=str,
+        help=(
+            "AUTH URL of Fuzzball cluster [$FUZZBALL_AUTH_URL] "
+            "e.g. https://auth.example.com/auth/realms/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+        ),
+        default=os.environ.get("FUZZBALL_AUTH_URL", ""),
+    )
+    direct_login_group.add_argument(
+        "--user",
+        type=str,
+        help="Username/email for direct login [$FUZZBALL_USER]",
+        default=os.environ.get("FUZZBALL_USER", ""),
+    )
+    direct_login_group.add_argument(
+        "--password", action="store_true",
+        help=(
+            "Prompt for password for direct login. Otherwise defaults to [$FUZZBALL_PASSWORD]"
+        )
+    )
+    direct_login_group.add_argument(
+        "--account-id",
+        type=str,
+        help="Fuzzball account ID for direct login [$FUZZBALL_ACCOUNT_ID]",
+        default=os.environ.get("FUZZBALL_ACCOUNT_ID", ""),
+    )
+
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging."
+    )
+    parser.add_argument(
+        "--ca-cert", type=str, help="Path to CA certificate file for SSL verification."
     )
     parser.add_argument(
         "-n",
         "--dry-run",
         action="store_true",
-        help="Don't submit the workflow, just print it",
+        help="Print the workflow without submitting.",
     )
     parser.add_argument(
-        "--job-name",
-        type=str,
-        default="",
-        help=(
-            "Name of the Fuzzball workflow running the nextflow controller job. Defaults to a "
-            "UUID seeded by the full commandline of the nextflow command."
-        ),
+        "--job-name", type=str, default="", help="Name of the Fuzzball workflow."
     )
     parser.add_argument(
         "--nextflow-work-base",
         type=str,
         default=f"{DATA_MOUNT}/nextflow/executions",
-        help=(
-            "Name of basedirectory for nextflow execution paths. The nextflow execution path will be "
-            "<nextflow-work-base>/<job-name> which would include logs and the default workdir. "
-            "[%(default)s]"
-        ),
+        help="Base directory for Nextflow execution.",
     )
     parser.add_argument(
         "--nf-fuzzball-version",
         type=str,
         default="0.2.0",
-        help="nf-fuzzball plugin version. Note that the plugin tag includes a 'v' prefix [%(default)s]",
+        help="nf-fuzzball plugin version.",
     )
     parser.add_argument(
         "--s3-secret",
         type=str,
         default="",
-        help=(
-            "Reference for fuzzball S3 secret used to pull the nf-fuzzball plugin if the base URI for the plugin download is a S3 URI"
-            " Defaults to [%(default)s]"
-        ),
+        help="Fuzzball S3 secret for plugin download.",
     )
     parser.add_argument(
         "--plugin-base-uri",
         type=str,
         default="https://github.com/ctrliq/nf-fuzzball/releases/download",
-        help=(
-            "Base URI for the nf-fuzzball plugin. The submission script expects to find a zip file at "
-            "<plugin-base-uri>/v<version>/nf-fuzzball-v<version>-stable-v<fuzzball-version>.zip. "
-            "All version strings are expected to start with a v. The Fuzzball version is vMAJOR.MINOR, "
-            "the nf-fuzzball version is vMAJOR.MINOR.PATCH"
-            "Defaults to [%(default)s]"
-        ),
+        help="Base URI for the nf-fuzzball plugin.",
     )
     parser.add_argument(
-        "--nextflow-version",
-        type=str,
-        default="25.05.0-edge",
-        help="Nextflow version [%(default)s]",
+        "--nextflow-version", type=str, default="25.05.0-edge", help="Nextflow version."
     )
     parser.add_argument(
-        "--timelimit",
-        type=str,
-        default="8h",
-        help="Timelimit for pipeline job [%(default)s]",
+        "--timelimit", type=str, default="8h", help="Timelimit for the pipeline job."
     )
     parser.add_argument(
         "--scratch-volume",
         type=str,
         default="volume://user/ephemeral",
-        help="Ephemeral scratch volume [%(default)s]",
+        help="Ephemeral scratch volume.",
     )
     parser.add_argument(
         "--data-volume",
         type=str,
         default="volume://user/persistent",
-        help="Persistent data volume [%(default)s]",
+        help="Persistent data volume.",
     )
     parser.add_argument(
-        "--nf-core",
-        action="store_true",
-        help="Use nf-core conventions",
+        "--nf-core", action="store_true", help="Use nf-core conventions."
     )
     parser.add_argument(
         "--queue-size",
         type=int,
         default=20,
-        help=(
-            "Queue size for the Fuzzball executor. This is the number of jobs that can be queued at once. "
-            "[%(default)s]"
-        ),
+        help="Queue size for the Fuzzball executor.",
     )
     parser.add_argument(
-        "nextflow_cmd", nargs=argparse.REMAINDER, help="Nextflow command"
+        "nextflow_cmd", nargs=argparse.REMAINDER, help="Nextflow command."
     )
+
     args = parser.parse_args()
     if not args.nextflow_cmd:
-        parser.error(
-            "Nextflow command is required. Please provide it after the options."
-        )
+        parser.error("Nextflow command is required.")
     if args.nextflow_cmd[0] == "--":
         args.nextflow_cmd.pop(0)
     if args.nextflow_cmd[0] != "nextflow":
-        parser.error(
-            "Your nextflow command does not start with 'nextflow'"
-        )
+        parser.error("Nextflow command must start with 'nextflow'.")
     if args.verbose or args.dry_run:
         logging.getLogger().setLevel(logging.DEBUG)
 
     if args.plugin_base_uri.startswith("s3://") and not args.s3_secret:
-        parser.error(
-            "When using --plugin-base-uri with an S3 URI, you must also specify --s3-secret to access the S3 bucket."
-        )
+        parser.error("--s3-secret is required when --plugin-base-uri is an S3 URI.")
+
     return args
 
 
@@ -829,27 +1250,34 @@ def main() -> None:
     """
     try:
         args = parse_cli()
+        password = None
+        if args.user:
+            if args.password:
+                password = getpass.getpass("Enter Fuzzball password: ")
+            else:
+                password = os.environ.get("FUZZBALL_PASSWORD")
+            if not password:
+                die(
+                    "Password is required for direct login. Use --password or set FUZZBALL_PASSWORD."
+                )
 
-        # Validate config path
-        config_path = args.fuzzball_config.expanduser()
-        if not config_path.exists():
-            die(
-                f"Fuzzball configuration file not found at {config_path}. Please create it first."
-            )
-        if not config_path.is_file():
-            die(f"Path {config_path} exists but is not a file.")
+        fb_client = None
+        fb_client =  create_fuzzball_client(
+            args.fuzzball_config.expanduser(),
+            args.context,
+            args.ca_cert,
+            args.api_url,
+            args.auth_url,
+            args.user,
+            password,
+            args.account_id
+        )
 
-        # Initialize client
-        try:
-            fb_client = MinimalFuzzballClient(config_path, args.context, args.ca_cert)
-        except (ValueError, IOError) as e:
-            die(f"Failed to load config: {e}")
-
-        # Submit job
-        try:
-            fb_client.submit_nextflow_job(args)
-        except Exception as e:
-            die(f"Failed to submit Nextflow job: {e}")
+        if fb_client:
+            try:
+                fb_client.submit_nextflow_job(args)
+            except Exception as e:
+                die(f"Failed to submit Nextflow job: {e}")
 
     except KeyboardInterrupt:
         logger.info("Operation interrupted by user")

@@ -14,6 +14,7 @@ from typing import Any
 
 import urllib3
 import yaml
+from jinja2 import Environment, PackageLoader
 from urllib3.util import Retry
 
 from .auth import ConfigFileAuthenticator, DirectLoginAuthenticator, FuzzballAuthenticator
@@ -43,6 +44,10 @@ class FuzzballClient:
         """
         self._authenticator = authenticator
         self._ca_cert_file = ca_cert_file
+        self._jinja_env = Environment(
+            loader=PackageLoader('nf_fuzzball_submit', 'templates'),
+            autoescape=False,  # Shell scripts should not be HTML-escaped  # noqa: S701
+        )
 
         # These will be set during initialization
         self._api_config: ApiConfig
@@ -356,54 +361,34 @@ class FuzzballClient:
 
         # Note: the setup job uses /tmp as the cwd in order to manually create the working dir
         #       for nextflow as part of the job. This makes sure ownership and permissions are as expected
-        setup_script = textwrap.dedent(f"""\
-        #! /bin/sh
-        mkdir -p {wd} || exit 1
-        rm -rf {home}/.nextflow/plugins/nf-fuzzball-{plugin_version} \\
-          && mkdir -p {home}/.nextflow/plugins/nf-fuzzball-{plugin_version} {home}/.config/fuzzball \\
-          && unzip {SCRATCH_MOUNT}/nf-fuzzball.zip -d {home}/.nextflow/plugins/nf-fuzzball-{plugin_version} > /dev/null \\
-          && echo "$FB_CONFIG_SECRET" | base64 -d > {config_path} \\
-          || exit 1
+        # Prepare cleanup secrets list for template
+        cleanup_secrets = [
+            config_secret_id,
+            cert_secret_id,
+            user_secret_id,
+            pass_secret_id,
+        ]
 
-        # Setup CA certificate if provided
-        if [ ! -z "$FB_CA_CERT_SECRET" ]; then
-            echo "$FB_CA_CERT_SECRET" | base64 -d > {ca_cert_path} || exit 1
-        fi
+        setup_script = self._jinja_env.get_template("setup.sh.j2").render(
+            wd=wd,
+            home=home,
+            plugin_version=plugin_version,
+            scratch_mount=SCRATCH_MOUNT,
+            config_path=config_path,
+            ca_cert_secret=self._ca_cert_file is not None,
+            ca_cert_path=ca_cert_path,
+            api_url=self._api_config.api_url,
+            cleanup_secrets=cleanup_secrets,
+            files=files,
+            nxf_fuzzball_config_name=nxf_fuzzball_config_name,
+            config_files=config_files,
+        )
 
-        TOKEN="$(awk '/token:/ {{print $2}}' {config_path})"
-        CURL_CA_OPT=""
-        if [ -n "$FB_CA_CERT_SECRET" ]; then
-            CURL_CA_OPT="--cacert {ca_cert_path}"
-        fi
-
-        cleanup() {{
-            echo "Cleaning up secrets..."
-            {f'curl -s $CURL_CA_OPT -X DELETE "{self._api_config.api_url}/secrets/{config_secret_id}" -H "Authorization: Bearer $TOKEN" &' if config_secret_id else ""}
-            {f'curl -s $CURL_CA_OPT -X DELETE "{self._api_config.api_url}/secrets/{cert_secret_id}" -H "Authorization: Bearer $TOKEN" &' if cert_secret_id else ""}
-            {f'curl -s $CURL_CA_OPT -X DELETE "{self._api_config.api_url}/secrets/{user_secret_id}" -H "Authorization: Bearer $TOKEN" &' if user_secret_id else ""}
-            {f'curl -s $CURL_CA_OPT -X DELETE "{self._api_config.api_url}/secrets/{pass_secret_id}" -H "Authorization: Bearer $TOKEN" &' if pass_secret_id else ""}
-            wait
-            echo "Cleanup finished."
-        }}
-        trap cleanup EXIT
-
-        mkdir -p {files}
-        # copy the config files to the working directory
-        cat /tmp/{nxf_fuzzball_config_name} | base64 -d > {files}/{nxf_fuzzball_config_name}.config || exit 1
-        """)
-
-        for f in config_files:
-            setup_script += f"cat /tmp/{f.remote_name} | base64 -d > {f.remote_path} || exit 1\n"
-
-        nextflow_script = textwrap.dedent(f"""\
-        #! /bin/bash
-        {mangled_nextflow_cmd_str} -c {files}/{nxf_fuzzball_config_name}.config
-        ec=$?
-        echo "-- LOG START ---------------------------------------------------------------------------------"
-        cat .nextflow.log
-        echo "-- LOG END -----------------------------------------------------------------------------------"
-        exit $ec
-        """)
+        nextflow_script = self._jinja_env.get_template("nextflow.sh.j2").render(
+            mangled_nextflow_cmd_str=mangled_nextflow_cmd_str,
+            files=files,
+            nxf_fuzzball_config_name=nxf_fuzzball_config_name,
+        )
 
         workflow: dict[str, Any] = {
             "name": job_name,

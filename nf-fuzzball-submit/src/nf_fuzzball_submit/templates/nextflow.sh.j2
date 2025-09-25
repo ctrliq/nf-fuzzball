@@ -1,0 +1,7 @@
+#!/bin/bash
+{{ mangled_nextflow_cmd_str }} -c {{ files }}/{{ nxf_fuzzball_config_name }}.config
+ec=$?
+echo "-- LOG START ---------------------------------------------------------------------------------"
+cat .nextflow.log
+echo "-- LOG END -----------------------------------------------------------------------------------"
+exit $ec

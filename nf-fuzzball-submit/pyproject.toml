@@ -37,15 +37,51 @@ Issues = "https://github.com/ctrliq/nf-fuzzball/issues"
 dev-dependencies = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "pytest-mock>=3.0",
     "isort>=5.0",
     "mypy>=1.0",
     "ruff",
     "types-pyyaml>=6.0,<7",
 ]
 
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["src/nf_fuzzball_submit"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/test_*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+skip_covered = false
+
 [tool.ruff]
 target-version = "py310"
 line-length = 120
+exclude = [ "tests", ".venv" ]
 
 [tool.ruff.lint]
 pydocstyle.convention = "google"

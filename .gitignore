@@ -10,6 +10,10 @@
 *.pyc
 uv.lock
 .mypy_cache
+.pytest_cache
+.vscode
+.coverage
+__pycache__
 
 # locally customizable script to push a build of a development version to a s3/http accessible location for testing
 push_dev.local

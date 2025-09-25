@@ -140,6 +140,16 @@ git clone <repository>
 cd nf-fuzzball-submit
 uv sync --dev
 ```
+### Running a development version of the submission tool
+
+There are two ways to run a development version of the submission tool:
+
+1. Build the corresponding `nf-fuzzball` nextflow plugin and push it to a S3
+   bucket or a location accessible via https from the Fuzzball cluster (see main
+   Readme). You can then use the development version by specifying `--plugin-base-uri`
+   and (of S3) `--s3-secret`.
+2. You can specify a release version of the actual plugin with `--nf-fuzzball-release`
+   which will obtain the plugin from this repository.
 
 ### Code formatting
 
@@ -158,11 +168,26 @@ uv run mypy src/
 uv ruff check
 ```
 
-There are two ways to run a development version of this script:
+### Running tests
 
-1. Build the corresponding `nf-fuzzball` nextflow plugin and push it to a S3
-   bucket or a location accessible via https from the Fuzzball cluster (see main
-   Readme). You can then use the development version by specifying `--plugin-base-uri`
-   and (of S3) `--s3-secret`.
-2. You can specify a release version of the actual plugin with `--nf-fuzzball-release`
-   which will obtain the plugin from this repository.
+Run all tests
+```bash
+uv run pytest
+```
+
+Run with coverage
+```bash
+uv run pytest --cov=nf_fuzzball_submit --cov-report=html
+```
+
+Run specific test files
+```bash
+uv run pytest tests/test_models.py -v
+```
+
+Run tests excluding slow/integration tests
+```bash
+uv run pytest -m "not integration"
+```
+
+### Using development versions of this script

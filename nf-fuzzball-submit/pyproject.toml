@@ -1,0 +1,114 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nf-fuzzball-submit"
+version = "0.2.0"
+description = "Submit Nextflow pipelines to Fuzzball clusters"
+authors = [{name = "CIQ", email = "info@ciq.com"}]
+license = {text = "Apache-2.0"}
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "urllib3>=2.0.0",
+    "pyyaml>=6.0,<7",
+    "jinja2>=3.0.0",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.scripts]
+nf-fuzzball-submit = "nf_fuzzball_submit.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/ctrliq/nf-fuzzball"
+Repository = "https://github.com/ctrliq/nf-fuzzball.git"
+Issues = "https://github.com/ctrliq/nf-fuzzball/issues"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "pytest-mock>=3.0",
+    "isort>=5.0",
+    "mypy>=1.0",
+    "ruff",
+    "types-pyyaml>=6.0,<7",
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["src/nf_fuzzball_submit"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/test_*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+skip_covered = false
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+exclude = [ "tests", ".venv" ]
+
+[tool.ruff.lint]
+pydocstyle.convention = "google"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # Pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "S",   # flake8-bandit for security checks
+    "N",   # pep8-naming
+    "D",   # pydocstyle
+    "TID", # flake8-tidy-imports
+    "ISC", # flake8-implicit-str-concat
+    "RUF", # Ruff-specific rules
+]
+
+# Adjust or ignore specific rules.
+ignore = [
+    # Ignore rules that may be too strict or create unnecessary friction.
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D105", # Missing docstring in magic method
+    "D203", # 1 blank line required before class docstring (pep257 conflict)
+    "S101", # Use of assert statements (common in tests)
+]
+preview = true

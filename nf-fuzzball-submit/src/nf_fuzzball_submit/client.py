@@ -110,7 +110,7 @@ class FuzzballClient:
         endpoint: str,
         data: dict[str, Any] | None = None,
         headers: dict[str, str] | None = None,
-    ) -> urllib3.HTTPResponse:
+    ) -> urllib3.BaseHTTPResponse:
         """Make an API request to the Fuzzball server.
 
         Args:
@@ -210,8 +210,8 @@ class FuzzballClient:
             for secret in secrets_data.get("secrets", []):
                 if secret["name"] == secret_name:
                     secret_id = secret["id"]
-                    secret_data = {"value": {"value": secret_value}}
-                    self._request("PATCH", f"/secrets/{secret_id}", data=secret_data)
+                    secret_update = {"value": {"value": secret_value}}
+                    self._request("PATCH", f"/secrets/{secret_id}", data=secret_update)
                     return secret_id
         except urllib3.exceptions.HTTPError as e:
             logger.warning(f"Could not list secrets, assuming secret does not exist: {e}")
@@ -405,7 +405,7 @@ class FuzzballClient:
         exit $ec
         """)
 
-        workflow = {
+        workflow: dict[str, Any] = {
             "name": job_name,
             "definition": {
                 "version": "v1",

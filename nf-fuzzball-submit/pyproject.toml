@@ -12,7 +12,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "urllib3>=2.0.0",
-    "pyyaml>=6.0",
+    "pyyaml>=6.0,<7",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -39,6 +39,7 @@ dev-dependencies = [
     "isort>=5.0",
     "mypy>=1.0",
     "ruff",
+    "types-pyyaml>=6.0,<7",
 ]
 
 [tool.ruff]

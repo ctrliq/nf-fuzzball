@@ -135,7 +135,7 @@ assumed that direct login authentication should be used.
 
 ### Setting up the development environment
 
-```bash
+```sh
 git clone <repository>
 cd nf-fuzzball-submit
 uv sync --dev
@@ -143,15 +143,19 @@ uv sync --dev
 
 ### Code formatting
 
-```bash
+```sh
 uv run ruff format
-uv run isort src/
 ```
 
 ### Type checking
 
-```bash
+```sh
 uv run mypy src/
+```
+
+### Linting
+```sh
+uv ruff check
 ```
 
 There are two ways to run a development version of this script:

@@ -44,7 +44,7 @@ class ApiConfig:
 
     @property
     def cli_config(self) -> dict[str, Any]:
-        """Return a Fuzzball compatible config dict with a single active context"""
+        """Return a Fuzzball compatible config dict with a single active context."""
         return {
             "activeContext": "nextflow",
             "contexts": [
@@ -62,7 +62,7 @@ class ApiConfig:
                     "realm": "",
                     "currentaccountid": self.account_id,
                     "accounts": [{"accountid": self.account_id, "accountalias": "n/a"}],
-                }
+                },
             ],
         }
 
@@ -96,11 +96,9 @@ class LocalFile:
             with local_path.open("rb") as f:
                 file_content = f.read()
                 self.content: str = base64.b64encode(file_content).decode("utf-8")
-            self.remote_name: str = (
-                str(uuid.uuid5(NAMESPACE_CONTENT, self.content)) + f"-{local_path.name}"
-            )
+            self.remote_name: str = str(uuid.uuid5(NAMESPACE_CONTENT, self.content)) + f"-{local_path.name}"
             self.remote_path: str = f"{remote_prefix.rstrip('/')}/{self.remote_name}"
-        except IOError:
-            raise IOError(f"Failed to read file {local_path}")
-        except Exception:
-            raise Exception(f"Error processing file {local_path}")
+        except OSError as e:
+            raise OSError(f"Failed to read file {local_path}") from e
+        except Exception as e:
+            raise Exception(f"Error processing file {local_path}") from e

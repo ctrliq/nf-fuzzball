@@ -29,7 +29,6 @@ class FuzzballAuthenticator(ABC):
         Returns:
             ApiConfig with authentication details.
         """
-        pass
 
 
 class DirectLoginAuthenticator(FuzzballAuthenticator):
@@ -47,6 +46,7 @@ class DirectLoginAuthenticator(FuzzballAuthenticator):
         password: str,
         account_id: str,
     ):
+        """Initialize direct login authenticator and validate parameters."""
         self._raw_api_url = api_url  # can leave off the API base path
         self._api_url: str | None = None  # canonical URL
         self._auth_url = auth_url
@@ -71,7 +71,7 @@ class DirectLoginAuthenticator(FuzzballAuthenticator):
         ]
         if not all(required_params):
             raise ValueError(
-                "For direct login, api-url, auth-url, user, password, and account-id are required."
+                "For direct login, api-url, auth-url, user, password, and account-id are required.",
             )
 
     def _get_auth_token(self, http_client: urllib3.PoolManager) -> str:
@@ -150,7 +150,6 @@ class DirectLoginAuthenticator(FuzzballAuthenticator):
         Returns:
             ApiConfig with authentication details.
         """
-
         if not self._api_url:
             self._api_url = get_canonical_api_url(self._raw_api_url, http_client)
         auth_token = self._get_auth_token(http_client)
@@ -173,6 +172,7 @@ class ConfigFileAuthenticator(FuzzballAuthenticator):
     """
 
     def __init__(self, config_path: pathlib.Path, context: str | None = None):
+        """Initialize ConfigFileAuthenticator and read/validate config file."""
         self._config_path = config_path
         self._context = context
         self._config = self._load_config_file()
@@ -188,12 +188,12 @@ class ConfigFileAuthenticator(FuzzballAuthenticator):
             ValueError: If the file cannot be parsed or has invalid format.
         """
         try:
-            with open(self._config_path, "r") as f:
+            with pathlib.Path(self._config_path).open("r") as f:
                 config = yaml.safe_load(f)
-        except IOError as e:
-            raise IOError(f"Failed to read configuration file {self._config_path}: {e}")
+        except OSError as e:
+            raise OSError(f"Failed to read configuration file {self._config_path}") from e
         except yaml.YAMLError as e:
-            raise ValueError(f"Failed to parse configuration file {self._config_path}: {e}")
+            raise ValueError(f"Failed to parse configuration file {self._config_path}") from e
 
         if not isinstance(config, dict):
             raise ValueError("Configuration file has invalid format (not a dictionary)")
@@ -240,7 +240,6 @@ class ConfigFileAuthenticator(FuzzballAuthenticator):
         Returns:
             ApiConfig with authentication details.
         """
-
         context_name = self._determine_context()
         context = self._extract_context_info(context_name)
         api_url = get_canonical_api_url(context["address"], http_client)

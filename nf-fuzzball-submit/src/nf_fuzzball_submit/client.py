@@ -16,8 +16,7 @@ import urllib3
 import yaml
 from urllib3.util import Retry
 
-from .auth import (ConfigFileAuthenticator, DirectLoginAuthenticator,
-                   FuzzballAuthenticator)
+from .auth import ConfigFileAuthenticator, DirectLoginAuthenticator, FuzzballAuthenticator
 from .models import NAMESPACE_CONTENT, ApiConfig
 from .utils import find_and_import_local_files
 
@@ -29,8 +28,7 @@ SCRATCH_MOUNT = "/scratch"
 
 
 class FuzzballClient:
-    """
-    A minimal client for interacting with the Fuzzball API.
+    """A minimal client for interacting with the Fuzzball API.
 
     Handles authentication, configuration management, and job submission
     for Nextflow pipelines to the Fuzzball cluster.
@@ -70,7 +68,7 @@ class FuzzballClient:
             )
         else:
             self._http = urllib3.PoolManager(
-                retries=Retry(total=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504])
+                retries=Retry(total=3, backoff_factor=0.1, status_forcelist=[500, 502, 503, 504]),
             )
 
     def _validate_connection(self) -> None:
@@ -79,16 +77,15 @@ class FuzzballClient:
         Raises:
             ValueError: If connection fails or version cannot be retrieved.
         """
-
         try:
             response = self._request("GET", "/version")
             version_data = json.loads(response.data.decode("utf-8"))
             self._fb_version = ".".join(version_data["version"].split(".")[0:2])
             logger.info(f"Connected to Fuzzball version {self._fb_version} API server")
         except urllib3.exceptions.HTTPError as e:
-            raise ValueError(f"Failed to connect to Fuzzball API: {e}")
+            raise ValueError("Failed to connect to Fuzzball API") from e
         except Exception as e:
-            raise ValueError(f"Unexpected error occurred: {e}")
+            raise ValueError("Unexpected error occurred") from e
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -143,19 +140,24 @@ class FuzzballClient:
                 body = json.dumps(data).encode("utf-8")
 
         response = self._http.request(
-            method.upper(), url, body=body, headers=request_headers, timeout=30
+            method.upper(),
+            url,
+            body=body,
+            headers=request_headers,
+            timeout=30,
         )
 
         if response.status >= 400:
             raise urllib3.exceptions.HTTPError(
-                f"HTTP {response.status}: {response.reason} {response.data.decode('utf-8')}"
+                f"HTTP {response.status}: {response.reason} {response.data.decode('utf-8')}",
             )
 
         return response
 
     def _encode_config(self) -> str:
-        """Return a base64 encoded version of the minimal Fuzzball configuration file
-        containing only the active context.
+        """Return a base64 encoded version of the minimal Fuzzball configuration file.
+
+        Contains only the active context.
 
         Returns:
             Base64 encoded config string safe for transport
@@ -167,7 +169,7 @@ class FuzzballClient:
             yaml_str = yaml.dump(self._api_config.cli_config)
             return base64.b64encode(yaml_str.encode("utf-8")).decode("utf-8")
         except Exception as e:
-            raise ValueError(f"Failed to encode Fuzzball configuration: {e}")
+            raise ValueError("Failed to encode Fuzzball configuration") from e
 
     def _encode_ca_cert(self) -> str:
         """Return a base64 encoded version of the CA certificate if one was provided.
@@ -182,9 +184,9 @@ class FuzzballClient:
             return ""
 
         try:
-            with open(self._ca_cert_file, "rb") as f:
+            with pathlib.Path(self._ca_cert_file).open("rb") as f:
                 return base64.b64encode(f.read()).decode("utf-8")
-        except IOError:
+        except OSError:
             logger.error(f"Failed to read CA certificate file {self._ca_cert_file}")
             raise
 
@@ -235,11 +237,7 @@ class FuzzballClient:
             Exception: If there is any other (unspecific) error.
         """
         nextflow_cmd_str = shlex.join(args.nextflow_cmd)
-        job_name = (
-            args.job_name
-            if len(args.job_name) > 0
-            else str(uuid.uuid5(NAMESPACE_CONTENT, nextflow_cmd_str))
-        )
+        job_name = args.job_name if len(args.job_name) > 0 else str(uuid.uuid5(NAMESPACE_CONTENT, nextflow_cmd_str))
         mounts = {
             "data": {"location": DATA_MOUNT},
             "scratch": {"location": SCRATCH_MOUNT},
@@ -268,10 +266,10 @@ class FuzzballClient:
                 response = self._http.request("HEAD", plugin_uri, timeout=10)
                 if response.status >= 400:
                     raise urllib3.exceptions.HTTPError(f"HTTP {response.status}: {response.reason}")
-            except urllib3.exceptions.HTTPError:
+            except urllib3.exceptions.HTTPError as e:
                 raise Exception(
-                    f"Failed to access nf-fuzzball plugin for this version of Fuzzball at {plugin_uri}"
-                )
+                    f"Failed to access nf-fuzzball plugin for this version of Fuzzball at {plugin_uri}",
+                ) from e
 
         env = [
             f"HOME={home}",
@@ -320,7 +318,7 @@ class FuzzballClient:
                 [
                     f"FB_USER_SECRET=secret://user/{user_secret_name}",
                     f"FB_PASS_SECRET=secret://user/{pass_secret_name}",
-                ]
+                ],
             )
         # Config file login
         config_secret_name = f"{secret_name}-conf"
@@ -352,7 +350,7 @@ class FuzzballClient:
                 }}
             }}
         }}
-        """).encode("utf-8")
+        """).encode("utf-8"),
         ).decode("utf-8")
         nxf_fuzzball_config_name = str(uuid.uuid5(NAMESPACE_CONTENT, nxf_fuzzball_config))
 
@@ -419,10 +417,10 @@ class FuzzballClient:
                     "setup": {
                         "image": {"uri": "docker://curlimages/curl"},
                         "files": {
-                            f"/tmp/{nxf_fuzzball_config_name}": f"file://{nxf_fuzzball_config_name}"
+                            f"/tmp/{nxf_fuzzball_config_name}": f"file://{nxf_fuzzball_config_name}",  # noqa: S108
                         },
                         "mounts": mounts,
-                        "cwd": "/tmp",
+                        "cwd": "/tmp",  # noqa: S108
                         "script": setup_script,
                         "env": setup_env,
                         "policy": {"timeout": {"execute": "5m"}},
@@ -433,10 +431,7 @@ class FuzzballClient:
                         "mounts": mounts,
                         "cwd": wd,
                         "script": nextflow_script,
-                        "env": env
-                        + (
-                            [f"FB_CA_CERT={ca_cert_path}"] if self._ca_cert_file is not None else []
-                        ),
+                        "env": env + ([f"FB_CA_CERT={ca_cert_path}"] if self._ca_cert_file is not None else []),
                         "policy": {"timeout": {"execute": args.timelimit}},
                         "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
                         "requires": ["setup"],
@@ -450,7 +445,7 @@ class FuzzballClient:
             workflow["definition"]["files"][f.remote_name] = f.content
             if "files" not in workflow["definition"]["jobs"]["setup"]:
                 workflow["definition"]["jobs"]["setup"]["files"] = {}
-            workflow["definition"]["jobs"]["setup"]["files"][f"/tmp/{f.remote_name}"] = (
+            workflow["definition"]["jobs"]["setup"]["files"][f"/tmp/{f.remote_name}"] = (  # noqa: S108
                 f"file://{f.remote_name}"
             )
 
@@ -563,11 +558,10 @@ def create_fuzzball_client(
             account_id=account_id,
             ca_cert_file=ca_cert_file,
         )
-    else:
-        if not config_path:
-            raise ValueError("Config path must be provided for config file authentication")
-        return create_config_file_client(
-            config_path=config_path,
-            context=context,
-            ca_cert_file=ca_cert_file,
-        )
+    if not config_path:
+        raise ValueError("Config path must be provided for config file authentication")
+    return create_config_file_client(
+        config_path=config_path,
+        context=context,
+        ca_cert_file=ca_cert_file,
+    )

@@ -17,7 +17,6 @@ def parse_cli() -> argparse.Namespace:
     Raises:
         SystemExit: If required arguments are missing or invalid.
     """
-
     parser = argparse.ArgumentParser(
         description="""
 Submit a nextflow pipeline to Fuzzball.
@@ -47,7 +46,7 @@ Notes:
                   -with-trace \\
                   -with-timeline timeline.html \\
                   hello
-            """
+            """,
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -105,7 +104,9 @@ Notes:
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
     parser.add_argument(
-        "--ca-cert", type=str, help="Path to CA certificate file for SSL verification."
+        "--ca-cert",
+        type=str,
+        help="Path to CA certificate file for SSL verification.",
     )
     parser.add_argument(
         "-n",
@@ -139,10 +140,16 @@ Notes:
         help="Base URI for the nf-fuzzball plugin.",
     )
     parser.add_argument(
-        "--nextflow-version", type=str, default="25.05.0-edge", help="Nextflow version."
+        "--nextflow-version",
+        type=str,
+        default="25.05.0-edge",
+        help="Nextflow version.",
     )
     parser.add_argument(
-        "--timelimit", type=str, default="8h", help="Timelimit for the pipeline job."
+        "--timelimit",
+        type=str,
+        default="8h",
+        help="Timelimit for the pipeline job.",
     )
     parser.add_argument(
         "--scratch-volume",

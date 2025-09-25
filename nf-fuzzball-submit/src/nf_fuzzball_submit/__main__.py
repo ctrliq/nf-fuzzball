@@ -39,7 +39,7 @@ def main() -> None:
                 password = os.environ.get("FUZZBALL_PASSWORD")
             if not password:
                 die(
-                    "Password is required for direct login. Use --password or set FUZZBALL_PASSWORD."
+                    "Password is required for direct login. Use --password or set FUZZBALL_PASSWORD.",
                 )
 
         fb_client = create_fuzzball_client(

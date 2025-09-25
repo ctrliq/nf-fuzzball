@@ -1,10 +1,8 @@
 """Utility functions for nf-fuzzball-submit."""
 
-import base64
 import logging
 import pathlib
 import sys
-from typing import Any
 
 import urllib3
 import yaml
@@ -74,13 +72,14 @@ def get_canonical_api_url(url: str, http_client: urllib3.PoolManager) -> str:
             )
             if response.status < 400:
                 return test_url
-        except Exception:
+        except Exception:  # noqa: S112
             continue
     raise ValueError("Unable to sniff API base path")
 
 
 def find_and_import_local_files(
-    nextflow_cmd: list[str], remote_prefix: str = ""
+    nextflow_cmd: list[str],
+    remote_prefix: str = "",
 ) -> tuple[list[str], list[LocalFile]]:
     """Find local files in the Nextflow command and prepare them for upload to Fuzzball.
 
@@ -110,7 +109,7 @@ def find_and_import_local_files(
                     local_files.append(local_file)
                     cs_str.append(str(local_file.remote_path))
                     logger.debug(
-                        f"Found local file to include in workflow: {local_file.local_path} -> {local_file.remote_path}"
+                        f"Found local file to include in workflow: {local_file.local_path} -> {local_file.remote_path}",
                     )
                 else:
                     cs_str.append(sub_arg.strip())
@@ -122,7 +121,7 @@ def find_and_import_local_files(
             local_files.append(local_file)
             mangled_command.append(str(local_file.remote_path))
             logger.debug(
-                f"Found local file to include in workflow: {local_file.local_path} -> {local_file.remote_path}"
+                f"Found local file to include in workflow: {local_file.local_path} -> {local_file.remote_path}",
             )
         else:
             mangled_command.append(arg)

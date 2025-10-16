@@ -343,11 +343,12 @@ class FuzzballClient:
                 executor {{
                     '$fuzzball' {{
                         queueSize = {args.queue_size}
-                        retry {{ maxAttempt = 3 }}
                     }}
                 }}
                 process {{
                     executor = 'fuzzball'
+                    errorStrategy = 'retry'
+                    maxRetries = 3
                 }}
                 {"docker { registry = 'quay.io' }" if args.nf_core else ""}
                 fuzzball {{

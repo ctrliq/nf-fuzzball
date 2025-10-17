@@ -34,9 +34,9 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
     protected String executorWfName = null
     protected WorkflowServiceApi fuzzballWfService
     protected StorageClassServiceApi storageClassService
-    protected Map<String, WorkflowDefinitionJobMount> mounts = [:]
-    protected Map<String, Volume> volumes = [:]
-    protected Map<String, Volume> filteredVolumes = [:]
+    protected Map<String, WorkflowDefinitionJobMount> mounts = [:] // only includes persistent volumes
+    protected Map<String, Volume> allVolumes = [:]
+    protected Map<String, Volume> volumes = [:] // volume only include persistent volumes
     protected Set<String> ephemeralStorageClasses = [] as Set<String>
 
     @Override
@@ -73,18 +73,18 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
         if (!wfDef) {
             throw new AbortOperationException("Unable to load workflow definition for workflow: $executorWfName")
         }
-        volumes = wfDef.volumes?.collectEntries { k, v ->
+        allVolumes = wfDef.volumes?.collectEntries { k, v ->
             [(k): new Volume(reference: v.reference)]
         } ?: [:]
-        Map<String, WorkflowDefinitionJobMount> originalMounts = wfDef.jobs[executorWfName]?.mounts ?: [:]
+        Map<String, WorkflowDefinitionJobMount> allMounts = wfDef.jobs[executorWfName]?.mounts ?: [:]
 
         // Filter out ephemeral volumes
         loadEphemeralStorageClasses()
-        filteredVolumes = filterEphemeralVolumes(volumes)
+        volumes = filterEphemeralVolumes(allVolumes)
 
         // Filter mounts to only include those with persistent volumes
-        mounts = originalMounts.findAll { mountName, mount ->
-            filteredVolumes.containsKey(mountName)
+        mounts = allMounts.findAll { mountName, mount ->
+            volumes.containsKey(mountName)
         }
     }
 

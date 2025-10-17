@@ -83,7 +83,7 @@ if [[ "${specfile}" != "__none__" ]]; then
     spec="${specfile}"
 fi
 
-ver=7.13.0
+ver=7.16.0
 scriptd="$(cd "$(dirname "$0")" && pwd)"
 gen="openapi-generator-cli-${ver}.jar"
 name="fuzzball-sdk"
@@ -113,17 +113,12 @@ java -jar "./${gen}" \
 	  -i "${spec}" || exit $EXIT_CODEGEN_FAILED
 
 # - i could not remove the imports for io.swagger.annotations from the generated code without a custom generator
-# - the abstract java generation class that is the base class for the groovy generator includes a hardcoded mapping of URI -> java.net.URI
-#   which is not what we want since the OpenAPI spec for fuzzball defines its own URI object. Again - we need a proper custom generator
-#   to deal with that cleanly. For now i just mangle the imports to remove the java.net.URI import and replace it with the fuzzball URI.
 if sed --version >/dev/null 2>&1; then
     # GNU sed
     sed -i -E -e '/import io\.swagger\.annotations\.[^;]+;/d' "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.groovy || exit $EXIT_SED_FAILED
-    sed -i -E -e 's/import java\.net\.URI;/import com.ciq.fuzzball.model.URI/' "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.groovy || exit $EXIT_SED_FAILED
 else
     # BSD/macOS sed
     sed -i .bak -E -e '/import io\.swagger\.annotations\.[^;]+;/d' "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.groovy || exit $EXIT_SED_FAILED
-    sed -i .bak2 -E -e 's/import java\.net\.URI;/import com.ciq.fuzzball.model.URI/' "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.groovy || exit $EXIT_SED_FAILED
     rm -f "${tmp}/${name}"/src/main/groovy/com/ciq/fuzzball/model/*.bak*
 fi
 

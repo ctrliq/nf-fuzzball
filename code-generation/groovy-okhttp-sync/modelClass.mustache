@@ -17,6 +17,7 @@ class {{classname}} {
     {{/mostInnerItems}}
     {{/isContainer}}
     {{/isEnum}}
+    @JsonProperty("{{baseName}}")
     {{{datatypeWithEnum}}} {{name}}{{#defaultValue}} = {{{.}}}{{/defaultValue}}{{#description}}  // {{{.}}}{{/description}}
 {{/vars}}
 

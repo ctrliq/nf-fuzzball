@@ -14,6 +14,8 @@ additionalProperties:
   disallowAdditionalPropertiesIfNotPresent: true
   legacyDiscriminatorBehavior: false
 templateDir: ./groovy-okhttp-sync
+importMappings:
+  URI: com.ciq.fuzzball.model.URI
 files:
   build.gradle.mustache:
     templateType: SupportingFiles

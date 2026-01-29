@@ -735,7 +735,7 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--nf-fuzzball-version",
         type=str,
-        default="0.1.2",
+        default="0.1.3",
         help="nf-fuzzball plugin version. Note that the plugin tag includes a 'v' prefix [%(default)s]",
     )
     parser.add_argument(
@@ -762,7 +762,7 @@ def parse_cli() -> argparse.Namespace:
     parser.add_argument(
         "--nextflow-version",
         type=str,
-        default="25.05.0-edge",
+        default="25.10.3",
         help="Nextflow version [%(default)s]",
     )
     parser.add_argument(

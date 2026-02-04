@@ -45,7 +45,7 @@ class FuzzballClient:
         self._authenticator = authenticator
         self._ca_cert_file = ca_cert_file
         self._jinja_env = Environment(
-            loader=PackageLoader('nf_fuzzball_submit', 'templates'),
+            loader=PackageLoader("nf_fuzzball_submit", "templates"),
             autoescape=False,  # Shell scripts should not be HTML-escaped  # noqa: S701
         )
 

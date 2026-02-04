@@ -419,7 +419,7 @@ class FuzzballClient:
                         "script": nextflow_script,
                         "env": env + ([f"FB_CA_CERT={ca_cert_path}"] if self._ca_cert_file is not None else []),
                         "policy": {"timeout": {"execute": args.timelimit}},
-                        "resource": {"cpu": {"cores": 1}, "memory": {"size": "4GB"}},
+                        "resource": {"cpu": {"cores": 1}, "memory": {"size": args.memory}},
                         "requires": ["setup"],
                     },
                 },

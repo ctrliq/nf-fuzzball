@@ -144,16 +144,30 @@ class TestCliParsing:
 
         assert args.api_url == "https://cli-api.example.com"
 
-    def test_fuzzball_config_default_path(self):
-        """Test default fuzzball config path."""
+    def test_fuzzball_config_default_path_no_xdg(self):
+        """Test default fuzzball config path when XDG_CONFIG_HOME is not set"""
         test_args = ["--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            os.environ.pop("XDG_CONFIG_HOME", None)
             args = parse_cli()
 
         # Should default to ~/.config/fuzzball/config.yaml
         expected_path = pathlib.Path("~/.config/fuzzball/config.yaml").expanduser()
         assert args.fuzzball_config == expected_path
+
+    def test_fuzzball_config_default_path_with_xdg(self):
+        """Test default fuzzball config path when XDG_CONFIG_HOME is set"""
+        test_args = ["--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            os.environ["XDG_CONFIG_HOME"] = "~/ops/cluster1/config"
+            args = parse_cli()
+
+        # Should default to ~/.config/fuzzball/config.yaml
+        expected_path = pathlib.Path("~/ops/cluster1/config/fuzzball/config.yaml").expanduser()
+        assert args.fuzzball_config == expected_path
+
 
     def test_fuzzball_config_xdg_config_home(self):
         """Test fuzzball config path with XDG_CONFIG_HOME."""
@@ -180,7 +194,7 @@ class TestCliParsing:
             "--plugin-base-uri",
             "s3://my-bucket/plugins",
             "--s3-secret",
-            "my-s3-secret",
+            "secret://user/my-s3-secret",
             "--",
             "nextflow",
             "run",
@@ -191,7 +205,7 @@ class TestCliParsing:
             args = parse_cli()
 
         assert args.plugin_base_uri == "s3://my-bucket/plugins"
-        assert args.s3_secret == "my-s3-secret"
+        assert args.s3_secret == "secret://user/my-s3-secret"
 
     def test_missing_nextflow_command_raises_error(self):
         """Test missing nextflow command raises error."""
@@ -235,6 +249,22 @@ class TestCliParsing:
             args = parse_cli()
 
         assert args.queue_size == 50
+
+    def test_negative_queue_size_option(self):
+        """Test invalid queue size raises exception."""
+        test_args = ["--queue-size", "-5", "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    def test_bad_queue_size_option(self):
+        """Test invalid queue size raises exception."""
+        test_args = ["--queue-size", "bad", "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
 
     def test_custom_volumes(self):
         """Test custom volume specifications."""

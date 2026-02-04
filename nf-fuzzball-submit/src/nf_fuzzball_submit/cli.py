@@ -135,7 +135,7 @@ def valid_fuzzball_secret(value: str) -> str:
     return value
 
 
-def valid_queue_size(value: int) -> int:
+def valid_queue_size(value: str) -> int:
     """Validate that the queue size is reasonable.
 
     Args:
@@ -147,9 +147,13 @@ def valid_queue_size(value: int) -> int:
     Raises:
         argparse.ArgumentTypeError: If the queue size is invalid.
     """
-    if value < 1 or value > 50:
-        raise argparse.ArgumentTypeError(f"Invalid queue size: {value}. Expected size 1 < queue size <= 50")
-    return value
+    try:
+        v = int(value)
+    except TypeError:
+        v = -1
+    if v < 1 or v > 100:
+        raise argparse.ArgumentTypeError(f"Invalid queue size: {value}. Expected an integer between 1 and 100.")
+    return v
 
 
 def parse_cli() -> argparse.Namespace:

@@ -3,9 +3,171 @@
 import argparse
 import os
 import pathlib
+import re
 import textwrap
+from urllib.parse import urlparse
 
 from .client import DATA_MOUNT
+
+
+def valid_timelimit(value: str) -> str:
+    """Validate timelimit string format.
+
+    Accepts formats like: '120m', '8h', '1d8h30m', '30s', etc.
+    Each component (days, hours, minutes, seconds) is optional but at least one must be present.
+
+    Args:
+        value: The timelimit string to validate.
+
+    Returns:
+        The validated timelimit string.
+
+    Raises:
+        argparse.ArgumentTypeError: If the format is invalid.
+    """
+    pattern = r"^(\d+d)?(\d+h)?(\d+m)?(\d+s)?$"
+    if (m := re.match(pattern, value)) is None:
+        raise argparse.ArgumentTypeError(
+            f"Invalid timelimit format: '{value}'. Expected format: [Nd][Nh][Nm][Ns] (e.g., '8h', '1d8h30m', '120m')"
+        )
+    # Ensure at least one component is present and that they add up to more than 0
+    # not calculating an actual duration with the units.
+    try:
+        s = sum(int(a[0:-1]) for a in m.groups() if a is not None)
+    except ValueError:
+        s = 0
+    if s == 0:
+        raise argparse.ArgumentTypeError(
+            f"Invalid timelimit format: '{value}'. Must include at least one time component (d/h/m/s)"
+        )
+    return value
+
+
+
+def valid_url(value: str) -> str:
+    """Validate URL format.
+
+    Accepts a valid URL or an empty string.
+
+    Args:
+        value: The URL string to validate.
+
+    Returns:
+        The validated URL string.
+
+    Raises:
+        argparse.ArgumentTypeError: If the URL is invalid.
+    """
+    if value == "":
+        return value
+    parsed = urlparse(value)
+    if not parsed.scheme or not parsed.netloc:
+        raise argparse.ArgumentTypeError(
+            f"Invalid URL: '{value}'. Expected a valid URL with scheme and domain (e.g., 'https://example.com')"
+        )
+    return value
+
+
+def valid_memory(value: str) -> str:
+    """Validate memory string format.
+
+    Accepts formats like: '4GB', '4GiB', '512MB', '1.5TiB', etc.
+    Supports both metric (KB, MB, GB, TB, PB) and binary (KiB, MiB, GiB, TiB, PiB) units.
+    Case insensitive.
+
+    Args:
+        value: The memory string to validate.
+
+    Returns:
+        The validated memory string.
+
+    Raises:
+        argparse.ArgumentTypeError: If the format is invalid.
+    """
+    pattern = r"^\s*(\d+(?:\.\d+)?)\s*([KMGTP]i?B)\s*$"
+    match = re.match(pattern, value, re.IGNORECASE)
+    if not match:
+        raise argparse.ArgumentTypeError(
+            f"Invalid memory format: '{value}'. "
+            "Expected format: <number><unit> (e.g., '4GB', '4GiB', '512MB', '1.5TiB'). "
+            "Supported units: KB/KiB, MB/MiB, GB/GiB, TB/TiB, PB/PiB"
+        )
+    try:
+        mem = float(match[1])
+    except ValueError:
+        mem = 0.0
+    if mem == 0.0:
+        raise argparse.ArgumentTypeError(
+            f"Invalid memory format: '{value}'. Memory must be more than 0"
+        )
+    return value
+
+
+def valid_fuzzball_volume(value: str) -> str:
+    """Validate fuzzball volume string format.
+
+    Accepts a valid fuzzball volume reference or an empty string.
+
+    Args:
+        value: The volume reference to validate.
+
+    Returns:
+        The validated volume reference.
+
+    Raises:
+        argparse.ArgumentTypeError: If the volume reference is invalid.
+    """
+    if value == "":
+        return value
+    if not value.startswith("volume://"):
+        raise argparse.ArgumentTypeError(
+            f"Invalid Fuzzball volume string: {value}. Expected format: volume://SCOPE/STORAGE_CLASS[/CUSTOM_NAME]"
+        )
+    return value
+
+
+def valid_fuzzball_secret(value: str) -> str:
+    """Validate fuzzball secret string format.
+
+    Accepts a valid fuzzball secret reference or an empty string.
+
+    Args:
+        value: The secret reference to validate.
+
+    Returns:
+        The validated secret reference.
+
+    Raises:
+        argparse.ArgumentTypeError: If the secret reference is invalid.
+    """
+    if value == "":
+        return value
+    if not value.startswith("secret://"):
+        raise argparse.ArgumentTypeError(
+            f"Invalid Fuzzball secret string: {value}. Expected format: secret://SCOPE/NAME"
+        )
+    return value
+
+
+def valid_queue_size(value: str) -> int:
+    """Validate that the queue size is reasonable.
+
+    Args:
+        value: The queue size to validate.
+
+    Returns:
+        The validated queue size.
+
+    Raises:
+        argparse.ArgumentTypeError: If the queue size is invalid.
+    """
+    try:
+        v = int(value)
+    except ValueError:
+        v = -1
+    if v < 1 or v > 100:
+        raise argparse.ArgumentTypeError(f"Invalid queue size: {value}. Expected an integer between 1 and 100.")
+    return v
 
 
 def parse_cli() -> argparse.Namespace:
@@ -71,13 +233,13 @@ Notes:
     direct_login_group = parser.add_argument_group("Direct Login based authentication")
     direct_login_group.add_argument(
         "--api-url",
-        type=str,
+        type=valid_url,
         help=("API URL of Fuzzball cluster [$FUZZBALL_API_URL]. e.g. https://api.example.com"),
         default=os.environ.get("FUZZBALL_API_URL", ""),
     )
     direct_login_group.add_argument(
         "--auth-url",
-        type=str,
+        type=valid_url,
         help=(
             "AUTH URL of Fuzzball cluster [$FUZZBALL_AUTH_URL] "
             "e.g. https://auth.example.com/auth/realms/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -129,7 +291,7 @@ Notes:
     )
     parser.add_argument(
         "--s3-secret",
-        type=str,
+        type=valid_fuzzball_secret,
         default="",
         help="Fuzzball S3 secret for plugin download.",
     )
@@ -147,26 +309,32 @@ Notes:
     )
     parser.add_argument(
         "--timelimit",
-        type=str,
+        type=valid_timelimit,
         default="8h",
-        help="Timelimit for the pipeline job.",
+        help="Timelimit for the pipeline job (e.g., '8h', '1d8h30m', '120m').",
+    )
+    parser.add_argument(
+        "--memory",
+        type=valid_memory,
+        default="4GB",
+        help="Memory allocated for the nextflow controller job (e.g., '4GB', '512MB').",
     )
     parser.add_argument(
         "--scratch-volume",
-        type=str,
+        type=valid_fuzzball_volume,
         default="volume://user/ephemeral",
         help="Ephemeral scratch volume.",
     )
     parser.add_argument(
         "--data-volume",
-        type=str,
+        type=valid_fuzzball_volume,
         default="volume://user/persistent",
         help="Persistent data volume.",
     )
     parser.add_argument("--nf-core", action="store_true", help="Use nf-core conventions.")
     parser.add_argument(
         "--queue-size",
-        type=int,
+        type=valid_queue_size,
         default=20,
         help="Queue size for the Fuzzball executor.",
     )

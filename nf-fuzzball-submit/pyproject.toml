@@ -33,8 +33,8 @@ Homepage = "https://github.com/ctrliq/nf-fuzzball"
 Repository = "https://github.com/ctrliq/nf-fuzzball.git"
 Issues = "https://github.com/ctrliq/nf-fuzzball/issues"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
     "pytest-mock>=3.0",

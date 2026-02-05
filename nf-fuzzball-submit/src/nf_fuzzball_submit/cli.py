@@ -26,16 +26,22 @@ def valid_timelimit(value: str) -> str:
         argparse.ArgumentTypeError: If the format is invalid.
     """
     pattern = r"^(\d+d)?(\d+h)?(\d+m)?(\d+s)?$"
-    if not re.match(pattern, value):
+    if (m := re.match(pattern, value)) is None:
         raise argparse.ArgumentTypeError(
             f"Invalid timelimit format: '{value}'. Expected format: [Nd][Nh][Nm][Ns] (e.g., '8h', '1d8h30m', '120m')"
         )
-    # Ensure at least one component is present
-    if not any(c in value for c in ["d", "h", "m", "s"]):
+    # Ensure at least one component is present and that they add up to more than 0
+    # not calculating an actual duration with the units.
+    try:
+        s = sum(int(a[0:-1]) for a in m.groups() if a is not None)
+    except ValueError:
+        s = 0
+    if s == 0:
         raise argparse.ArgumentTypeError(
             f"Invalid timelimit format: '{value}'. Must include at least one time component (d/h/m/s)"
         )
     return value
+
 
 
 def valid_url(value: str) -> str:
@@ -85,6 +91,14 @@ def valid_memory(value: str) -> str:
             f"Invalid memory format: '{value}'. "
             "Expected format: <number><unit> (e.g., '4GB', '4GiB', '512MB', '1.5TiB'). "
             "Supported units: KB/KiB, MB/MiB, GB/GiB, TB/TiB, PB/PiB"
+        )
+    try:
+        mem = float(match[1])
+    except ValueError:
+        mem = 0.0
+    if mem == 0.0:
+        raise argparse.ArgumentTypeError(
+            f"Invalid memory format: '{value}'. Memory must be more than 0"
         )
     return value
 
@@ -149,7 +163,7 @@ def valid_queue_size(value: str) -> int:
     """
     try:
         v = int(value)
-    except TypeError:
+    except ValueError:
         v = -1
     if v < 1 or v > 100:
         raise argparse.ArgumentTypeError(f"Invalid queue size: {value}. Expected an integer between 1 and 100.")
@@ -302,8 +316,8 @@ Notes:
     parser.add_argument(
         "--memory",
         type=valid_memory,
-        default="4GiB",
-        help="Memory allocated for the nextflow controller job (e.g., '4GiB', '512MB').",
+        default="4GB",
+        help="Memory allocated for the nextflow controller job (e.g., '4GB', '512MB').",
     )
     parser.add_argument(
         "--scratch-volume",

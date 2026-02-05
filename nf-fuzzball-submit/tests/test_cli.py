@@ -241,26 +241,71 @@ class TestCliParsing:
 
         assert args.nf_core is True
 
-    def test_queue_size_option(self):
-        """Test queue size option parsing."""
-        test_args = ["--queue-size", "50", "--", "nextflow", "run", "hello"]
+    @pytest.mark.parametrize("qs", ["2", "10", "100"])
+    def test_valid_queue_size_option(self, qs):
+        """Test valid queue size option parsing."""
+        test_args = ["--queue-size", qs, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
 
-        assert args.queue_size == 50
+        assert args.queue_size == int(qs)
 
-    def test_negative_queue_size_option(self):
+    @pytest.mark.parametrize("qs", ["-1", "0", "bad"])
+    def test_invalid_queue_size_option(self, qs):
         """Test invalid queue size raises exception."""
-        test_args = ["--queue-size", "-5", "--", "nextflow", "run", "hello"]
+        test_args = ["--queue-size", qs, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
                 parse_cli()
 
-    def test_bad_queue_size_option(self):
-        """Test invalid queue size raises exception."""
-        test_args = ["--queue-size", "bad", "--", "nextflow", "run", "hello"]
+    @pytest.mark.parametrize("mem", ["4GB", "10GiB", "500MB", "0.5GiB"])
+    def test_valid_memory_option(self, mem):
+        """Test valid memory option parsing."""
+        test_args = ["--memory", mem, "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            args = parse_cli()
+
+        assert args.memory == mem
+
+
+    @pytest.mark.parametrize("mem", ["bad", "0GB", "1.xGiB"])
+    def test_valid_memory_option(self, mem):
+        """Test invalid memory option parsing."""
+        test_args = ["--memory", mem, "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    @pytest.mark.parametrize("timelimit", [
+        "2h",
+        "8h",
+        "120m",
+        "1d8h30m",
+        "30s",
+        "1d",
+        "2d3h",
+        "1d2h3m4s",
+    ])
+    def test_valid_timelimit(self, timelimit):
+        """Test valid time limits."""
+        test_args = ["--timelimit", timelimit, "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            args = parse_cli()
+        assert args.timelimit == timelimit
+
+    @pytest.mark.parametrize("timelimit", [
+        "0h",
+        "bad",
+        "0d0h0m",
+    ])
+    def test_invalid_timelimit(self, timelimit):
+        """Test valid time limits."""
+        test_args = ["--timelimit", timelimit, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):

@@ -241,6 +241,15 @@ class TestCliParsing:
 
         assert args.nf_core is True
 
+    @pytest.mark.parametrize("url", ["foo", "foo/bar", "https:/foo/bar"])
+    def test_invalid_url(self, url):
+        """Test that invalid url raises exception."""
+        test_args = ["--plugin-base-uri", url, "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
     @pytest.mark.parametrize("qs", ["2", "10", "100"])
     def test_valid_queue_size_option(self, qs):
         """Test valid queue size option parsing."""
@@ -255,6 +264,25 @@ class TestCliParsing:
     def test_invalid_queue_size_option(self, qs):
         """Test invalid queue size raises exception."""
         test_args = ["--queue-size", qs, "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    @pytest.mark.parametrize("c", ["1", "5", "10"])
+    def test_valid_cores(self, c):
+        """Test valid core option parsing."""
+        test_args = ["--cores", c, "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            args = parse_cli()
+
+        assert args.cores == int(c)
+
+    @pytest.mark.parametrize("c", ["-1", "0", "11", "bad"])
+    def test_invalid_cores(self, c):
+        """Test invalid core raises exception."""
+        test_args = ["--cores", c, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):

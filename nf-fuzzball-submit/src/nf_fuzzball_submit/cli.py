@@ -32,16 +32,12 @@ def valid_timelimit(value: str) -> str:
         )
     # Ensure at least one component is present and that they add up to more than 0
     # not calculating an actual duration with the units.
-    try:
-        s = sum(int(a[0:-1]) for a in m.groups() if a is not None)
-    except ValueError:
-        s = 0
+    s = sum(int(a[0:-1]) for a in m.groups() if a is not None)
     if s == 0:
         raise argparse.ArgumentTypeError(
             f"Invalid timelimit format: '{value}'. Must include at least one time component (d/h/m/s)"
         )
     return value
-
 
 
 def valid_url(value: str) -> str:
@@ -167,6 +163,27 @@ def valid_queue_size(value: str) -> int:
         v = -1
     if v < 1 or v > 100:
         raise argparse.ArgumentTypeError(f"Invalid queue size: {value}. Expected an integer between 1 and 100.")
+    return v
+
+
+def valid_cores(value: str) -> int:
+    """Validate that the number of cores is reasonable.
+
+    Args:
+        value: Core number to validate.
+
+    Returns:
+        The validated cores.
+
+    Raises:
+        argparse.ArgumentTypeError: If invalid.
+    """
+    try:
+        v = int(value)
+    except ValueError:
+        v = -1
+    if v < 1 or v > 10:
+        raise argparse.ArgumentTypeError(f"Invalid number of cores: {value}. Expected an integer between 1 and 10.")
     return v
 
 
@@ -297,7 +314,7 @@ Notes:
     )
     parser.add_argument(
         "--plugin-base-uri",
-        type=str,
+        type=valid_url,
         default="https://github.com/ctrliq/nf-fuzzball/releases/download",
         help="Base URI for the nf-fuzzball plugin.",
     )
@@ -318,6 +335,12 @@ Notes:
         type=valid_memory,
         default="4GB",
         help="Memory allocated for the nextflow controller job (e.g., '4GB', '512MB').",
+    )
+    parser.add_argument(
+        "--cores",
+        type=valid_cores,
+        default="1",
+        help="Cores allocated for the nextflow controller job.",
     )
     parser.add_argument(
         "--scratch-volume",

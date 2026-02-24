@@ -28,8 +28,6 @@ Nextflow child jobs.
 For more information on submission script usage, please see the
 [submission script usage documentation](submit/README.md).
 
-
-
 ## Building and using development versions of the nextflow plugin
 
 Build the plugin from the current working tree and push it to a

@@ -112,7 +112,7 @@ def valid_memory(value: str) -> str:
         mem = float(match[1])
     except ValueError:
         mem = 0.0
-    if mem == 0.0:
+    if mem <= 0.00001:
         raise argparse.ArgumentTypeError(
             f"Invalid memory format: '{value}'. Memory must be more than 0"
         )

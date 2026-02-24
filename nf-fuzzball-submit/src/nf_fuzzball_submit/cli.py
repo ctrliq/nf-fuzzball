@@ -43,8 +43,29 @@ def valid_timelimit(value: str) -> str:
     return value
 
 
-
 def valid_url(value: str) -> str:
+    """Validate URL format.
+
+    Accepts a valid URL.
+
+    Args:
+        value: The URL string to validate.
+
+    Returns:
+        The validated URL string.
+
+    Raises:
+        argparse.ArgumentTypeError: If the URL is invalid.
+    """
+    parsed = urlparse(value)
+    if not parsed.scheme or not parsed.netloc:
+        raise argparse.ArgumentTypeError(
+            f"Invalid URL: '{value}'. Expected a valid URL with scheme and domain (e.g., 'https://example.com')"
+        )
+    return value
+
+
+def valid_url_or_empty_str(value: str) -> str:
     """Validate URL format.
 
     Accepts a valid URL or an empty string.
@@ -60,12 +81,7 @@ def valid_url(value: str) -> str:
     """
     if value == "":
         return value
-    parsed = urlparse(value)
-    if not parsed.scheme or not parsed.netloc:
-        raise argparse.ArgumentTypeError(
-            f"Invalid URL: '{value}'. Expected a valid URL with scheme and domain (e.g., 'https://example.com')"
-        )
-    return value
+    return valid_url(value)
 
 
 def valid_memory(value: str) -> str:
@@ -233,13 +249,13 @@ Notes:
     direct_login_group = parser.add_argument_group("Direct Login based authentication")
     direct_login_group.add_argument(
         "--api-url",
-        type=valid_url,
+        type=valid_url_or_empty_str,
         help=("API URL of Fuzzball cluster [$FUZZBALL_API_URL]. e.g. https://api.example.com"),
         default=os.environ.get("FUZZBALL_API_URL", ""),
     )
     direct_login_group.add_argument(
         "--auth-url",
-        type=valid_url,
+        type=valid_url_or_empty_str,
         help=(
             "AUTH URL of Fuzzball cluster [$FUZZBALL_AUTH_URL] "
             "e.g. https://auth.example.com/auth/realms/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -297,7 +313,7 @@ Notes:
     )
     parser.add_argument(
         "--plugin-base-uri",
-        type=str,
+        type=valid_url,
         default="https://github.com/ctrliq/nf-fuzzball/releases/download",
         help="Base URI for the nf-fuzzball plugin.",
     )

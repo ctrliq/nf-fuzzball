@@ -67,9 +67,9 @@ build with the nf-fuzzball-submit script you would specify the location to
 download from like so:
 
 ```sh
-python submit_nextflow.py \
-    --plugin-base-uri=s3://MY_BUCKET/MY_PREFIX/nf-fuzzball  \
+nf-fuzzball-submit \
+    --plugin-base-uri "s3://MY_BUCKET/MY_PREFIX/nf-fuzzball" \
     --s3-secret "secret://user/MY_S3_SECRET" \
     -- \
-    nextflow run hello
+    nextflow run -profile fuzzball hello
 ```

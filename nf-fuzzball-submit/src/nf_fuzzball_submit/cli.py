@@ -65,25 +65,6 @@ def valid_url(value: str) -> str:
     return value
 
 
-def valid_url_or_empty_str(value: str) -> str:
-    """Validate URL format.
-
-    Accepts a valid URL or an empty string.
-
-    Args:
-        value: The URL string to validate.
-
-    Returns:
-        The validated URL string.
-
-    Raises:
-        argparse.ArgumentTypeError: If the URL is invalid.
-    """
-    if value == "":
-        return value
-    return valid_url(value)
-
-
 def valid_memory(value: str) -> str:
     """Validate memory string format.
 
@@ -122,7 +103,7 @@ def valid_memory(value: str) -> str:
 def valid_fuzzball_volume(value: str) -> str:
     """Validate fuzzball volume string format.
 
-    Accepts a valid fuzzball volume reference or an empty string.
+    Accepts a valid fuzzball volume reference.
 
     Args:
         value: The volume reference to validate.
@@ -133,8 +114,6 @@ def valid_fuzzball_volume(value: str) -> str:
     Raises:
         argparse.ArgumentTypeError: If the volume reference is invalid.
     """
-    if value == "":
-        return value
     if not value.startswith("volume://"):
         raise argparse.ArgumentTypeError(
             f"Invalid Fuzzball volume string: {value}. Expected format: volume://SCOPE/STORAGE_CLASS[/CUSTOM_NAME]"
@@ -145,7 +124,7 @@ def valid_fuzzball_volume(value: str) -> str:
 def valid_fuzzball_secret(value: str) -> str:
     """Validate fuzzball secret string format.
 
-    Accepts a valid fuzzball secret reference or an empty string.
+    Accepts a valid fuzzball secret reference.
 
     Args:
         value: The secret reference to validate.
@@ -156,8 +135,6 @@ def valid_fuzzball_secret(value: str) -> str:
     Raises:
         argparse.ArgumentTypeError: If the secret reference is invalid.
     """
-    if value == "":
-        return value
     if not value.startswith("secret://"):
         raise argparse.ArgumentTypeError(
             f"Invalid Fuzzball secret string: {value}. Expected format: secret://SCOPE/NAME"
@@ -249,24 +226,24 @@ Notes:
     direct_login_group = parser.add_argument_group("Direct Login based authentication")
     direct_login_group.add_argument(
         "--api-url",
-        type=valid_url_or_empty_str,
+        type=valid_url,
         help=("API URL of Fuzzball cluster [$FUZZBALL_API_URL]. e.g. https://api.example.com"),
-        default=os.environ.get("FUZZBALL_API_URL", ""),
+        default=os.environ.get("FUZZBALL_API_URL", None),
     )
     direct_login_group.add_argument(
         "--auth-url",
-        type=valid_url_or_empty_str,
+        type=valid_url,
         help=(
             "AUTH URL of Fuzzball cluster [$FUZZBALL_AUTH_URL] "
             "e.g. https://auth.example.com/auth/realms/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
         ),
-        default=os.environ.get("FUZZBALL_AUTH_URL", ""),
+        default=os.environ.get("FUZZBALL_AUTH_URL", None),
     )
     direct_login_group.add_argument(
         "--user",
         type=str,
         help="Username/email for direct login [$FUZZBALL_USER]",
-        default=os.environ.get("FUZZBALL_USER", ""),
+        default=os.environ.get("FUZZBALL_USER", None),
     )
     direct_login_group.add_argument(
         "--password",
@@ -277,7 +254,24 @@ Notes:
         "--account-id",
         type=str,
         help="Fuzzball account ID for direct login [$FUZZBALL_ACCOUNT_ID]",
-        default=os.environ.get("FUZZBALL_ACCOUNT_ID", ""),
+        default=os.environ.get("FUZZBALL_ACCOUNT_ID", None),
+    )
+
+    egress_group = parser.add_argument_group("Optional egress of results")
+    egress_group.add_argument(
+        "--egress-source",
+        type=str,
+        help="Path to an output directory created by the nextflow run to be copied to S3"
+    )
+    egress_group.add_argument(
+        "--egress-s3-dest",
+        type=valid_url,
+        help="URI for an S3 bucket the results should be copied to. When used also specify --egress-s3-secret"
+    )
+    egress_group.add_argument(
+        "--egress-s3-secret",
+        type=valid_fuzzball_secret,
+        help="URI for an S3 bucket the results should be copied to."
     )
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
@@ -308,7 +302,6 @@ Notes:
     parser.add_argument(
         "--s3-secret",
         type=valid_fuzzball_secret,
-        default="",
         help="Fuzzball S3 secret for plugin download.",
     )
     parser.add_argument(

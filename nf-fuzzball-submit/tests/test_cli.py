@@ -1,48 +1,12 @@
 """Tests for nf_fuzzball_submit.cli module."""
 
-import argparse
 import os
 import pathlib
 from unittest.mock import patch
 
 import pytest
 
-from nf_fuzzball_submit.cli import parse_cli, valid_url, valid_url_or_empty_str
-
-
-class TestValidUrl:
-    """Tests for the valid_url validator."""
-
-    @pytest.mark.parametrize("url", [
-        "https://example.com",
-        "https://api.example.com/v1",
-        "s3://my-bucket/path",
-    ])
-    def test_accepts_valid_urls(self, url):
-        assert valid_url(url) == url
-
-    @pytest.mark.parametrize("url", [
-        "",
-        "not-a-url",
-        "://missing-scheme",
-    ])
-    def test_rejects_invalid_urls(self, url):
-        with pytest.raises(argparse.ArgumentTypeError):
-            valid_url(url)
-
-
-class TestValidUrlOrEmptyStr:
-    """Tests for the valid_url_or_empty_str validator."""
-
-    def test_accepts_empty_string(self):
-        assert valid_url_or_empty_str("") == ""
-
-    def test_accepts_valid_url(self):
-        assert valid_url_or_empty_str("https://example.com") == "https://example.com"
-
-    def test_rejects_invalid_url(self):
-        with pytest.raises(argparse.ArgumentTypeError):
-            valid_url_or_empty_str("not-a-url")
+from nf_fuzzball_submit.cli import parse_cli
 
 
 class TestCliParsing:
@@ -374,13 +338,14 @@ class TestCliParsing:
             with pytest.raises(SystemExit):
                 parse_cli()
 
-    def test_api_url_and_auth_url_default_to_empty_string(self):
-        """Test --api-url and --auth-url default to empty string when env vars are unset."""
+    def test_api_url_and_auth_url_default_to_none(self, monkeypatch):
+        """Test --api-url and --auth-url default to None when env vars are unset."""
         test_args = ["--", "nextflow", "run", "hello"]
-        env_vars = {"FUZZBALL_API_URL": "", "FUZZBALL_AUTH_URL": ""}
+        monkeypatch.delenv("FUZZBALL_API_URL", raising=False)
+        monkeypatch.delenv("FUZZBALL_AUTH_URL", raising=False)
+        monkeypatch.setattr("sys.argv", ["nf-fuzzball-submit"] + test_args)
 
-        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args), patch.dict(os.environ, env_vars):
-            args = parse_cli()
+        args = parse_cli()
 
-        assert args.api_url == ""
-        assert args.auth_url == ""
+        assert args.api_url is None
+        assert args.auth_url is None

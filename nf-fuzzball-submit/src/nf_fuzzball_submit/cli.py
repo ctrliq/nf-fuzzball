@@ -3,6 +3,7 @@
 import argparse
 import os
 import pathlib
+import posixpath
 import re
 import textwrap
 from urllib.parse import urlparse
@@ -170,16 +171,17 @@ def valid_egress_source(value: str) -> str:
         value: The egress source path to validate.
 
     Returns:
-        The validated egress source path.
+        The normalized, validated egress source path.
 
     Raises:
         argparse.ArgumentTypeError: If the path is not under the data mount.
     """
-    if not value.startswith(f"{DATA_MOUNT}/"):
+    normalized = posixpath.normpath(value)
+    if not normalized.startswith(f"{DATA_MOUNT}/"):
         raise argparse.ArgumentTypeError(
             f"Invalid egress source: '{value}'. Path must be under the data mount ({DATA_MOUNT}/)."
         )
-    return value
+    return normalized
 
 
 def valid_queue_size(value: str) -> int:

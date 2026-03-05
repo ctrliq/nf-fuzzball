@@ -503,7 +503,7 @@ class TestEgressCliOptions:
         assert args.egress_source is None
         assert args.egress_s3_dest is None
 
-    @pytest.mark.parametrize("source", ["/tmp/results", "/scratch/out", "relative/path"])
+    @pytest.mark.parametrize("source", ["/tmp/results", "/scratch/out", "relative/path", "/data/../etc/passwd"])
     def test_egress_source_rejects_paths_outside_data_mount(self, source):
         """Test --egress-source rejects paths not under /data/."""
         test_args = ["--egress-source", source, "--", "nextflow", "run", "hello"]

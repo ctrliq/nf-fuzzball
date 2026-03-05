@@ -93,7 +93,7 @@ def valid_memory(value: str) -> str:
         mem = float(match[1])
     except ValueError:
         mem = 0.0
-    if mem <= 0.00001:
+    if mem <= 0.0:
         raise argparse.ArgumentTypeError(
             f"Invalid memory format: '{value}'. Memory must be more than 0"
         )
@@ -267,33 +267,34 @@ Notes:
     direct_login_group.add_argument(
         "--api-url",
         type=valid_url,
-        help=("API URL of Fuzzball cluster [$FUZZBALL_API_URL]. e.g. https://api.example.com"),
+        help="API URL of Fuzzball cluster (e.g., https://api.example.com) [$FUZZBALL_API_URL].",
         default=os.environ.get("FUZZBALL_API_URL", None),
     )
     direct_login_group.add_argument(
         "--auth-url",
         type=valid_url,
         help=(
-            "AUTH URL of Fuzzball cluster [$FUZZBALL_AUTH_URL] "
-            "e.g. https://auth.example.com/auth/realms/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            "Auth URL of Fuzzball cluster"
+            " (e.g., https://auth.example.com/auth/realms/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)"
+            " [$FUZZBALL_AUTH_URL]."
         ),
         default=os.environ.get("FUZZBALL_AUTH_URL", None),
     )
     direct_login_group.add_argument(
         "--user",
         type=str,
-        help="Username/email for direct login [$FUZZBALL_USER]",
+        help="Username/email for direct login [$FUZZBALL_USER].",
         default=os.environ.get("FUZZBALL_USER", None),
     )
     direct_login_group.add_argument(
         "--password",
         action="store_true",
-        help=("Prompt for password for direct login. Otherwise defaults to [$FUZZBALL_PASSWORD]"),
+        help="Prompt for password for direct login. Otherwise defaults to [$FUZZBALL_PASSWORD].",
     )
     direct_login_group.add_argument(
         "--account-id",
         type=str,
-        help="Fuzzball account ID for direct login [$FUZZBALL_ACCOUNT_ID]",
+        help="Fuzzball account ID for direct login [$FUZZBALL_ACCOUNT_ID].",
         default=os.environ.get("FUZZBALL_ACCOUNT_ID", None),
     )
 

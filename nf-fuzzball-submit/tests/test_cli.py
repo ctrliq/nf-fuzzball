@@ -272,7 +272,7 @@ class TestCliParsing:
 
 
     @pytest.mark.parametrize("mem", ["bad", "0GB", "1.xGiB"])
-    def test_valid_memory_option(self, mem):
+    def test_invalid_memory_option(self, mem):
         """Test invalid memory option parsing."""
         test_args = ["--memory", mem, "--", "nextflow", "run", "hello"]
 

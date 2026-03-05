@@ -431,7 +431,7 @@ class FuzzballClient:
                 egress_s3_dest=args.egress_s3_dest,
             )
             workflow["definition"]["jobs"]["egress"] = {
-                "image": {"uri": "docker://amazon/aws-cli"},
+                "image": {"uri": "docker://amazon/aws-cli:2.34.2"},
                 "mounts": {"data": mounts["data"]},
                 "cwd": "/tmp",  # noqa: S108
                 "script": egress_script,

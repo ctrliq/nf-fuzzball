@@ -311,17 +311,20 @@ Notes:
     egress_group.add_argument(
         "--egress-s3-aki",
         type=valid_fuzzball_secret,
-        help="Value secret containing an AWS access key id for result egress."
+        default=os.environ.get("FUZZBALL_EGRESS_S3_AKI", None),
+        help="Value secret containing an AWS access key id for result egress [$FUZZBALL_EGRESS_S3_AKI]."
     )
     egress_group.add_argument(
         "--egress-s3-sak",
         type=valid_fuzzball_secret,
-        help="Value secret containing an AWS secret access key for result egress."
+        default=os.environ.get("FUZZBALL_EGRESS_S3_SAK", None),
+        help="Value secret containing an AWS secret access key for result egress [$FUZZBALL_EGRESS_S3_SAK]."
     )
     egress_group.add_argument(
         "--egress-s3-region",
         type=str,
-        help="AWS region where bucket is located."
+        default=os.environ.get("FUZZBALL_EGRESS_S3_REGION", os.environ.get("AWS_DEFAULT_REGION", None)),
+        help="AWS region where bucket is located [$FUZZBALL_EGRESS_S3_REGION or $AWS_DEFAULT_REGION]."
     )
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
@@ -406,15 +409,16 @@ Notes:
         args.nextflow_cmd.pop(0)
     if args.nextflow_cmd[0] != "nextflow":
         parser.error("Nextflow command must start with 'nextflow'.")
-    egress_opts = [
-        args.egress_source, args.egress_s3_dest,
-        args.egress_s3_aki, args.egress_s3_sak, args.egress_s3_region,
-    ]
-    if any(egress_opts) and not all(egress_opts):
-        parser.error(
-            "All egress options must be specified together:"
-            " --egress-source, --egress-s3-dest, --egress-s3-aki, --egress-s3-sak, --egress-s3-region"
-        )
+    if args.egress_source or args.egress_s3_dest:
+        if not (args.egress_source and args.egress_s3_dest):
+            parser.error("--egress-source and --egress-s3-dest must both be specified.")
+        if not (args.egress_s3_aki and args.egress_s3_sak and args.egress_s3_region):
+            parser.error(
+                "S3 egress credentials are incomplete. Provide --egress-s3-aki, --egress-s3-sak,"
+                " and --egress-s3-region via flags or environment variables"
+                " ($FUZZBALL_EGRESS_S3_AKI, $FUZZBALL_EGRESS_S3_SAK,"
+                " $FUZZBALL_EGRESS_S3_REGION/$AWS_DEFAULT_REGION)."
+            )
     if args.plugin_base_uri.startswith("s3://") and not args.s3_secret:
         parser.error("--s3-secret is required when --plugin-base-uri is an S3 URI.")
 

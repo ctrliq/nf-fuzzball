@@ -3,4 +3,4 @@ if [ ! -d "{{ egress_source }}" ]; then
     echo "Egress source directory '{{ egress_source }}' does not exist. Skipping egress."
     exit 0
 fi
-aws s3 sync {{ egress_source }} {{ egress_s3_dest }}
+aws s3 sync "{{ egress_source }}" "{{ egress_s3_dest }}"

@@ -142,6 +142,46 @@ def valid_fuzzball_secret(value: str) -> str:
     return value
 
 
+def valid_s3_uri(value: str) -> str:
+    """Validate S3 URI format.
+
+    Accepts a valid S3 URI starting with s3:// followed by a bucket name.
+
+    Args:
+        value: The S3 URI string to validate.
+
+    Returns:
+        The validated S3 URI string.
+
+    Raises:
+        argparse.ArgumentTypeError: If the URI is invalid.
+    """
+    if not value.startswith("s3://") or len(value) <= len("s3://"):
+        raise argparse.ArgumentTypeError(
+            f"Invalid S3 URI: '{value}'. Expected format: s3://BUCKET[/PREFIX] (e.g., 's3://my-bucket/results')"
+        )
+    return value
+
+
+def valid_egress_source(value: str) -> str:
+    """Validate that the egress source path is under the data mount.
+
+    Args:
+        value: The egress source path to validate.
+
+    Returns:
+        The validated egress source path.
+
+    Raises:
+        argparse.ArgumentTypeError: If the path is not under the data mount.
+    """
+    if not value.startswith(f"{DATA_MOUNT}/"):
+        raise argparse.ArgumentTypeError(
+            f"Invalid egress source: '{value}'. Path must be under the data mount ({DATA_MOUNT}/)."
+        )
+    return value
+
+
 def valid_queue_size(value: str) -> int:
     """Validate that the queue size is reasonable.
 
@@ -260,18 +300,28 @@ Notes:
     egress_group = parser.add_argument_group("Optional egress of results")
     egress_group.add_argument(
         "--egress-source",
-        type=str,
-        help="Path to an output directory created by the nextflow run to be copied to S3"
+        type=valid_egress_source,
+        help="Path to an output directory created by the nextflow run to be copied to S3."
     )
     egress_group.add_argument(
         "--egress-s3-dest",
-        type=valid_url,
-        help="URI for an S3 bucket the results should be copied to. When used also specify --egress-s3-secret"
+        type=valid_s3_uri,
+        help="S3 URI the results should be copied to (e.g., s3://my-bucket/results)."
     )
     egress_group.add_argument(
-        "--egress-s3-secret",
+        "--egress-s3-aki",
         type=valid_fuzzball_secret,
-        help="URI for an S3 bucket the results should be copied to."
+        help="Value secret containing an AWS access key id for result egress."
+    )
+    egress_group.add_argument(
+        "--egress-s3-sak",
+        type=valid_fuzzball_secret,
+        help="Value secret containing an AWS secret access key for result egress."
+    )
+    egress_group.add_argument(
+        "--egress-s3-region",
+        type=str,
+        help="AWS region where bucket is located."
     )
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
@@ -356,7 +406,15 @@ Notes:
         args.nextflow_cmd.pop(0)
     if args.nextflow_cmd[0] != "nextflow":
         parser.error("Nextflow command must start with 'nextflow'.")
-
+    egress_opts = [
+        args.egress_source, args.egress_s3_dest,
+        args.egress_s3_aki, args.egress_s3_sak, args.egress_s3_region,
+    ]
+    if any(egress_opts) and not all(egress_opts):
+        parser.error(
+            "All egress options must be specified together:"
+            " --egress-source, --egress-s3-dest, --egress-s3-aki, --egress-s3-sak, --egress-s3-region"
+        )
     if args.plugin_base_uri.startswith("s3://") and not args.s3_secret:
         parser.error("--s3-secret is required when --plugin-base-uri is an S3 URI.")
 

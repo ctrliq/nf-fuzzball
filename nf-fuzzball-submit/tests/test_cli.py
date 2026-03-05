@@ -529,3 +529,27 @@ class TestEgressCliOptions:
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
                 parse_cli()
+
+    def test_egress_s3_aki_env_var_validated(self, monkeypatch):
+        """Test invalid FUZZBALL_EGRESS_S3_AKI env var is rejected."""
+        monkeypatch.setenv("FUZZBALL_EGRESS_S3_AKI", "not-a-secret")
+        monkeypatch.setenv("FUZZBALL_EGRESS_S3_SAK", "secret://user/sak")
+        monkeypatch.setenv("FUZZBALL_EGRESS_S3_REGION", "us-east-1")
+        test_args = [
+            "--egress-source", "/data/results",
+            "--egress-s3-dest", "s3://my-bucket/results",
+            "--", "nextflow", "run", "hello",
+        ]
+        monkeypatch.setattr("sys.argv", ["nf-fuzzball-submit"] + test_args)
+
+        with pytest.raises(SystemExit):
+            parse_cli()
+
+    def test_invalid_api_url_env_var_rejected(self, monkeypatch):
+        """Test invalid FUZZBALL_API_URL env var is rejected."""
+        monkeypatch.setenv("FUZZBALL_API_URL", "not-a-url")
+        test_args = ["--", "nextflow", "run", "hello"]
+        monkeypatch.setattr("sys.argv", ["nf-fuzzball-submit"] + test_args)
+
+        with pytest.raises(SystemExit):
+            parse_cli()

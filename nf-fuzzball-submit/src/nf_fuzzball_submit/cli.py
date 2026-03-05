@@ -6,6 +6,7 @@ import pathlib
 import posixpath
 import re
 import textwrap
+from collections.abc import Callable
 from urllib.parse import urlparse
 
 from .client import DATA_MOUNT
@@ -95,9 +96,7 @@ def valid_memory(value: str) -> str:
     except ValueError:
         mem = 0.0
     if mem <= 0.0:
-        raise argparse.ArgumentTypeError(
-            f"Invalid memory format: '{value}'. Memory must be more than 0"
-        )
+        raise argparse.ArgumentTypeError(f"Invalid memory format: '{value}'. Memory must be more than 0")
     return value
 
 
@@ -205,6 +204,29 @@ def valid_queue_size(value: str) -> int:
     return v
 
 
+def _validate_env_defaults(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """Validate args whose defaults come from environment variables.
+
+    Argparse ``type`` functions only run when a value is explicitly provided on
+    the command line.  Values sourced from environment variable defaults bypass
+    that validation, so we re-run the relevant validators here.
+    """
+    checks: list[tuple[str, str, Callable[[str], str]]] = [
+        ("api_url", "--api-url", valid_url),
+        ("auth_url", "--auth-url", valid_url),
+        ("egress_s3_aki", "--egress-s3-aki", valid_fuzzball_secret),
+        ("egress_s3_sak", "--egress-s3-sak", valid_fuzzball_secret),
+    ]
+    for attr, flag, validator in checks:
+        value = getattr(args, attr)
+        if value is None:
+            continue
+        try:
+            setattr(args, attr, validator(value))
+        except argparse.ArgumentTypeError as e:
+            parser.error(f"{flag}: {e}")
+
+
 def parse_cli() -> argparse.Namespace:
     """Parse command line arguments for the Nextflow submission script.
 
@@ -304,30 +326,30 @@ Notes:
     egress_group.add_argument(
         "--egress-source",
         type=valid_egress_source,
-        help="Path to an output directory created by the nextflow run to be copied to S3."
+        help="Path to an output directory created by the nextflow run to be copied to S3.",
     )
     egress_group.add_argument(
         "--egress-s3-dest",
         type=valid_s3_uri,
-        help="S3 URI the results should be copied to (e.g., s3://my-bucket/results)."
+        help="S3 URI the results should be copied to (e.g., s3://my-bucket/results).",
     )
     egress_group.add_argument(
         "--egress-s3-aki",
         type=valid_fuzzball_secret,
         default=os.environ.get("FUZZBALL_EGRESS_S3_AKI", None),
-        help="Value secret containing an AWS access key id for result egress [$FUZZBALL_EGRESS_S3_AKI]."
+        help="Value secret containing an AWS access key id for result egress [$FUZZBALL_EGRESS_S3_AKI].",
     )
     egress_group.add_argument(
         "--egress-s3-sak",
         type=valid_fuzzball_secret,
         default=os.environ.get("FUZZBALL_EGRESS_S3_SAK", None),
-        help="Value secret containing an AWS secret access key for result egress [$FUZZBALL_EGRESS_S3_SAK]."
+        help="Value secret containing an AWS secret access key for result egress [$FUZZBALL_EGRESS_S3_SAK].",
     )
     egress_group.add_argument(
         "--egress-s3-region",
         type=str,
         default=os.environ.get("FUZZBALL_EGRESS_S3_REGION", os.environ.get("AWS_DEFAULT_REGION", None)),
-        help="AWS region where bucket is located [$FUZZBALL_EGRESS_S3_REGION or $AWS_DEFAULT_REGION]."
+        help="AWS region where bucket is located [$FUZZBALL_EGRESS_S3_REGION or $AWS_DEFAULT_REGION].",
     )
     egress_group.add_argument(
         "--egress-timelimit",
@@ -418,6 +440,9 @@ Notes:
         args.nextflow_cmd.pop(0)
     if args.nextflow_cmd[0] != "nextflow":
         parser.error("Nextflow command must start with 'nextflow'.")
+    # Validate env-var-sourced defaults (argparse type= only runs for CLI-provided values)
+    _validate_env_defaults(parser, args)
+
     if args.egress_source or args.egress_s3_dest:
         if not (args.egress_source and args.egress_s3_dest):
             parser.error("--egress-source and --egress-s3-dest must both be specified.")

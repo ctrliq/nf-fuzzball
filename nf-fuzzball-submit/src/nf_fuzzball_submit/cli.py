@@ -153,7 +153,8 @@ def valid_s3_uri(value: str) -> str:
     Raises:
         argparse.ArgumentTypeError: If the URI is invalid.
     """
-    if not value.startswith("s3://") or len(value) <= len("s3://"):
+    parsed = urlparse(value)
+    if parsed.scheme != "s3" or not parsed.netloc:
         raise argparse.ArgumentTypeError(
             f"Invalid S3 URI: '{value}'. Expected format: s3://BUCKET[/PREFIX] (e.g., 's3://my-bucket/results')"
         )

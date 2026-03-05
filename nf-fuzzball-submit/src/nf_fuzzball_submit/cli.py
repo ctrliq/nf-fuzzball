@@ -34,10 +34,7 @@ def valid_timelimit(value: str) -> str:
         )
     # Ensure at least one component is present and that they add up to more than 0
     # not calculating an actual duration with the units.
-    try:
-        s = sum(int(a[0:-1]) for a in m.groups() if a is not None)
-    except ValueError:
-        s = 0
+    s = sum(int(a[0:-1]) for a in m.groups() if a is not None)
     if s == 0:
         raise argparse.ArgumentTypeError(
             f"Invalid timelimit format: '{value}'. Must include at least one time component (d/h/m/s)"
@@ -227,6 +224,27 @@ def _validate_env_defaults(parser: argparse.ArgumentParser, args: argparse.Names
             parser.error(f"{flag}: {e}")
 
 
+def valid_cores(value: str) -> int:
+    """Validate that the number of cores is reasonable.
+
+    Args:
+        value: Core number to validate.
+
+    Returns:
+        The validated cores.
+
+    Raises:
+        argparse.ArgumentTypeError: If invalid.
+    """
+    try:
+        v = int(value)
+    except ValueError:
+        v = -1
+    if v < 1 or v > 10:
+        raise argparse.ArgumentTypeError(f"Invalid number of cores: {value}. Expected an integer between 1 and 10.")
+    return v
+
+
 def parse_cli() -> argparse.Namespace:
     """Parse command line arguments for the Nextflow submission script.
 
@@ -411,6 +429,12 @@ Notes:
         type=valid_memory,
         default="4GB",
         help="Memory allocated for the nextflow controller job (e.g., '4GB', '512MB').",
+    )
+    parser.add_argument(
+        "--cores",
+        type=valid_cores,
+        default="1",
+        help="Cores allocated for the nextflow controller job.",
     )
     parser.add_argument(
         "--scratch-volume",

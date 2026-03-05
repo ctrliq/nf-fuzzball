@@ -440,7 +440,7 @@ class FuzzballClient:
                     f"AWS_SECRET_ACCESS_KEY={args.egress_s3_sak}",
                     f"AWS_DEFAULT_REGION={args.egress_s3_region}",
                 ],
-                "policy": {"timeout": {"execute": "4h"}},
+                "policy": {"timeout": {"execute": args.egress_timelimit}},
                 "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
                 "depends-on": {"name": "nextflow", "status": "FINISHED"}
             }

@@ -327,6 +327,12 @@ Notes:
         default=os.environ.get("FUZZBALL_EGRESS_S3_REGION", os.environ.get("AWS_DEFAULT_REGION", None)),
         help="AWS region where bucket is located [$FUZZBALL_EGRESS_S3_REGION or $AWS_DEFAULT_REGION]."
     )
+    egress_group.add_argument(
+        "--egress-timelimit",
+        type=valid_timelimit,
+        default="4h",
+        help="Timelimit for the egress job (e.g., '4h', '1d', '120m').",
+    )
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
     parser.add_argument(

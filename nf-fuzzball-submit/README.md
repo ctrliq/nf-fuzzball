@@ -8,12 +8,12 @@ Helper to submit Nextflow pipelines to Fuzzball using the nf-fuzzball plugin.
 - Python >= 3.10
 - [`uv`](https://github.com/astral-sh/uv) or `pip`
 
-
 ## Installation
 
 ### Using uv (recommended)
 
 Installation as a tool (see the [uv tool documentation](https://docs.astral.sh/uv/concepts/tools/#tool-versions))
+
 ```sh
 # from the main branch
 uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@main#subdirectory=nf-fuzzball-submit"
@@ -24,11 +24,13 @@ nf-fuzzball-submit --help
 ```
 
 To uninstall you can use
+
 ```sh
 uv tool uninstall nf-fuzzball-submit
 ```
 
 Installation into a virtual environment
+
 ```sh
 uv venv
 uv pip install "git+https://github.com/ctrliq/nf-fuzzball.git@main#subdirectory=nf-fuzzball-submit"
@@ -41,6 +43,7 @@ nf-fuzzball-submit --help
 ### Using pip
 
 Install into a virtual environment
+
 ```bash
 python -m venv nf-fuzzball
 source nf-fuzzball/bin/activate
@@ -87,7 +90,7 @@ nf-fuzzball-submit -- nextflow run -profile fuzzball hello
 
 ## Command Line Options
 
-#### Arguments
+### Arguments
 
 The nextflow command to be executed is specified after a `--` following the options described below.
 
@@ -130,7 +133,6 @@ Options for autheniting via direct login:
 If a user has been specified with `--user` or by setting `$FUZZBALL_USER` it is
 assumed that direct login authentication should be used.
 
-
 ## Development
 
 ### Setting up the development environment
@@ -140,6 +142,7 @@ git clone <repository>
 cd nf-fuzzball-submit
 uv sync --dev
 ```
+
 ### Running a development version of the submission tool
 
 There are two ways to run a development version of the submission tool:
@@ -164,6 +167,7 @@ uv run mypy src/
 ```
 
 ### Linting
+
 ```sh
 uv ruff check
 ```
@@ -171,21 +175,25 @@ uv ruff check
 ### Running tests
 
 Run all tests
+
 ```bash
 uv run pytest
 ```
 
 Run with coverage
+
 ```bash
 uv run pytest --cov=nf_fuzzball_submit --cov-report=html
 ```
 
 Run specific test files
+
 ```bash
 uv run pytest tests/test_models.py -v
 ```
 
 Run tests excluding slow/integration tests
+
 ```bash
 uv run pytest -m "not integration"
 ```

@@ -300,7 +300,7 @@ class TestCliParsing:
 
 
     @pytest.mark.parametrize("mem", ["bad", "0GB", "1.xGiB"])
-    def test_valid_memory_option(self, mem):
+    def test_invalid_memory_option(self, mem):
         """Test invalid memory option parsing."""
         test_args = ["--memory", mem, "--", "nextflow", "run", "hello"]
 
@@ -357,3 +357,227 @@ class TestCliParsing:
 
         assert args.scratch_volume == "volume://custom/scratch"
         assert args.data_volume == "volume://custom/data"
+
+    def test_plugin_base_uri_rejects_invalid_url(self):
+        """Test --plugin-base-uri rejects an invalid URL."""
+        test_args = ["--plugin-base-uri", "not-a-url", "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    def test_api_url_and_auth_url_default_to_none(self, monkeypatch):
+        """Test --api-url and --auth-url default to None when env vars are unset."""
+        test_args = ["--", "nextflow", "run", "hello"]
+        monkeypatch.delenv("FUZZBALL_API_URL", raising=False)
+        monkeypatch.delenv("FUZZBALL_AUTH_URL", raising=False)
+        monkeypatch.setattr("sys.argv", ["nf-fuzzball-submit"] + test_args)
+
+        args = parse_cli()
+
+        assert args.api_url is None
+        assert args.auth_url is None
+
+
+class TestEgressCliOptions:
+    """Tests for egress CLI argument parsing."""
+
+    @pytest.fixture(autouse=True)
+    def _clean_egress_env(self, monkeypatch):
+        """Remove all egress-related env vars so the host environment doesn't leak in."""
+        for var in [
+            "FUZZBALL_EGRESS_S3_AKI",
+            "FUZZBALL_EGRESS_S3_SAK",
+            "FUZZBALL_EGRESS_S3_REGION",
+            "AWS_DEFAULT_REGION",
+        ]:
+            monkeypatch.delenv(var, raising=False)
+
+    EGRESS_ARGS = [
+        "--egress-source", "/data/results",
+        "--egress-s3-dest", "s3://my-bucket/results",
+        "--egress-s3-aki", "secret://user/aki",
+        "--egress-s3-sak", "secret://user/sak",
+        "--egress-s3-region", "us-east-1",
+    ]
+
+    def test_valid_egress_options(self):
+        """Test all egress options parse correctly."""
+        test_args = self.EGRESS_ARGS + ["--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            args = parse_cli()
+
+        assert args.egress_source == "/data/results"
+        assert args.egress_s3_dest == "s3://my-bucket/results"
+        assert args.egress_s3_aki == "secret://user/aki"
+        assert args.egress_s3_sak == "secret://user/sak"
+        assert args.egress_s3_region == "us-east-1"
+        assert args.egress_timelimit == "4h"
+
+    def test_egress_timelimit_option(self):
+        """Test custom egress timelimit."""
+        test_args = self.EGRESS_ARGS + ["--egress-timelimit", "1d", "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            args = parse_cli()
+
+        assert args.egress_timelimit == "1d"
+
+    def test_egress_timelimit_rejects_invalid(self):
+        """Test egress timelimit rejects invalid values."""
+        test_args = self.EGRESS_ARGS + ["--egress-timelimit", "bad", "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    def test_egress_source_without_dest_errors(self):
+        """Test --egress-source without --egress-s3-dest errors."""
+        test_args = [
+            "--egress-source", "/data/results",
+            "--egress-s3-aki", "secret://user/aki",
+            "--egress-s3-sak", "secret://user/sak",
+            "--egress-s3-region", "us-east-1",
+            "--", "nextflow", "run", "hello",
+        ]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    def test_egress_dest_without_source_errors(self):
+        """Test --egress-s3-dest without --egress-source errors."""
+        test_args = [
+            "--egress-s3-dest", "s3://my-bucket/results",
+            "--egress-s3-aki", "secret://user/aki",
+            "--egress-s3-sak", "secret://user/sak",
+            "--egress-s3-region", "us-east-1",
+            "--", "nextflow", "run", "hello",
+        ]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    def test_egress_without_credentials_errors(self):
+        """Test egress without S3 credentials errors."""
+        test_args = [
+            "--egress-source", "/data/results",
+            "--egress-s3-dest", "s3://my-bucket/results",
+            "--", "nextflow", "run", "hello",
+        ]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    def test_egress_missing_region_errors(self):
+        """Test egress with aki and sak but no region errors."""
+        test_args = [
+            "--egress-source", "/data/results",
+            "--egress-s3-dest", "s3://my-bucket/results",
+            "--egress-s3-aki", "secret://user/aki",
+            "--egress-s3-sak", "secret://user/sak",
+            "--", "nextflow", "run", "hello",
+        ]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    def test_egress_credentials_from_env(self, monkeypatch):
+        """Test egress credentials picked up from environment variables."""
+        monkeypatch.setenv("FUZZBALL_EGRESS_S3_AKI", "secret://user/env-aki")
+        monkeypatch.setenv("FUZZBALL_EGRESS_S3_SAK", "secret://user/env-sak")
+        monkeypatch.setenv("FUZZBALL_EGRESS_S3_REGION", "eu-west-1")
+        test_args = [
+            "--egress-source", "/data/results",
+            "--egress-s3-dest", "s3://my-bucket/results",
+            "--", "nextflow", "run", "hello",
+        ]
+        monkeypatch.setattr("sys.argv", ["nf-fuzzball-submit"] + test_args)
+
+        args = parse_cli()
+
+        assert args.egress_s3_aki == "secret://user/env-aki"
+        assert args.egress_s3_sak == "secret://user/env-sak"
+        assert args.egress_s3_region == "eu-west-1"
+
+    def test_egress_region_falls_back_to_aws_default_region(self, monkeypatch):
+        """Test egress region falls back to AWS_DEFAULT_REGION."""
+        monkeypatch.delenv("FUZZBALL_EGRESS_S3_REGION", raising=False)
+        monkeypatch.setenv("AWS_DEFAULT_REGION", "ap-southeast-1")
+        test_args = [
+            "--egress-source", "/data/results",
+            "--egress-s3-dest", "s3://my-bucket/results",
+            "--egress-s3-aki", "secret://user/aki",
+            "--egress-s3-sak", "secret://user/sak",
+            "--", "nextflow", "run", "hello",
+        ]
+        monkeypatch.setattr("sys.argv", ["nf-fuzzball-submit"] + test_args)
+
+        args = parse_cli()
+
+        assert args.egress_s3_region == "ap-southeast-1"
+
+    def test_egress_defaults_to_none(self):
+        """Test egress options default to None when not specified."""
+        test_args = ["--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            args = parse_cli()
+
+        assert args.egress_source is None
+        assert args.egress_s3_dest is None
+
+    @pytest.mark.parametrize("source", ["/tmp/results", "/scratch/out", "relative/path", "/data/../etc/passwd"])
+    def test_egress_source_rejects_paths_outside_data_mount(self, source):
+        """Test --egress-source rejects paths not under /data/."""
+        test_args = ["--egress-source", source, "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    @pytest.mark.parametrize("dest", ["not-s3", "s3://", "http://bucket/path"])
+    def test_egress_s3_dest_rejects_invalid_uri(self, dest):
+        """Test --egress-s3-dest rejects invalid S3 URIs."""
+        test_args = ["--egress-s3-dest", dest, "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    @pytest.mark.parametrize("secret", ["not-a-secret", "volume://user/x"])
+    def test_egress_s3_aki_rejects_invalid_secret(self, secret):
+        """Test --egress-s3-aki rejects non-secret references."""
+        test_args = ["--egress-s3-aki", secret, "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    def test_egress_s3_aki_env_var_validated(self, monkeypatch):
+        """Test invalid FUZZBALL_EGRESS_S3_AKI env var is rejected."""
+        monkeypatch.setenv("FUZZBALL_EGRESS_S3_AKI", "not-a-secret")
+        monkeypatch.setenv("FUZZBALL_EGRESS_S3_SAK", "secret://user/sak")
+        monkeypatch.setenv("FUZZBALL_EGRESS_S3_REGION", "us-east-1")
+        test_args = [
+            "--egress-source", "/data/results",
+            "--egress-s3-dest", "s3://my-bucket/results",
+            "--", "nextflow", "run", "hello",
+        ]
+        monkeypatch.setattr("sys.argv", ["nf-fuzzball-submit"] + test_args)
+
+        with pytest.raises(SystemExit):
+            parse_cli()
+
+    def test_invalid_api_url_env_var_rejected(self, monkeypatch):
+        """Test invalid FUZZBALL_API_URL env var is rejected."""
+        monkeypatch.setenv("FUZZBALL_API_URL", "not-a-url")
+        test_args = ["--", "nextflow", "run", "hello"]
+        monkeypatch.setattr("sys.argv", ["nf-fuzzball-submit"] + test_args)
+
+        with pytest.raises(SystemExit):
+            parse_cli()

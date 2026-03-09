@@ -248,15 +248,13 @@ class FuzzballClient:
             "scratch": {"location": SCRATCH_MOUNT},
         }
         wd = f"{args.nextflow_work_base}/{job_name}"
-        home_base = "home"
-        home = f"{wd}/{home_base}"
-        files_base = "files"
-        files = f"{wd}/{files_base}"
+        home = f"{wd}/home"
+        files = f"{wd}/files"
         ca_cert_path = f"{home}/.config/fuzzball/ca.crt"
         config_path = f"{home}/.config/fuzzball/config.yaml"
 
         secret_name = str(uuid.uuid4())
-        # we use a v prfix for tag but gradle idiomatically does not use a prefix
+        # we use a v prefix for tag but gradle idiomatically does not use a prefix
         plugin_version = args.nf_fuzzball_version
         plugin_tag = f"v{plugin_version}"
 
@@ -325,7 +323,7 @@ class FuzzballClient:
                     f"FB_PASS_SECRET=secret://user/{pass_secret_name}",
                 ],
             )
-        # Config file login
+        # create secret from minimal fuzzball config
         config_secret_name = f"{secret_name}-conf"
         config_secret_id = self.create_value_secret(config_secret_name, self._encode_config())
         setup_env.append(f"FB_CONFIG_SECRET=secret://user/{config_secret_name}")
@@ -420,11 +418,32 @@ class FuzzballClient:
                         "env": env + ([f"FB_CA_CERT={ca_cert_path}"] if self._ca_cert_file is not None else []),
                         "policy": {"timeout": {"execute": args.timelimit}},
                         "resource": {"cpu": {"cores": args.cores}, "memory": {"size": args.memory}},
-                        "requires": ["setup"],
+                        "depends-on": {"name": "setup", "status": "FINISHED"},
                     },
                 },
             },
         }
+
+        # optionally add egress job
+        if args.egress_source:
+            egress_script = self._jinja_env.get_template("egress.j2").render(
+                egress_source=args.egress_source,
+                egress_s3_dest=args.egress_s3_dest,
+            )
+            workflow["definition"]["jobs"]["egress"] = {
+                "image": {"uri": "docker://amazon/aws-cli:2.34.2"},
+                "mounts": {"data": mounts["data"]},
+                "cwd": "/tmp",  # noqa: S108
+                "script": egress_script,
+                "env": [
+                    f"AWS_ACCESS_KEY_ID={args.egress_s3_aki}",
+                    f"AWS_SECRET_ACCESS_KEY={args.egress_s3_sak}",
+                    f"AWS_DEFAULT_REGION={args.egress_s3_region}",
+                ],
+                "policy": {"timeout": {"execute": args.egress_timelimit}},
+                "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
+                "depends-on": {"name": "nextflow", "status": "FINISHED"},
+            }
 
         # add in the local files
         for f in config_files:

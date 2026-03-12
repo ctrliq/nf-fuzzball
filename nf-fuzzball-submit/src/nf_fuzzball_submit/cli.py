@@ -202,6 +202,36 @@ def valid_queue_size(value: str) -> int:
     return v
 
 
+def valid_version(prefix: str, parts: int) -> Callable[[str], str]:
+    """Create a function to validate a version string in the format `{prefix}X.Y`.
+
+    Args:
+        prefix: Prefix used in the version string
+        parts:  Number of parts (e.g. 2 parts means X.Y, 3 parts means X.Y.Z)
+
+    Returns:
+        Function to validate a version string
+
+    Raises:
+        ValueError if parts is not 2 or 3
+    """
+    if parts == 2:
+        vre = re.compile(rf"^{prefix}\d+\.\d+$")
+        fmt = f"{prefix}X.Y"
+    elif parts == 3:
+        vre = re.compile(rf"^{prefix}\d+\.\d+\.\d+$")
+        fmt = f"{prefix}X.Y.Z"
+    else:
+        raise ValueError("valid_version only supports two or three part versions.")
+
+    def _valid_version(value: str) -> str:
+        if not vre.match(value):
+            raise argparse.ArgumentTypeError(f"Invalid version: {value}. Expected format: {fmt}")
+        return value
+
+    return _valid_version
+
+
 def _validate_env_defaults(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     """Validate args whose defaults come from environment variables.
 
@@ -391,9 +421,15 @@ Notes:
     )
     dev_group.add_argument(
         "--fb-version",
-        type=str,
+        type=valid_version(prefix="v", parts=2),
         default=None,
         help="Override the automatically detected version of fuzzball.",
+    )
+    dev_group.add_argument(
+        "--nf-fuzzball-version",
+        type=valid_version(prefix="", parts=3),
+        default="0.2.0",
+        help="nf-fuzzball plugin version.",
     )
 
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
@@ -414,12 +450,6 @@ Notes:
         type=str,
         default=f"{DATA_MOUNT}/nextflow/executions",
         help="Base directory for Nextflow execution.",
-    )
-    parser.add_argument(
-        "--nf-fuzzball-version",
-        type=str,
-        default="0.2.0",
-        help="nf-fuzzball plugin version.",
     )
 
     parser.add_argument(

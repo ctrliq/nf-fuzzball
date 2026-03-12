@@ -1,12 +1,13 @@
 """Tests for nf_fuzzball_submit.cli module."""
 
+import argparse
 import os
 import pathlib
 from unittest.mock import patch
 
 import pytest
 
-from nf_fuzzball_submit.cli import parse_cli
+from nf_fuzzball_submit.cli import parse_cli, valid_version
 
 
 class TestCliParsing:
@@ -581,3 +582,99 @@ class TestEgressCliOptions:
 
         with pytest.raises(SystemExit):
             parse_cli()
+
+
+class TestValidVersion:
+    """Tests for the valid_version validator."""
+
+    @pytest.mark.parametrize("version", ["v1.2", "v0.0", "v12.34"])
+    def test_valid_two_part_version_with_prefix(self, version):
+        """Test valid two-part versions with 'v' prefix."""
+        validator = valid_version("v", parts=2)
+        assert validator(version) == version
+
+    @pytest.mark.parametrize("version", ["1.2", "0.0", "12.34"])
+    def test_valid_two_part_version_without_prefix(self, version):
+        """Test valid two-part versions without prefix."""
+        validator = valid_version("", parts=2)
+        assert validator(version) == version
+
+    @pytest.mark.parametrize("version", ["1.2", "v1.2.3", "vx.y", "v1", "foobar", ""])
+    def test_invalid_two_part_version_with_prefix(self, version):
+        """Test invalid two-part versions with 'v' prefix are rejected."""
+        validator = valid_version("v", parts=2)
+        with pytest.raises(argparse.ArgumentTypeError):
+            validator(version)
+
+    @pytest.mark.parametrize("version", ["v1.2", "1.2.3", "x.y", "1", "foobar", ""])
+    def test_invalid_two_part_version_without_prefix(self, version):
+        """Test invalid two-part versions without prefix are rejected."""
+        validator = valid_version("", parts=2)
+        with pytest.raises(argparse.ArgumentTypeError):
+            validator(version)
+
+    @pytest.mark.parametrize("version", ["0.2.0", "1.0.0", "12.34.56"])
+    def test_valid_three_part_version_without_prefix(self, version):
+        """Test valid three-part versions without prefix."""
+        validator = valid_version("", parts=3)
+        assert validator(version) == version
+
+    @pytest.mark.parametrize("version", ["0.2", "1.2.3.4", "x.y.z", "foobar", ""])
+    def test_invalid_three_part_version_without_prefix(self, version):
+        """Test invalid three-part versions without prefix are rejected."""
+        validator = valid_version("", parts=3)
+        with pytest.raises(argparse.ArgumentTypeError):
+            validator(version)
+
+    def test_invalid_parts_raises_value_error(self):
+        """Test that unsupported parts value raises ValueError."""
+        with pytest.raises(ValueError):
+            valid_version("v", parts=4)
+
+
+class TestFbVersionCliOption:
+    """Tests for the --fb-version CLI option."""
+
+    def test_fb_version_default_is_none(self):
+        """Test --fb-version defaults to None."""
+        test_args = ["--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            args = parse_cli()
+
+        assert args.fb_version is None
+
+    def test_fb_version_accepts_valid_version(self):
+        """Test --fb-version accepts a valid version."""
+        test_args = ["--fb-version", "v1.2", "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            args = parse_cli()
+
+        assert args.fb_version == "v1.2"
+
+    @pytest.mark.parametrize("version", ["1.2", "foobar", "v1.2.3"])
+    def test_fb_version_rejects_invalid_version(self, version):
+        """Test --fb-version rejects invalid versions."""
+        test_args = ["--fb-version", version, "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    def test_nf_fuzzball_version_accepts_valid_version(self):
+        """Test --nf-fuzzball-version accepts a valid three-part version."""
+        test_args = ["--nf-fuzzball-version", "0.3.0", "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            args = parse_cli()
+
+        assert args.nf_fuzzball_version == "0.3.0"
+
+    def test_nf_fuzzball_version_rejects_two_part(self):
+        """Test --nf-fuzzball-version rejects a two-part version."""
+        test_args = ["--nf-fuzzball-version", "0.3", "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()

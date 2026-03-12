@@ -67,6 +67,24 @@ class TestFuzzballClientInitialization:
         assert client._fb_version == "4.2"
         assert client._api_config.token == "api-token"
 
+    @patch("nf_fuzzball_submit.auth.get_canonical_api_url")
+    @patch("urllib3.PoolManager")
+    def test_client_initialization_with_fb_version_override(self, mock_pool_manager, mock_canonical_url, temp_config_file, mock_http_client):
+        """Test that fb_version override skips auto-detection."""
+        mock_canonical_url.return_value = "https://api.example.com/v4"
+        mock_pool_manager.return_value = mock_http_client
+
+        version_response = Mock()
+        version_response.status = 200
+        version_response.data = json.dumps({"version": "4.1.2"}).encode()
+        mock_http_client.request.return_value = version_response
+
+        auth = ConfigFileAuthenticator(temp_config_file)
+        client = FuzzballClient(auth, fb_version="v5.0")
+
+        # Should use the override, not the auto-detected "4.1"
+        assert client._fb_version == "v5.0"
+
     def test_client_initialization_with_ca_cert(self, sample_api_config):
         """Test client initialization with CA certificate."""
         with (

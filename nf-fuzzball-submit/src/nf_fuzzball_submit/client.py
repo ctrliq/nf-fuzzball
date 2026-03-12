@@ -54,7 +54,7 @@ class FuzzballClient:
 
         # These will be set during initialization
         self._api_config: ApiConfig
-        self._fb_version: str = fb_version
+        self._fb_version: str | None = fb_version
         self._http: urllib3.PoolManager
 
         self._initialize()

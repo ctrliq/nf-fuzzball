@@ -377,6 +377,25 @@ Notes:
         help="Timelimit for the egress job (e.g., '4h', '1d', '120m').",
     )
 
+    dev_group = parser.add_argument_group("Options for development")
+    dev_group.add_argument(
+        "--s3-secret",
+        type=valid_fuzzball_secret,
+        help="Fuzzball S3 secret for downloading dev builds of the nextflow plugin.",
+    )
+    dev_group.add_argument(
+        "--plugin-base-uri",
+        type=valid_url,
+        default="https://github.com/ctrliq/nf-fuzzball/releases/download",
+        help="Base URI for the nf-fuzzball plugin. Change to fetch developments builds.",
+    )
+    dev_group.add_argument(
+        "--fb-version",
+        type=str,
+        default=None,
+        help="Override the automatically detected version of fuzzball.",
+    )
+
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
     parser.add_argument(
         "--ca-cert",
@@ -402,17 +421,7 @@ Notes:
         default="0.2.0",
         help="nf-fuzzball plugin version.",
     )
-    parser.add_argument(
-        "--s3-secret",
-        type=valid_fuzzball_secret,
-        help="Fuzzball S3 secret for plugin download.",
-    )
-    parser.add_argument(
-        "--plugin-base-uri",
-        type=valid_url,
-        default="https://github.com/ctrliq/nf-fuzzball/releases/download",
-        help="Base URI for the nf-fuzzball plugin.",
-    )
+
     parser.add_argument(
         "--nextflow-version",
         type=str,

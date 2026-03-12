@@ -51,6 +51,7 @@ def main() -> None:
             args.user,
             password,
             args.account_id,
+            args.fb_version,
         )
 
         if fb_client:

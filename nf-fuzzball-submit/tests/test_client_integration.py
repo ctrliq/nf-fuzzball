@@ -196,6 +196,7 @@ class TestFactoryFunctions:
                 password="password",
                 account_id="account-123",
                 ca_cert_file=None,
+                fb_version=None,
             )
 
     def test_create_fuzzball_client_without_user_calls_config_file(self):
@@ -213,6 +214,7 @@ class TestFactoryFunctions:
                 config_path=config_path,
                 context="test",
                 ca_cert_file=None,
+                fb_version=None,
             )
 
     def test_create_fuzzball_client_user_missing_credentials_raises_error(self):

@@ -203,7 +203,7 @@ def valid_queue_size(value: str) -> int:
 
 
 def valid_version(prefix: str, parts: int) -> Callable[[str], str]:
-    """Create a function to validate a version string in the format `{prefix}X.Y` or `{prefix}X.Y.Z` depending on `parts`.
+    """Create a function to validate a version string in the format `{prefix}X.Y[.Z]`.
 
     Args:
         prefix: Prefix used in the version string

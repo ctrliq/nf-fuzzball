@@ -88,13 +88,19 @@ class FuzzballClient:
         try:
             response = self._request("GET", "/version")
             version_data = json.loads(response.data.decode("utf-8"))
-            if self._fb_version is None:
-                self._fb_version = ".".join(version_data["version"].split(".")[0:2])
-            logger.info(f"Connected to Fuzzball version {self._fb_version} API server")
+            detected_version = ".".join(version_data["version"].split(".")[0:2])
         except urllib3.exceptions.HTTPError as e:
             raise ValueError("Failed to connect to Fuzzball API") from e
         except Exception as e:
             raise ValueError("Unexpected error occurred") from e
+        else:
+            logger.info(f"Connected to Fuzzball {detected_version} API server")
+
+        if self._fb_version is None:
+            self._fb_version = detected_version
+            return
+        if detected_version != self._fb_version:
+            logger.info(f"Overriding detected version {detected_version} with {self._fb_version} from commandline")
 
     @property
     def _headers(self) -> dict[str, str]:

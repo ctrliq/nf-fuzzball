@@ -30,7 +30,7 @@ class {{classname}} {
      * {{operationId}}
      {{#allParams}}* @param {{paramName}} {{#required}}(required){{/required}}{{/allParams}}{{^allParams}}*{{/allParams}}
      */
-    {{#returnBaseType}}{{.}}{{/returnBaseType}}{{^returnBaseType}}Object{{/returnBaseType}} {{operationId}}({{#allParams}}{{{dataType}}} {{paramName}}{{^-last}}, {{/-last}}{{/allParams}}) {
+    {{#returnBaseType}}{{.}}{{/returnBaseType}}{{^returnBaseType}}Object{{/returnBaseType}} {{operationId}}({{#allParams}}{{{dataType}}} {{paramName}}{{^required}} = null{{/required}}{{^-last}}, {{/-last}}{{/allParams}}) {
         String resourcePath = "{{{path}}}"
 
         Map<String,Object> queryParams = [:]

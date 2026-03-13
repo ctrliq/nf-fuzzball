@@ -446,7 +446,7 @@ class FuzzballClient:
                 ],
                 "policy": {"timeout": {"execute": args.egress_timelimit}},
                 "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
-                "depends-on": {"name": "nextflow", "status": "FINISHED"},
+                "depends-on": [{"name": "nextflow", "status": "FINISHED"}],
             }
 
         # add in the local files

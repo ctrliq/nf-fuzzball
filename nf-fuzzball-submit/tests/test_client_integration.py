@@ -23,13 +23,13 @@ class TestFuzzballClientInitialization:
         # Mock version response
         version_response = Mock()
         version_response.status = 200
-        version_response.data = json.dumps({"version": "4.1.2"}).encode()
+        version_response.data = json.dumps({"version": "v4.1.2"}).encode()
         mock_http_client.request.return_value = version_response
 
         auth = ConfigFileAuthenticator(temp_config_file)
         client = FuzzballClient(auth)
 
-        assert client._fb_version == "4.1"
+        assert client._fb_version == "v4.1"
         assert client._api_config.api_url == "https://api.example.com/v4"
 
     @patch("nf_fuzzball_submit.auth.get_canonical_api_url")
@@ -50,7 +50,7 @@ class TestFuzzballClientInitialization:
 
         version_response = Mock()
         version_response.status = 200
-        version_response.data = json.dumps({"version": "4.2.0"}).encode()
+        version_response.data = json.dumps({"version": "v4.2.0"}).encode()
 
         mock_http_client.request.side_effect = [auth_response, api_response, version_response]
 
@@ -64,7 +64,7 @@ class TestFuzzballClientInitialization:
 
         client = FuzzballClient(auth)
 
-        assert client._fb_version == "4.2"
+        assert client._fb_version == "v4.2"
         assert client._api_config.token == "api-token"
 
     @patch("nf_fuzzball_submit.auth.get_canonical_api_url")
@@ -76,7 +76,7 @@ class TestFuzzballClientInitialization:
 
         version_response = Mock()
         version_response.status = 200
-        version_response.data = json.dumps({"version": "4.1.2"}).encode()
+        version_response.data = json.dumps({"version": "v4.1.2"}).encode()
         mock_http_client.request.return_value = version_response
 
         auth = ConfigFileAuthenticator(temp_config_file)

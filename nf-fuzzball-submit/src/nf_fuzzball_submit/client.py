@@ -508,7 +508,11 @@ def create_direct_login_client(
         password=password,
         account_id=account_id,
     )
-    return FuzzballClient(authenticator, ca_cert_file, fb_version)
+    return FuzzballClient(
+        authenticator=authenticator,
+        ca_cert_file=ca_cert_file,
+        fb_version=fb_version,
+    )
 
 
 def create_config_file_client(
@@ -529,7 +533,11 @@ def create_config_file_client(
         Configured FuzzballClient instance.
     """
     authenticator = ConfigFileAuthenticator(config_path, context)
-    return FuzzballClient(authenticator, ca_cert_file, fb_version)
+    return FuzzballClient(
+        authenticator=authenticator,
+        ca_cert_file=ca_cert_file,
+        fb_version=fb_version,
+    )
 
 
 def create_fuzzball_client(

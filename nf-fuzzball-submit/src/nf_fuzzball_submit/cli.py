@@ -203,7 +203,7 @@ def valid_queue_size(value: str) -> int:
 
 
 def valid_version(prefix: str, parts: int) -> Callable[[str], str]:
-    """Create a function to validate a version string in the format `{prefix}X.Y`.
+    """Create a function to validate a version string in the format `{prefix}X.Y` or `{prefix}X.Y.Z` depending on `parts`.
 
     Args:
         prefix: Prefix used in the version string
@@ -417,7 +417,7 @@ Notes:
         "--plugin-base-uri",
         type=valid_url,
         default="https://github.com/ctrliq/nf-fuzzball/releases/download",
-        help="Base URI for the nf-fuzzball plugin. Change to fetch developments builds.",
+        help="Base URI for the nf-fuzzball plugin. Change to fetch development builds.",
     )
     dev_group.add_argument(
         "--fb-version",

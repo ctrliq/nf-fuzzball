@@ -422,7 +422,7 @@ class FuzzballClient:
                         "env": env + ([f"FB_CA_CERT={ca_cert_path}"] if self._ca_cert_file is not None else []),
                         "policy": {"timeout": {"execute": args.timelimit}},
                         "resource": {"cpu": {"cores": args.cores}, "memory": {"size": args.memory}},
-                        "depends-on": [{"name": "setup", "status": "FINISHED"}],
+                        "dependsOn": [{"name": "setup", "status": "FINISHED"}],
                     },
                 },
             },
@@ -446,7 +446,7 @@ class FuzzballClient:
                 ],
                 "policy": {"timeout": {"execute": args.egress_timelimit}},
                 "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
-                "depends-on": [{"name": "nextflow", "status": "FINISHED"}],
+                "dependsOn": [{"name": "nextflow", "status": "FINISHED"}],
             }
 
         # add in the local files

@@ -216,11 +216,11 @@ def valid_version(prefix: str, parts: int) -> Callable[[str], str]:
         ValueError if parts is not 2 or 3
     """
     if parts == 2:
-        vre = re.compile(rf"^{prefix}\d+\.\d+$")
-        fmt = f"{re.escape(prefix)}X.Y"
+        vre = re.compile(rf"^{re.escape(prefix)}\d+\.\d+$")
+        fmt = f"{prefix}X.Y"
     elif parts == 3:
-        vre = re.compile(rf"^{prefix}\d+\.\d+\.\d+$")
-        fmt = f"{re.escape(prefix)}X.Y.Z"
+        vre = re.compile(rf"^{re.escape(prefix)}\d+\.\d+\.\d+$")
+        fmt = f"{prefix}X.Y.Z"
     else:
         raise ValueError("valid_version only supports two or three part versions.")
 

@@ -43,15 +43,15 @@ def main() -> None:
                 )
 
         fb_client = create_fuzzball_client(
-            args.fuzzball_config.expanduser(),
-            args.context,
-            args.ca_cert,
-            args.api_url,
-            args.auth_url,
-            args.user,
-            password,
-            args.account_id,
-            args.fb_version,
+            config_path=args.fuzzball_config.expanduser(),
+            context=args.context,
+            ca_cert_file=args.ca_cert,
+            api_url=args.api_url,
+            auth_url=args.auth_url,
+            user=args.user,
+            password=password,
+            account_id=args.account_id,
+            fb_version=args.fb_version,
         )
 
         if fb_client:

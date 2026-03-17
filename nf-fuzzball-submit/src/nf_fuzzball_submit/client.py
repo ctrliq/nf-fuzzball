@@ -35,12 +35,15 @@ class FuzzballClient:
     for Nextflow pipelines to the Fuzzball cluster.
     """
 
-    def __init__(self, authenticator: FuzzballAuthenticator, ca_cert_file: str | None = None):
+    def __init__(
+        self, authenticator: FuzzballAuthenticator, ca_cert_file: str | None = None, fb_version: str | None = None
+    ):
         """Initialize client with an authenticator.
 
         Args:
             authenticator: Authentication strategy to use.
             ca_cert_file: Optional CA certificate file path.
+            fb_version: Manually override the auto-detected Fuzzball version
         """
         self._authenticator = authenticator
         self._ca_cert_file = ca_cert_file
@@ -51,7 +54,7 @@ class FuzzballClient:
 
         # These will be set during initialization
         self._api_config: ApiConfig
-        self._fb_version: str
+        self._fb_version: str | None = fb_version
         self._http: urllib3.PoolManager
 
         self._initialize()
@@ -85,12 +88,19 @@ class FuzzballClient:
         try:
             response = self._request("GET", "/version")
             version_data = json.loads(response.data.decode("utf-8"))
-            self._fb_version = ".".join(version_data["version"].split(".")[0:2])
-            logger.info(f"Connected to Fuzzball version {self._fb_version} API server")
+            detected_version = ".".join(version_data["version"].split(".")[0:2])
         except urllib3.exceptions.HTTPError as e:
             raise ValueError("Failed to connect to Fuzzball API") from e
         except Exception as e:
             raise ValueError("Unexpected error occurred") from e
+        else:
+            logger.info(f"Connected to Fuzzball {detected_version} API server")
+
+        if self._fb_version is None:
+            self._fb_version = detected_version
+            return
+        if detected_version != self._fb_version:
+            logger.info(f"Overriding detected version {detected_version} with {self._fb_version} from commandline")
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -481,6 +491,7 @@ def create_direct_login_client(
     password: str,
     account_id: str,
     ca_cert_file: str | None = None,
+    fb_version: str | None = None,
 ) -> FuzzballClient:
     """Create a client using direct login authentication.
 
@@ -491,6 +502,7 @@ def create_direct_login_client(
         password: Password for authentication.
         account_id: Fuzzball account ID.
         ca_cert_file: Optional CA certificate file path.
+        fb_version: Manually override the expected fuzzball version.
 
     Returns:
         Configured FuzzballClient instance.
@@ -502,13 +514,18 @@ def create_direct_login_client(
         password=password,
         account_id=account_id,
     )
-    return FuzzballClient(authenticator, ca_cert_file)
+    return FuzzballClient(
+        authenticator=authenticator,
+        ca_cert_file=ca_cert_file,
+        fb_version=fb_version,
+    )
 
 
 def create_config_file_client(
     config_path: pathlib.Path,
     context: str | None = None,
     ca_cert_file: str | None = None,
+    fb_version: str | None = None,
 ) -> FuzzballClient:
     """Create a client using config file authentication.
 
@@ -516,12 +533,17 @@ def create_config_file_client(
         config_path: Path to the Fuzzball configuration file.
         context: Optional context name to use from config.
         ca_cert_file: Optional CA certificate file path.
+        fb_version: Manually override the expected fuzzball version.
 
     Returns:
         Configured FuzzballClient instance.
     """
     authenticator = ConfigFileAuthenticator(config_path, context)
-    return FuzzballClient(authenticator, ca_cert_file)
+    return FuzzballClient(
+        authenticator=authenticator,
+        ca_cert_file=ca_cert_file,
+        fb_version=fb_version,
+    )
 
 
 def create_fuzzball_client(
@@ -533,6 +555,7 @@ def create_fuzzball_client(
     user: str | None = None,
     password: str | None = None,
     account_id: str | None = None,
+    fb_version: str | None = None,
 ) -> FuzzballClient:
     """Factory function to create appropriate client type based on parameters.
 
@@ -545,6 +568,7 @@ def create_fuzzball_client(
         user: Username for direct login.
         password: Password for direct login.
         account_id: Account ID for direct login.
+        fb_version: Manually override the expected fuzzball version.
 
     Returns:
         Configured FuzzballClient instance.
@@ -562,6 +586,7 @@ def create_fuzzball_client(
             password=password,
             account_id=account_id,
             ca_cert_file=ca_cert_file,
+            fb_version=fb_version,
         )
     if not config_path:
         raise ValueError("Config path must be provided for config file authentication")
@@ -569,4 +594,5 @@ def create_fuzzball_client(
         config_path=config_path,
         context=context,
         ca_cert_file=ca_cert_file,
+        fb_version=fb_version,
     )

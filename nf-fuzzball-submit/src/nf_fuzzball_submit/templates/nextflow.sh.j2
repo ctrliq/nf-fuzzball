@@ -1,8 +1,8 @@
 #!/bin/bash
-{% if credentials_file -%}
+{%- if credentials_file %}
 # Read the refresh token written by the setup job and delete the file immediately.
 # By this point the value has been resolved from the Fuzzball secret store by the
-# setup job — the file is the only copy remaining.
+# setup job
 FUZZBALL_REFRESH_TOKEN="$(cat "{{ credentials_file }}")"
 export FUZZBALL_REFRESH_TOKEN
 rm -f "{{ credentials_file }}"
@@ -13,13 +13,14 @@ _revoke_token() {
     CURL_CA_OPT=""
     [ -n "$FB_CA_CERT" ] && CURL_CA_OPT="--cacert $FB_CA_CERT"
     curl -s $CURL_CA_OPT -X POST "{{ auth_url }}/protocol/openid-connect/revoke" \
-      -H "Content-Type: application/x-www-form-urlencoded" \
-      -d "client_id=fuzzball-cli&token=$FUZZBALL_REFRESH_TOKEN&token_type_hint=refresh_token" \
+      --data-urlencode "client_id=fuzzball-cli" \
+      --data-urlencode "token=$FUZZBALL_REFRESH_TOKEN" \
+      --data-urlencode "token_type_hint=refresh_token" \
       > /dev/null 2>&1
     rm -f "{{ credentials_file }}"
 }
 trap _revoke_token EXIT
-{% endif -%}
+{%- endif %}
 
 {{ mangled_nextflow_cmd_str }} -c "{{ files }}/{{ nxf_fuzzball_config_name }}.config"
 ec=$?

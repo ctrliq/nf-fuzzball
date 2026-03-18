@@ -40,7 +40,7 @@ class KeycloakAuthenticator(FuzzballAuthenticator):
     """
 
     def __init__(self, api_url: str, auth_url: str, account_id: str):
-        """Initialize KeycloadAuthenticator-based classes."""
+        """Initialize KeycloakAuthenticator-based classes."""
         self._raw_api_url = api_url  # can leave off the API base path
         self._api_url: str | None = None  # canonical URL resolved on first authenticate()
         self._auth_url = auth_url

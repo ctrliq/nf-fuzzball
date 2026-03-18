@@ -1,17 +1,23 @@
 #!/bin/sh
+
 cleanup() {
+    # Ensure TOKEN is available and print error if it is not
+    if [ -z "$TOKEN" ]; then
+      echo "ERROR: Unable to clean up secrets. Please remove manually"
+      return
+    fi
     echo "Cleaning up secrets..."
-{% for secret_id in cleanup_secrets %}
-{% if secret_id -%}
-    curl -s $CURL_CA_OPT -X DELETE "{{ api_url }}/secrets/{{ secret_id }}" \
-      -H "Authorization: Bearer $TOKEN" > /dev/null 2>&1 &
-{% endif -%}
-{% endfor -%}
+{%- for secret_id in cleanup_secrets %}
+{%- if secret_id %}
+    curl -s $CURL_CA_OPT -X DELETE "{{ api_url }}/secrets/{{ secret_id }}" -H "Authorization: Bearer $TOKEN" > /dev/null 2>&1 &
+{%- endif %}
+{%- endfor %}
     wait
     echo "Cleanup finished."
 }
 trap cleanup EXIT
 
+TOKEN="$(echo "$FB_CONFIG_SECRET" | base64 -d | awk '/token:/ {print $2}')"
 
 mkdir -p {{ wd }} || exit 1
 rm -rf {{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }} \
@@ -20,6 +26,7 @@ rm -rf {{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }} \
     -d {{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }} > /dev/null \
   && echo "$FB_CONFIG_SECRET" | base64 -d > {{ config_path }} \
   || exit 1
+
 
 CURL_CA_OPT=""
 
@@ -34,13 +41,12 @@ fi
 
 {% if kc_login -%}
 # Write the refresh token for the nextflow job before doing anything else that could fail.
-# base64-encode so the file is safe regardless of token content.
-mkdir -p "$(dirname "{{ credentials_file }}")"
+mkdir -p "$(dirname "{{ credentials_file }}")" || exit 1
 printf '%s' "$FB_REFRESH_TOKEN" > "{{ credentials_file }}"
 chmod 600 "{{ credentials_file }}"
 {% endif -%}
 
-TOKEN="$(awk '/token:/ {print $2}' {{ config_path }})"
+
 
 mkdir -p "{{ files }}"
 # copy the config files to the working directory

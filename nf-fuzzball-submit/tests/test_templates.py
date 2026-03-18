@@ -288,6 +288,7 @@ class TestTemplateRendering:
         assert 'rm -f "/data/nextflow/executions/test-job/.credentials"' in result
         assert "trap _revoke_token EXIT" in result
         assert '"https://auth.example.com/auth/realms/fuzzball/protocol/openid-connect/revoke"' in result
+        assert '--data-urlencode "token=$FUZZBALL_REFRESH_TOKEN"' in result
 
     def test_template_file_structure(self):
         """Test that template files exist in the expected location."""

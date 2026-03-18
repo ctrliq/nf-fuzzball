@@ -64,8 +64,12 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
         String envRefreshToken = System.getenv('FUZZBALL_REFRESH_TOKEN')
         Authenticator authenticator = Authenticator.NONE
         if (envRefreshToken) {
-            log.info('FUZZBALL_REFRESH_TOKEN detected — token refresh on 401 enabled')
-            authenticator = new FuzzballTokenRefresher(fuzzballApiConfig, envRefreshToken, ApiUtils.createRefreshClient())
+            if (!fuzzballApiConfig.oidcServerURL || !fuzzballApiConfig.accountId) {
+                log.warn('FUZZBALL_REFRESH_TOKEN is set but oidcServerURL or accountId is missing from the Fuzzball config — token refresh on 401 disabled')
+            } else {
+                log.info('FUZZBALL_REFRESH_TOKEN detected — token refresh on 401 enabled')
+                authenticator = new FuzzballTokenRefresher(fuzzballApiConfig, envRefreshToken, ApiUtils.createRefreshClient())
+            }
         }
         fuzzballWfService = new WorkflowServiceApi(fuzzballApiConfig, authenticator)
         storageClassService = new StorageClassServiceApi(fuzzballApiConfig, authenticator)

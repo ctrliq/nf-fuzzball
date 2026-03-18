@@ -529,6 +529,6 @@ Notes:
     # when --device is used so downstream code doesn't try to do a password login.
     if args.device and (args.user or args.password):
         args.user = None
-        args.password = None
+        args.password = False
 
     return args

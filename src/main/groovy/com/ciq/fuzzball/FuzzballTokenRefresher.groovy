@@ -97,6 +97,9 @@ class FuzzballTokenRefresher implements Authenticator {
         if (!resp.successful) {
             throw new IOException("Keycloak token exchange failed: HTTP ${resp.code()}")
         }
+        if (!respBody) {
+            throw new IOException('Empty response body from Keycloak token endpoint')
+        }
         def json = new JsonSlurper().parseText(respBody) as Map
         if (!json.access_token) {
             throw new IOException('No access_token in Keycloak response')
@@ -124,6 +127,9 @@ class FuzzballTokenRefresher implements Authenticator {
         resp.body()?.close()
         if (!resp.successful) {
             throw new IOException("Fuzzball token exchange failed: HTTP ${resp.code()}")
+        }
+        if (!respBody) {
+            throw new IOException('Empty response body from Fuzzball token endpoint')
         }
         def json = new JsonSlurper().parseText(respBody) as Map
         if (!json.token) {

@@ -17,7 +17,7 @@ import yaml
 from jinja2 import Environment, PackageLoader
 from urllib3.util import Retry
 
-from .auth import ConfigFileAuthenticator, DirectLoginAuthenticator, FuzzballAuthenticator
+from .auth import ConfigFileAuthenticator, DeviceLoginAuthenticator, DirectLoginAuthenticator, FuzzballAuthenticator
 from .models import NAMESPACE_CONTENT, ApiConfig
 from .utils import find_and_import_local_files
 
@@ -515,6 +515,26 @@ def create_direct_login_client(
     )
 
 
+def create_device_login_client(
+    api_url: str,
+    auth_url: str,
+    account_id: str,
+    ca_cert_file: str | None = None,
+    fb_version: str | None = None,
+) -> FuzzballClient:
+    """Create a client using device authorization grant authentication."""
+    authenticator = DeviceLoginAuthenticator(
+        api_url=api_url,
+        auth_url=auth_url,
+        account_id=account_id,
+    )
+    return FuzzballClient(
+        authenticator=authenticator,
+        ca_cert_file=ca_cert_file,
+        fb_version=fb_version,
+    )
+
+
 def create_config_file_client(
     config_path: pathlib.Path,
     context: str | None = None,
@@ -549,6 +569,7 @@ def create_fuzzball_client(
     user: str | None = None,
     password: str | None = None,
     account_id: str | None = None,
+    device_login: bool = False,
     fb_version: str | None = None,
 ) -> FuzzballClient:
     """Factory function to create appropriate client type based on parameters.
@@ -557,11 +578,12 @@ def create_fuzzball_client(
         config_path: Path to the Fuzzball configuration file.
         context: Optional context name to use from config.
         ca_cert_file: Optional CA certificate file path.
-        api_url: API URL for direct login.
-        auth_url: Authentication URL for direct login.
-        user: Username for direct login.
+        api_url: API URL for direct or device login.
+        auth_url: Authentication URL for direct or device login.
+        user: Username for direct login (password grant).
         password: Password for direct login.
-        account_id: Account ID for direct login.
+        account_id: Account ID for direct or device login.
+        device_login: Use device authorization grant instead of password grant.
         fb_version: Manually override the expected fuzzball version.
 
     Returns:
@@ -570,6 +592,17 @@ def create_fuzzball_client(
     Raises:
         ValueError: If required parameters are missing.
     """
+    if device_login:
+        if not all([api_url, auth_url, account_id]):
+            raise ValueError("For device login, api-url, auth-url, and account-id are required")
+        assert api_url and auth_url and account_id
+        return create_device_login_client(
+            api_url=api_url,
+            auth_url=auth_url,
+            account_id=account_id,
+            ca_cert_file=ca_cert_file,
+            fb_version=fb_version,
+        )
     if user:
         if not all([api_url, auth_url, password, account_id]):
             raise ValueError("For direct login, all credentials must be provided")

@@ -2,6 +2,7 @@
 
 import json
 import pathlib
+import time
 from abc import ABC, abstractmethod
 from typing import Any
 from urllib.parse import urlencode
@@ -31,121 +32,55 @@ class FuzzballAuthenticator(ABC):
         """
 
 
-class DirectLoginAuthenticator(FuzzballAuthenticator):
-    """Authenticator for direct login using username/password.
+class KeycloakAuthenticator(FuzzballAuthenticator):
+    """Base class for Keycloak-based authenticators.
 
-    This authenticator uses OAuth2 password flow to authenticate with Keycloak
-    and obtain API tokens for Fuzzball.
+    Subclasses implement _get_auth_token() for their specific grant type.
+    This class provides the shared _get_api_token() and authenticate() logic.
     """
 
-    def __init__(
-        self,
-        api_url: str,
-        auth_url: str,
-        user: str,
-        password: str,
-        account_id: str,
-    ):
-        """Initialize direct login authenticator and validate parameters."""
+    def __init__(self, api_url: str, auth_url: str, account_id: str):
         self._raw_api_url = api_url  # can leave off the API base path
-        self._api_url: str | None = None  # canonical URL
+        self._api_url: str | None = None  # canonical URL resolved on first authenticate()
         self._auth_url = auth_url
-        self._user = user
-        self._password = password
         self._account_id = account_id
 
-        self._validate_params()
-
-    def _validate_params(self) -> None:
-        """Validate that all required parameters are provided.
-
-        Raises:
-            ValueError: If validation fails.
-        """
-        required_params = [
-            self._raw_api_url,
-            self._auth_url,
-            self._user,
-            self._password,
-            self._account_id,
-        ]
-        if not all(required_params):
-            raise ValueError(
-                "For direct login, api-url, auth-url, user, password, and account-id are required.",
-            )
-
+    @abstractmethod
     def _get_auth_token(self, http_client: urllib3.PoolManager) -> tuple[str, str]:
-        """Get authentication token from Keycloak via password grant.
-
-        Args:
-            http_client: HTTP client for making requests.
+        """Obtain a Keycloak access token and offline refresh token.
 
         Returns:
             Tuple of (access_token, refresh_token).
-
-        Raises:
-            ValueError: If authentication fails or tokens are not in response.
         """
-        data = {
-            "client_id": "fuzzball-cli",
-            "grant_type": "password",
-            "username": self._user,
-            "password": self._password,
-            "scope": "offline_access",
-        }
-
-        response = http_client.request(
-            "POST",
-            f"{self._auth_url.rstrip('/')}/protocol/openid-connect/token",
-            body=urlencode(data).encode("utf-8"),
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            timeout=30,
-        )
-
-        if response.status >= 400:
-            raise ValueError(f"Failed to obtain auth token: HTTP {response.status}")
-
-        response_data = json.loads(response.data.decode("utf-8"))
-        if "access_token" not in response_data:
-            raise ValueError("No access token in response from auth server")
-        if "refresh_token" not in response_data:
-            raise ValueError("No refresh token in response from auth server")
-
-        return response_data["access_token"], response_data["refresh_token"]
 
     def _get_api_token(self, http_client: urllib3.PoolManager, auth_token: str) -> str:
-        """Get API token using auth token from Keycloak.
+        """Exchange a Keycloak access token for a Fuzzball API token.
 
         Args:
             http_client: HTTP client for making requests.
-            auth_token: Authentication token from Keycloak.
+            auth_token: Keycloak access token.
 
         Returns:
-            The API token for Fuzzball.
+            The Fuzzball API token.
 
         Raises:
-            ValueError: If API token request fails or token is not in response.
+            ValueError: If the request fails or the token is absent from the response.
         """
         response = http_client.request(
             "GET",
             f"{self._api_url}/accounts/{self._account_id}/token",
-            headers={
-                "Authorization": f"Bearer {auth_token}",
-                "Accept": "application/json",
-            },
+            headers={"Authorization": f"Bearer {auth_token}", "Accept": "application/json"},
             timeout=30,
         )
-
         if response.status >= 400:
             raise ValueError(f"Failed to obtain API token: HTTP {response.status}")
-
         response_data = json.loads(response.data.decode("utf-8"))
         if "token" not in response_data:
             raise ValueError("No API token in response from API server")
         return response_data["token"]
 
     def authenticate(self, http_client: urllib3.PoolManager) -> ApiConfig:
-        """Perform direct login authentication.
+        """Authenticate and return an ApiConfig.
 
         Args:
             http_client: HTTP client for making requests.
@@ -164,6 +99,132 @@ class DirectLoginAuthenticator(FuzzballAuthenticator):
             account_id=self._account_id,
             refresh_token=refresh_token,
         )
+
+
+class DirectLoginAuthenticator(KeycloakAuthenticator):
+    """Authenticator using OAuth2 password grant (username + password)."""
+
+    def __init__(
+        self,
+        api_url: str,
+        auth_url: str,
+        user: str,
+        password: str,
+        account_id: str,
+    ):
+        """Initialize direct login authenticator and validate parameters."""
+        super().__init__(api_url, auth_url, account_id)
+        self._user = user
+        self._password = password
+
+        if not all([self._raw_api_url, self._auth_url, self._user, self._password, self._account_id]):
+            raise ValueError(
+                "For direct login, api-url, auth-url, user, password, and account-id are required.",
+            )
+
+    def _get_auth_token(self, http_client: urllib3.PoolManager) -> tuple[str, str]:
+        """Password grant with offline_access scope.  Returns (access_token, refresh_token)."""
+        data = {
+            "client_id": "fuzzball-cli",
+            "grant_type": "password",
+            "username": self._user,
+            "password": self._password,
+            "scope": "offline_access",
+        }
+        response = http_client.request(
+            "POST",
+            f"{self._auth_url.rstrip('/')}/protocol/openid-connect/token",
+            body=urlencode(data).encode("utf-8"),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30,
+        )
+        if response.status >= 400:
+            raise ValueError(f"Failed to obtain auth token: HTTP {response.status}")
+        response_data = json.loads(response.data.decode("utf-8"))
+        if "access_token" not in response_data:
+            raise ValueError("No access token in response from auth server")
+        if "refresh_token" not in response_data:
+            raise ValueError("No refresh token in response from auth server")
+        return response_data["access_token"], response_data["refresh_token"]
+
+
+class DeviceLoginAuthenticator(KeycloakAuthenticator):
+    """Authenticator using OAuth2 device authorization grant.
+
+    The user authenticates in a browser; no password is passed to this process.
+    Requires 'OAuth 2.0 Device Authorization Grant' to be enabled on the
+    fuzzball-cli Keycloak client.
+    """
+
+    def __init__(self, api_url: str, auth_url: str, account_id: str):
+        """Initialize device login authenticator and validate parameters."""
+        super().__init__(api_url, auth_url, account_id)
+        if not all([self._raw_api_url, self._auth_url, self._account_id]):
+            raise ValueError(
+                "For device login, api-url, auth-url, and account-id are required.",
+            )
+
+    def _get_auth_token(self, http_client: urllib3.PoolManager) -> tuple[str, str]:
+        """Device authorization grant flow.  Returns (access_token, refresh_token).
+
+        Raises:
+            ValueError: If the request fails, the user does not authorize in time,
+                or the server returns an unexpected error code.
+        """
+        response = http_client.request(
+            "POST",
+            f"{self._auth_url.rstrip('/')}/protocol/openid-connect/auth/device",
+            body=urlencode({"client_id": "fuzzball-cli", "scope": "offline_access"}).encode("utf-8"),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30,
+        )
+        if response.status >= 400:
+            raise ValueError(
+                f"Device authorization request failed: HTTP {response.status}"
+            )
+        body = json.loads(response.data.decode("utf-8"))
+
+        device_code: str = body["device_code"]
+        expires_in = body.get("expires_in", 300)
+        interval = body.get("interval", 5)
+        # verification_uri_complete already embeds the user_code as a query param
+        verification_uri = body.get("verification_uri_complete") or body["verification_uri"]
+        print(f"Open this URL to authenticate (expires in {expires_in}s):\n  {verification_uri}")
+        if "verification_uri_complete" not in body:
+            print(f"Enter code: {body['user_code']}")
+
+        poll_data: dict[str, str] = {
+            "client_id": "fuzzball-cli",
+            "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+            "device_code": device_code,
+        }
+        deadline = time.time() + expires_in
+        while time.time() < deadline:
+            time.sleep(interval)
+            response = http_client.request(
+                "POST",
+                f"{self._auth_url.rstrip('/')}/protocol/openid-connect/token",
+                body=urlencode(poll_data).encode("utf-8"),
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=30,
+            )
+            body = json.loads(response.data.decode("utf-8"))
+            if response.status == 200:
+                if "access_token" not in body:
+                    raise ValueError("No access token in device auth response")
+                if "refresh_token" not in body:
+                    raise ValueError("No refresh token in device auth response")
+                return body["access_token"], body["refresh_token"]
+            error = body.get("error", "")
+            if error == "authorization_pending":
+                continue
+            elif error == "slow_down":
+                interval += 5
+            else:
+                raise ValueError(
+                    f"Device authorization failed: {error}: {body.get('error_description', '')}"
+                )
+        raise ValueError("Device authorization timed out")
 
 
 class ConfigFileAuthenticator(FuzzballAuthenticator):

@@ -336,14 +336,14 @@ Notes:
         ),
         help="Path to the fuzzball configuration file. [%(default)s]",
     )
-    direct_login_group = parser.add_argument_group("Direct Login based authentication")
-    direct_login_group.add_argument(
+    login_group = parser.add_argument_group("Authentication")
+    login_group.add_argument(
         "--api-url",
         type=valid_url,
         help="API URL of Fuzzball cluster (e.g., https://api.example.com) [$FUZZBALL_API_URL].",
         default=os.environ.get("FUZZBALL_API_URL", None),
     )
-    direct_login_group.add_argument(
+    login_group.add_argument(
         "--auth-url",
         type=valid_url,
         help=(
@@ -353,18 +353,23 @@ Notes:
         ),
         default=os.environ.get("FUZZBALL_AUTH_URL", None),
     )
-    direct_login_group.add_argument(
+    login_group.add_argument(
         "--user",
         type=str,
         help="Username/email for direct login [$FUZZBALL_USER].",
         default=os.environ.get("FUZZBALL_USER", None),
     )
-    direct_login_group.add_argument(
+    login_group.add_argument(
         "--password",
         action="store_true",
         help="Prompt for password for direct login. Otherwise defaults to [$FUZZBALL_PASSWORD].",
     )
-    direct_login_group.add_argument(
+    login_group.add_argument(
+        "--device",
+        action="store_true",
+        help="Use device authorization grant (browser-based login).",
+    )
+    login_group.add_argument(
         "--account-id",
         type=str,
         help="Fuzzball account ID for direct login [$FUZZBALL_ACCOUNT_ID].",

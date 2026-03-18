@@ -51,6 +51,7 @@ def main() -> None:
             user=args.user,
             password=password,
             account_id=args.account_id,
+            device_login=args.device,
             fb_version=args.fb_version,
         )
 

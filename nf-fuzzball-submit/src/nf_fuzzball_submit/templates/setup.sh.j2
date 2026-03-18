@@ -19,12 +19,12 @@ trap cleanup EXIT
 
 TOKEN="$(echo "$FB_CONFIG_SECRET" | base64 -d | awk '/token:/ {print $2}')"
 
-mkdir -p {{ wd }} || exit 1
-rm -rf {{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }} \
-  && mkdir -p {{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }} "$(dirname "{{ config_path }}")" \
-  && unzip {{ scratch_mount }}/nf-fuzzball.zip \
-    -d {{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }} > /dev/null \
-  && echo "$FB_CONFIG_SECRET" | base64 -d > {{ config_path }} \
+mkdir -p "{{ wd }}" || exit 1
+rm -rf "{{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }}" \
+  && mkdir -p "{{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }}" "$(dirname "{{ config_path }}")" \
+  && unzip "{{ scratch_mount }}/nf-fuzzball.zip" \
+    -d "{{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }}" > /dev/null \
+  && echo "$FB_CONFIG_SECRET" | base64 -d > "{{ config_path }}" \
   || exit 1
 
 
@@ -34,7 +34,7 @@ CURL_CA_OPT=""
 # Setup CA certificate if provided
 if [ -n "$FB_CA_CERT_SECRET" ]; then
     mkdir -p "$(dirname "{{ ca_cert_path }}")" || exit 1
-    echo "$FB_CA_CERT_SECRET" | base64 -d > {{ ca_cert_path }} || exit 1
+    echo "$FB_CA_CERT_SECRET" | base64 -d > "{{ ca_cert_path }}" || exit 1
     CURL_CA_OPT="--cacert {{ ca_cert_path }}"
 fi
 {% endif -%}

@@ -56,10 +56,10 @@ class TestTemplateRendering:
 
         # Check that key elements are present
         assert "#!/bin/sh" in result
-        assert "mkdir -p /data/nextflow/executions/test-job" in result
+        assert 'mkdir -p "/data/nextflow/executions/test-job"' in result
         assert "nf-fuzzball-0.2.0" in result
-        assert "unzip /scratch/nf-fuzzball.zip" in result
-        assert "base64 -d > /data/nextflow/executions/test-job/home/.config/fuzzball/config.yaml" in result
+        assert 'unzip "/scratch/nf-fuzzball.zip"' in result
+        assert 'base64 -d > "/data/nextflow/executions/test-job/home/.config/fuzzball/config.yaml"' in result
 
     def test_setup_template_with_ca_cert(self, jinja_env):
         """Test setup template rendering with CA certificate."""

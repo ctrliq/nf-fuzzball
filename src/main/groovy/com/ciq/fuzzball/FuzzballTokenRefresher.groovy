@@ -91,23 +91,23 @@ class FuzzballTokenRefresher implements Authenticator {
             .url(tokenUrl)
             .post(body)
             .build()
-        Response resp = refreshClient.newCall(request).execute()
-        String respBody = resp.body()?.string()
-        resp.body()?.close()
-        if (!resp.successful) {
-            throw new IOException("Keycloak token exchange failed: HTTP ${resp.code()}")
+        refreshClient.newCall(request).execute().withCloseable { Response resp ->
+            String respBody = resp.body()?.string()
+            if (!resp.successful) {
+                throw new IOException("Keycloak token exchange failed: HTTP ${resp.code()}")
+            }
+            if (!respBody) {
+                throw new IOException('Empty response body from Keycloak token endpoint')
+            }
+            def json = new JsonSlurper().parseText(respBody) as Map
+            if (!json.access_token) {
+                throw new IOException('No access_token in Keycloak response')
+            }
+            if (!json.refresh_token) {
+                throw new IOException('No refresh_token in Keycloak response — is token rotation enabled?')
+            }
+            return [json.access_token as String, json.refresh_token as String]
         }
-        if (!respBody) {
-            throw new IOException('Empty response body from Keycloak token endpoint')
-        }
-        def json = new JsonSlurper().parseText(respBody) as Map
-        if (!json.access_token) {
-            throw new IOException('No access_token in Keycloak response')
-        }
-        if (!json.refresh_token) {
-            throw new IOException('No refresh_token in Keycloak response — is token rotation enabled?')
-        }
-        return [json.access_token as String, json.refresh_token as String]
     }
 
     /**
@@ -122,20 +122,20 @@ class FuzzballTokenRefresher implements Authenticator {
             .header('Authorization', "Bearer ${accessToken}")
             .header('Accept', 'application/json')
             .build()
-        Response resp = refreshClient.newCall(request).execute()
-        String respBody = resp.body()?.string()
-        resp.body()?.close()
-        if (!resp.successful) {
-            throw new IOException("Fuzzball token exchange failed: HTTP ${resp.code()}")
+        refreshClient.newCall(request).execute().withCloseable { Response resp ->
+            String respBody = resp.body()?.string()
+            if (!resp.successful) {
+                throw new IOException("Fuzzball token exchange failed: HTTP ${resp.code()}")
+            }
+            if (!respBody) {
+                throw new IOException('Empty response body from Fuzzball token endpoint')
+            }
+            def json = new JsonSlurper().parseText(respBody) as Map
+            if (!json.token) {
+                throw new IOException('No token in Fuzzball API response')
+            }
+            return json.token as String
         }
-        if (!respBody) {
-            throw new IOException('Empty response body from Fuzzball token endpoint')
-        }
-        def json = new JsonSlurper().parseText(respBody) as Map
-        if (!json.token) {
-            throw new IOException('No token in Fuzzball API response')
-        }
-        return json.token as String
     }
 
     private static int responseCount(Response response) {

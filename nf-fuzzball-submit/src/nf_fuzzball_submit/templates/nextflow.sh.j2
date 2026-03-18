@@ -10,6 +10,10 @@ rm -f "{{ credentials_file }}"
 # Revoke the offline refresh token when the job exits (success or failure).
 # This limits its lifetime to the pipeline run rather than the full offline session idle TTL.
 _revoke_token() {
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "Warning: curl not found; skipping Fuzzball refresh token revocation." >&2
+        return 0
+    fi
     CURL_CA_OPT=""
     [ -n "$FB_CA_CERT" ] && CURL_CA_OPT="--cacert $FB_CA_CERT"
     curl -s $CURL_CA_OPT -X POST "{{ auth_url }}/protocol/openid-connect/revoke" \

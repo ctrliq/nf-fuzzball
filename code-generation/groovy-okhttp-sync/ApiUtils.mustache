@@ -64,9 +64,10 @@ class ApiUtils {
                     staticLog.debug("Loading custom CA certificate from: ${caCertPath}")
 
                     CertificateFactory cf = CertificateFactory.getInstance('X.509')
-                    X509Certificate caCert = (X509Certificate) cf.generateCertificate(
-                        new FileInputStream(caCertFile)
-                    )
+                    X509Certificate caCert
+                    new FileInputStream(caCertFile).withCloseable { fis ->
+                        caCert = (X509Certificate) cf.generateCertificate(fis)
+                    }
 
                     KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
                     keyStore.load(null, null)

@@ -21,13 +21,20 @@ class ApiConfig {
     final String schema
     /** Token for authenication */
     String token
+    /** Keycloak OIDC server URL, e.g. https://auth.example.com/auth/realms/fuzzball */
+    final String oidcServerURL
+    /** Fuzzball account ID, used for /accounts/{id}/token exchange */
+    final String accountId
 
-    ApiConfig(String host, int port, String token, String basePath = null, String schema = null) {
+    ApiConfig(String host, int port, String token, String basePath = null, String schema = null,
+              String oidcServerURL = null, String accountId = null) {
         this.host = host
         this.port = port
         this.token = token
         this.basePath = basePath ?: {{#basePath}}'{{.}}'{{/basePath}}{{^basePath}}''{{/basePath}}
         this.schema = schema ?: 'https'
+        this.oidcServerURL = oidcServerURL
+        this.accountId = accountId
     }
 
     static ApiConfig fromFuzzballConfig(Map<String,String> args = [:]) {
@@ -37,17 +44,21 @@ class ApiConfig {
 
         String hostPort = ''
         String token = ''
+        String oidcServerURL = ''
+        String accountId = ''
         fbConfig.contexts.each { context ->
             if (context.name == fbConfig.activeContext) {
                 hostPort = context.address
                 token = context.auth.credentials.token
+                oidcServerURL = context.oidcServerURL
+                accountId = context.currentaccountid
             }
         }
 
         String[] hostParts = hostPort.split(':')
         String host = hostParts[0]
         int port = hostParts.size() > 1 ? hostParts[1].toInteger() : 443
-        return new ApiConfig(host, port, token)
+        return new ApiConfig(host, port, token, null, null, oidcServerURL, accountId)
     }
 
 }

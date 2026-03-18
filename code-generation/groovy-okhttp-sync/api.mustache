@@ -4,6 +4,7 @@ package {{package}}
 import {{apiPackage}}.ApiUtils
 import {{apiPackage}}.ApiConfig
 import groovy.transform.CompileStatic
+import okhttp3.Authenticator
 import groovy.transform.Canonical
 import groovy.util.logging.Slf4j
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -23,6 +24,10 @@ class {{classname}} {
 
     {{classname}}(ApiConfig config) {
         this.apiUtils = new ApiUtils(config)
+    }
+
+    {{classname}}(ApiConfig config, Authenticator authenticator) {
+        this.apiUtils = new ApiUtils(config, authenticator)
     }
 
     {{#operation}}

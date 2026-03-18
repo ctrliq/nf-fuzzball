@@ -6,6 +6,19 @@
 FUZZBALL_REFRESH_TOKEN="$(cat "{{ credentials_file }}")"
 export FUZZBALL_REFRESH_TOKEN
 rm -f "{{ credentials_file }}"
+
+# Revoke the offline refresh token when the job exits (success or failure).
+# This limits its lifetime to the pipeline run rather than the full offline session idle TTL.
+_revoke_token() {
+    CURL_CA_OPT=""
+    [ -n "$FB_CA_CERT" ] && CURL_CA_OPT="--cacert $FB_CA_CERT"
+    curl -s $CURL_CA_OPT -X POST "{{ auth_url }}/protocol/openid-connect/revoke" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "client_id=fuzzball-cli&token=$FUZZBALL_REFRESH_TOKEN&token_type_hint=refresh_token" \
+      > /dev/null 2>&1
+    rm -f "{{ credentials_file }}"
+}
+trap _revoke_token EXIT
 {% endif -%}
 
 {{ mangled_nextflow_cmd_str }} -c "{{ files }}/{{ nxf_fuzzball_config_name }}.config"

@@ -390,6 +390,7 @@ class FuzzballClient:
                 files=files,
                 nxf_fuzzball_config_name=nxf_fuzzball_config_name,
                 credentials_file=credentials_file,
+                auth_url=self._api_config.auth_url if credentials_file else None,
             )
 
             workflow: dict[str, Any] = {

@@ -278,6 +278,7 @@ class TestTemplateRendering:
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
             "credentials_file": "/data/nextflow/executions/test-job/.credentials",
+            "auth_url": "https://auth.example.com/auth/realms/fuzzball",
         }
 
         result = template.render(**context)
@@ -285,6 +286,8 @@ class TestTemplateRendering:
         assert 'FUZZBALL_REFRESH_TOKEN="$(cat "/data/nextflow/executions/test-job/.credentials")"' in result
         assert "export FUZZBALL_REFRESH_TOKEN" in result
         assert 'rm -f "/data/nextflow/executions/test-job/.credentials"' in result
+        assert "trap _revoke_token EXIT" in result
+        assert '"https://auth.example.com/auth/realms/fuzzball/protocol/openid-connect/revoke"' in result
 
     def test_template_file_structure(self):
         """Test that template files exist in the expected location."""

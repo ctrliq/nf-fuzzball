@@ -40,6 +40,7 @@ class KeycloakAuthenticator(FuzzballAuthenticator):
     """
 
     def __init__(self, api_url: str, auth_url: str, account_id: str):
+        """Initialize KeycloadAuthenticator-based classes."""
         self._raw_api_url = api_url  # can leave off the API base path
         self._api_url: str | None = None  # canonical URL resolved on first authenticate()
         self._auth_url = auth_url
@@ -179,9 +180,7 @@ class DeviceLoginAuthenticator(KeycloakAuthenticator):
             timeout=30,
         )
         if response.status >= 400:
-            raise ValueError(
-                f"Device authorization request failed: HTTP {response.status}"
-            )
+            raise ValueError(f"Device authorization request failed: HTTP {response.status}")
         body = json.loads(response.data.decode("utf-8"))
 
         device_code: str = body["device_code"]
@@ -221,9 +220,7 @@ class DeviceLoginAuthenticator(KeycloakAuthenticator):
             elif error == "slow_down":
                 interval += 5
             else:
-                raise ValueError(
-                    f"Device authorization failed: {error}: {body.get('error_description', '')}"
-                )
+                raise ValueError(f"Device authorization failed: {error}: {body.get('error_description', '')}")
         raise ValueError("Device authorization timed out")
 
 
@@ -293,6 +290,37 @@ class ConfigFileAuthenticator(FuzzballAuthenticator):
             if context["name"] == context_name:
                 return context
         raise ValueError(f"Context '{context_name}' not found in configuration file")
+
+    @classmethod
+    def connection_defaults(cls, config_path: pathlib.Path, context: str | None = None) -> dict[str, str | None]:
+        """Return api_url, auth_url, and account_id from the config file.
+
+        Intended as a low-precedence fallback for direct/device login flows that
+        need these values but would otherwise require explicit flags.  Returns an
+        empty dict if the file is absent, unparseable, or the context is not found.
+
+        Args:
+            config_path: Path to the fuzzball config file.
+            context: Context name to read; falls back to activeContext if None.
+
+        Returns:
+            Dict with keys ``api_url``, ``auth_url``, ``account_id`` (values may
+            be None if the field is absent in the config).
+        """
+        try:
+            auth = cls(config_path, context)
+            context_name = auth._determine_context()
+            ctx = auth._extract_context_info(context_name)
+            address = ctx.get("address", "")
+            if address and not address.startswith("http"):
+                address = f"https://{address}"
+            return {
+                "api_url": address or None,
+                "auth_url": ctx.get("oidcServerURL"),
+                "account_id": ctx.get("currentaccountid"),
+            }
+        except Exception:
+            return {}
 
     def authenticate(self, http_client: urllib3.PoolManager) -> ApiConfig:
         """Perform config file authentication.

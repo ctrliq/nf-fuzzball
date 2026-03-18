@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 
+from .auth import ConfigFileAuthenticator
 from .cli import parse_cli
 from .client import create_fuzzball_client
 from .utils import die
@@ -30,6 +31,14 @@ def main() -> None:
 
         if args.verbose or args.dry_run:
             logging.getLogger().setLevel(logging.DEBUG)
+
+        # For direct/device login, fill in any unset connection params from the
+        # config file as the lowest-precedence fallback (CLI > env var > config file).
+        if (args.user or args.device) and any(v is None for v in [args.api_url, args.auth_url, args.account_id]):
+            defaults = ConfigFileAuthenticator.connection_defaults(args.fuzzball_config.expanduser(), args.context)
+            args.api_url = args.api_url or defaults.get("api_url")
+            args.auth_url = args.auth_url or defaults.get("auth_url")
+            args.account_id = args.account_id or defaults.get("account_id")
 
         password = None
         if args.user:

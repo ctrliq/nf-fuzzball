@@ -32,7 +32,7 @@ if [ -n "$FB_CA_CERT_SECRET" ]; then
 fi
 {% endif -%}
 
-{% if direct_login -%}
+{% if kc_login -%}
 # Write the refresh token for the nextflow job before doing anything else that could fail.
 # base64-encode so the file is safe regardless of token content.
 mkdir -p "$(dirname "{{ credentials_file }}")"

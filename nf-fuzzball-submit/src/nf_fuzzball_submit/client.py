@@ -381,7 +381,7 @@ class FuzzballClient:
                 files=files,
                 nxf_fuzzball_config_name=nxf_fuzzball_config_name,
                 config_files=config_files,
-                direct_login=credentials_file is not None,
+                kc_login=credentials_file is not None,
                 credentials_file=credentials_file,
             )
 

@@ -47,7 +47,7 @@ class TestTemplateRendering:
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
             "config_files": [],
-            "direct_login": False,
+            "kc_login": False,
             "credentials_file": None,
             "refresh_token_secret_id": None,
         }
@@ -78,7 +78,7 @@ class TestTemplateRendering:
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
             "config_files": [],
-            "direct_login": False,
+            "kc_login": False,
             "credentials_file": None,
             "refresh_token_secret_id": None,
         }
@@ -106,7 +106,7 @@ class TestTemplateRendering:
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
             "config_files": [],
-            "direct_login": False,
+            "kc_login": False,
             "credentials_file": None,
             "refresh_token_secret_id": None,
         }
@@ -133,7 +133,7 @@ class TestTemplateRendering:
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
             "config_files": [],
-            "direct_login": False,
+            "kc_login": False,
             "credentials_file": None,
             "refresh_token_secret_id": None,
         }
@@ -176,7 +176,7 @@ class TestTemplateRendering:
                     "files": "/data/nextflow/executions/test-job/files",
                     "nxf_fuzzball_config_name": "test-config-123",
                     "config_files": [local_file1, local_file2],
-                    "direct_login": False,
+                    "kc_login": False,
                     "credentials_file": None,
                     "refresh_token_secret_id": None,
                 }
@@ -208,7 +208,7 @@ class TestTemplateRendering:
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
             "config_files": [],
-            "direct_login": True,
+            "kc_login": True,
             "credentials_file": "/data/nextflow/executions/test-job/.credentials",
             "refresh_token_secret_id": None,
         }
@@ -235,7 +235,7 @@ class TestTemplateRendering:
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
             "config_files": [],
-            "direct_login": False,
+            "kc_login": False,
             "credentials_file": None,
             "refresh_token_secret_id": None,
         }

@@ -340,7 +340,7 @@ Notes:
     login_group.add_argument(
         "--api-url",
         type=valid_url,
-        help="API URL of Fuzzball cluster (e.g., https://api.example.com) [$FUZZBALL_API_URL].",
+        help="API URL of Fuzzball cluster (e.g., https://api.example.com) [$FUZZBALL_API_URL, Fuzzball config file].",
         default=os.environ.get("FUZZBALL_API_URL", None),
     )
     login_group.add_argument(
@@ -349,7 +349,7 @@ Notes:
         help=(
             "Auth URL of Fuzzball cluster"
             " (e.g., https://auth.example.com/auth/realms/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)"
-            " [$FUZZBALL_AUTH_URL]."
+            " [$FUZZBALL_AUTH_URL, Fuzzball config file]."
         ),
         default=os.environ.get("FUZZBALL_AUTH_URL", None),
     )
@@ -372,7 +372,7 @@ Notes:
     login_group.add_argument(
         "--account-id",
         type=str,
-        help="Fuzzball account ID for direct login [$FUZZBALL_ACCOUNT_ID].",
+        help="Fuzzball account ID for direct login [$FUZZBALL_ACCOUNT_ID, Fuzzball config file].",
         default=os.environ.get("FUZZBALL_ACCOUNT_ID", None),
     )
 
@@ -524,5 +524,11 @@ Notes:
             )
     if args.plugin_base_uri.startswith("s3://") and not args.s3_secret:
         parser.error("--s3-secret is required when --plugin-base-uri is an S3 URI.")
+
+    # $FUZZBALL_USER / $FUZZBALL_PASSWORD may be set in the environment; clear them
+    # when --device is used so downstream code doesn't try to do a password login.
+    if args.device and (args.user or args.password):
+        args.user = None
+        args.password = None
 
     return args

@@ -43,21 +43,20 @@ class TestDirectLoginAuthenticator:
 
     @patch("nf_fuzzball_submit.auth.get_canonical_api_url")
     def test_authenticate_success(self, mock_get_canonical_url, mock_http_client):
-        """Test successful authentication flow."""
-        # Mock the canonical URL function
+        """Test successful authentication flow — refresh token is extracted and stored."""
         mock_get_canonical_url.return_value = "https://api.example.com/v4"
 
-        # Mock auth token response
         auth_response = Mock()
         auth_response.status = 200
-        auth_response.data = json.dumps({"access_token": "auth-token-123"}).encode()
+        auth_response.data = json.dumps({
+            "access_token": "auth-token-123",
+            "refresh_token": "refresh-token-789",
+        }).encode()
 
-        # Mock API token response
         api_response = Mock()
         api_response.status = 200
         api_response.data = json.dumps({"token": "api-token-456"}).encode()
 
-        # Configure mock client to return different responses for different calls
         mock_http_client.request.side_effect = [auth_response, api_response]
 
         auth = DirectLoginAuthenticator(
@@ -75,11 +74,31 @@ class TestDirectLoginAuthenticator:
         assert config.auth_url == "https://auth.example.com/auth/realms/test"
         assert config.token == "api-token-456"
         assert config.account_id == "account-123"
-        assert config.user == "test@example.com"
-        assert config.password == "password123"
+        assert config.refresh_token == "refresh-token-789"
+        # Credentials must not be stored on the config
+        assert not hasattr(config, "user")
+        assert not hasattr(config, "password")
 
-        # Verify correct API calls were made
         assert mock_http_client.request.call_count == 2
+
+    def test_get_auth_token_missing_refresh_token(self, mock_http_client):
+        """Test that missing refresh token in Keycloak response raises an error."""
+        mock_response = Mock()
+        mock_response.status = 200
+        # Keycloak response with access_token but no refresh_token
+        mock_response.data = json.dumps({"access_token": "auth-token-123"}).encode()
+        mock_http_client.request.return_value = mock_response
+
+        auth = DirectLoginAuthenticator(
+            api_url="https://api.example.com/v4",
+            auth_url="https://auth.example.com/auth/realms/test",
+            user="test@example.com",
+            password="password123",
+            account_id="account-123",
+        )
+
+        with pytest.raises(ValueError, match="No refresh token in response from auth server"):
+            auth.authenticate(mock_http_client)
 
     def test_get_auth_token_failure(self, mock_http_client):
         """Test authentication failure when getting auth token."""
@@ -124,7 +143,10 @@ class TestDirectLoginAuthenticator:
         # Mock successful auth token response, failed API token response
         auth_response = Mock()
         auth_response.status = 200
-        auth_response.data = json.dumps({"access_token": "auth-token-123"}).encode()
+        auth_response.data = json.dumps({
+            "access_token": "auth-token-123",
+            "refresh_token": "refresh-token-789",
+        }).encode()
 
         api_response = Mock()
         api_response.status = 403

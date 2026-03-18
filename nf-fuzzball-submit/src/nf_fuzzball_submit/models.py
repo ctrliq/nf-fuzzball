@@ -19,8 +19,7 @@ class ApiConfig:
     auth_url: str  # full url with schema and path
     token: str
     account_id: str
-    user: str | None = None
-    password: str | None = None
+    refresh_token: str | None = None  # present for direct login; None for config-file auth
 
     @property
     def api_host(self) -> str:

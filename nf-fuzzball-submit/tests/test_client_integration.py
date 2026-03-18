@@ -42,7 +42,10 @@ class TestFuzzballClientInitialization:
         # Mock auth flow responses
         auth_response = Mock()
         auth_response.status = 200
-        auth_response.data = json.dumps({"access_token": "auth-token"}).encode()
+        auth_response.data = json.dumps({
+            "access_token": "auth-token",
+            "refresh_token": "refresh-token",
+        }).encode()
 
         api_response = Mock()
         api_response.status = 200

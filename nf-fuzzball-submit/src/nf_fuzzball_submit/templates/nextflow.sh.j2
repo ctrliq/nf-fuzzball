@@ -1,5 +1,14 @@
 #!/bin/bash
-{{ mangled_nextflow_cmd_str }} -c {{ files }}/{{ nxf_fuzzball_config_name }}.config
+{% if credentials_file -%}
+# Read the refresh token written by the setup job and delete the file immediately.
+# By this point the value has been resolved from the Fuzzball secret store by the
+# setup job — the file is the only copy remaining.
+FUZZBALL_REFRESH_TOKEN="$(cat "{{ credentials_file }}")"
+export FUZZBALL_REFRESH_TOKEN
+rm -f "{{ credentials_file }}"
+{% endif -%}
+
+{{ mangled_nextflow_cmd_str }} -c "{{ files }}/{{ nxf_fuzzball_config_name }}.config"
 ec=$?
 echo "-- LOG START ---------------------------------------------------------------------------------"
 cat .nextflow.log

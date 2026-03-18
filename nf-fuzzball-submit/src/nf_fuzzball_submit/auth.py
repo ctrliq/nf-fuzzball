@@ -74,23 +74,24 @@ class DirectLoginAuthenticator(FuzzballAuthenticator):
                 "For direct login, api-url, auth-url, user, password, and account-id are required.",
             )
 
-    def _get_auth_token(self, http_client: urllib3.PoolManager) -> str:
-        """Get authentication token from Keycloak.
+    def _get_auth_token(self, http_client: urllib3.PoolManager) -> tuple[str, str]:
+        """Get authentication token from Keycloak via password grant.
 
         Args:
             http_client: HTTP client for making requests.
 
         Returns:
-            The authentication token from Keycloak.
+            Tuple of (access_token, refresh_token).
 
         Raises:
-            ValueError: If authentication fails or token is not in response.
+            ValueError: If authentication fails or tokens are not in response.
         """
         data = {
             "client_id": "fuzzball-cli",
             "grant_type": "password",
             "username": self._user,
             "password": self._password,
+            "scope": "offline_access",
         }
 
         response = http_client.request(
@@ -107,8 +108,10 @@ class DirectLoginAuthenticator(FuzzballAuthenticator):
         response_data = json.loads(response.data.decode("utf-8"))
         if "access_token" not in response_data:
             raise ValueError("No access token in response from auth server")
+        if "refresh_token" not in response_data:
+            raise ValueError("No refresh token in response from auth server")
 
-        return response_data["access_token"]
+        return response_data["access_token"], response_data["refresh_token"]
 
     def _get_api_token(self, http_client: urllib3.PoolManager, auth_token: str) -> str:
         """Get API token using auth token from Keycloak.
@@ -152,15 +155,14 @@ class DirectLoginAuthenticator(FuzzballAuthenticator):
         """
         if not self._api_url:
             self._api_url = get_canonical_api_url(self._raw_api_url, http_client)
-        auth_token = self._get_auth_token(http_client)
-        token = self._get_api_token(http_client, auth_token)
+        access_token, refresh_token = self._get_auth_token(http_client)
+        token = self._get_api_token(http_client, access_token)
         return ApiConfig(
             api_url=self._api_url,
             auth_url=self._auth_url,
             token=token,
             account_id=self._account_id,
-            user=self._user,
-            password=self._password,
+            refresh_token=refresh_token,
         )
 
 

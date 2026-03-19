@@ -47,16 +47,19 @@ class TestTemplateRendering:
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
             "config_files": [],
+            "kc_login": False,
+            "credentials_file": None,
+            "refresh_token_secret_id": None,
         }
 
         result = template.render(**context)
 
         # Check that key elements are present
         assert "#!/bin/sh" in result
-        assert "mkdir -p /data/nextflow/executions/test-job" in result
+        assert 'mkdir -p "/data/nextflow/executions/test-job"' in result
         assert "nf-fuzzball-0.2.0" in result
-        assert "unzip /scratch/nf-fuzzball.zip" in result
-        assert "base64 -d > /data/nextflow/executions/test-job/home/.config/fuzzball/config.yaml" in result
+        assert 'unzip "/scratch/nf-fuzzball.zip"' in result
+        assert 'base64 -d > "/data/nextflow/executions/test-job/home/.config/fuzzball/config.yaml"' in result
 
     def test_setup_template_with_ca_cert(self, jinja_env):
         """Test setup template rendering with CA certificate."""
@@ -75,6 +78,9 @@ class TestTemplateRendering:
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
             "config_files": [],
+            "kc_login": False,
+            "credentials_file": None,
+            "refresh_token_secret_id": None,
         }
 
         result = template.render(**context)
@@ -100,6 +106,9 @@ class TestTemplateRendering:
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
             "config_files": [],
+            "kc_login": False,
+            "credentials_file": None,
+            "refresh_token_secret_id": None,
         }
 
         result = template.render(**context)
@@ -124,6 +133,9 @@ class TestTemplateRendering:
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
             "config_files": [],
+            "kc_login": False,
+            "credentials_file": None,
+            "refresh_token_secret_id": None,
         }
 
         result = template.render(**context)
@@ -164,34 +176,90 @@ class TestTemplateRendering:
                     "files": "/data/nextflow/executions/test-job/files",
                     "nxf_fuzzball_config_name": "test-config-123",
                     "config_files": [local_file1, local_file2],
+                    "kc_login": False,
+                    "credentials_file": None,
+                    "refresh_token_secret_id": None,
                 }
 
                 result = template.render(**context)
 
                 # Check that both config files are processed
-                assert f"cat /tmp/{local_file1.remote_name} | base64 -d > {local_file1.remote_path}" in result
-                assert f"cat /tmp/{local_file2.remote_name} | base64 -d > {local_file2.remote_path}" in result
+                assert f'cat "/tmp/{local_file1.remote_name}" | base64 -d > "{local_file1.remote_path}"' in result
+                assert f'cat "/tmp/{local_file2.remote_name}" | base64 -d > "{local_file2.remote_path}"' in result
 
             finally:
                 pathlib.Path(f1.name).unlink(missing_ok=True)
                 pathlib.Path(f2.name).unlink(missing_ok=True)
 
+    def test_setup_template_with_direct_login(self, jinja_env):
+        """Test setup template writes refresh token to file when direct_login=True."""
+        template = jinja_env.get_template("setup.sh.j2")
+
+        context = {
+            "wd": "/data/nextflow/executions/test-job",
+            "home": "/data/nextflow/executions/test-job/home",
+            "plugin_version": "0.2.0",
+            "scratch_mount": "/scratch",
+            "config_path": "/data/nextflow/executions/test-job/home/.config/fuzzball/config.yaml",
+            "ca_cert_secret": False,
+            "ca_cert_path": "",
+            "api_url": "https://api.example.com/v4",
+            "cleanup_secrets": [],
+            "files": "/data/nextflow/executions/test-job/files",
+            "nxf_fuzzball_config_name": "test-config-123",
+            "config_files": [],
+            "kc_login": True,
+            "credentials_file": "/data/nextflow/executions/test-job/.credentials",
+            "refresh_token_secret_id": None,
+        }
+
+        result = template.render(**context)
+
+        assert 'printf \'%s\' "$FB_REFRESH_TOKEN" > "/data/nextflow/executions/test-job/.credentials"' in result
+        assert 'chmod 600 "/data/nextflow/executions/test-job/.credentials"' in result
+
+    def test_setup_template_without_direct_login_omits_credential_block(self, jinja_env):
+        """Test that the credential block is absent when direct_login=False."""
+        template = jinja_env.get_template("setup.sh.j2")
+
+        context = {
+            "wd": "/data/nextflow/executions/test-job",
+            "home": "/data/nextflow/executions/test-job/home",
+            "plugin_version": "0.2.0",
+            "scratch_mount": "/scratch",
+            "config_path": "/data/nextflow/executions/test-job/home/.config/fuzzball/config.yaml",
+            "ca_cert_secret": False,
+            "ca_cert_path": "",
+            "api_url": "https://api.example.com/v4",
+            "cleanup_secrets": [],
+            "files": "/data/nextflow/executions/test-job/files",
+            "nxf_fuzzball_config_name": "test-config-123",
+            "config_files": [],
+            "kc_login": False,
+            "credentials_file": None,
+            "refresh_token_secret_id": None,
+        }
+
+        result = template.render(**context)
+
+        assert "FB_REFRESH_TOKEN" not in result
+
     def test_nextflow_template_basic_rendering(self, jinja_env):
-        """Test basic rendering of nextflow template."""
+        """Test basic rendering of nextflow template without direct login."""
         template = jinja_env.get_template("nextflow.sh.j2")
 
         context = {
             "mangled_nextflow_cmd_str": "nextflow run hello -profile fuzzball",
             "files": "/data/nextflow/executions/test-job/files",
             "nxf_fuzzball_config_name": "test-config-123",
+            "credentials_file": None,
         }
 
         result = template.render(**context)
 
-        # Check that key elements are present
         assert "#!/bin/bash" in result
         assert (
-            "nextflow run hello -profile fuzzball -c /data/nextflow/executions/test-job/files/test-config-123.config"
+            'nextflow run hello -profile fuzzball -c "/data/nextflow/executions/test-job/files/test-config-123.config"'
             in result
         )
         assert "ec=$?" in result
@@ -199,6 +267,28 @@ class TestTemplateRendering:
         assert "exit $ec" in result
         assert "-- LOG START --" in result
         assert "-- LOG END --" in result
+        assert "FUZZBALL_REFRESH_TOKEN" not in result
+
+    def test_nextflow_template_with_direct_login(self, jinja_env):
+        """Test nextflow template exports refresh token and deletes credentials file."""
+        template = jinja_env.get_template("nextflow.sh.j2")
+
+        context = {
+            "mangled_nextflow_cmd_str": "nextflow run hello -profile fuzzball",
+            "files": "/data/nextflow/executions/test-job/files",
+            "nxf_fuzzball_config_name": "test-config-123",
+            "credentials_file": "/data/nextflow/executions/test-job/.credentials",
+            "auth_url": "https://auth.example.com/auth/realms/fuzzball",
+        }
+
+        result = template.render(**context)
+
+        assert 'FUZZBALL_REFRESH_TOKEN="$(cat "/data/nextflow/executions/test-job/.credentials")"' in result
+        assert "export FUZZBALL_REFRESH_TOKEN" in result
+        assert 'rm -f "/data/nextflow/executions/test-job/.credentials"' in result
+        assert "trap _revoke_token EXIT" in result
+        assert '"https://auth.example.com/auth/realms/fuzzball/protocol/openid-connect/revoke"' in result
+        assert '--data-urlencode "token=$FUZZBALL_REFRESH_TOKEN"' in result
 
     def test_template_file_structure(self):
         """Test that template files exist in the expected location."""

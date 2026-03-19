@@ -18,8 +18,6 @@ def sample_api_config():
         auth_url="https://auth.example.com/auth/realms/test-realm",
         token="test-token-12345",
         account_id="test-account-id",
-        user=None,
-        password=None,
     )
 
 
@@ -31,8 +29,7 @@ def direct_login_api_config():
         auth_url="https://auth.example.com/auth/realms/test-realm",
         token="test-token-12345",
         account_id="test-account-id",
-        user="test@example.com",
-        password="test-password",
+        refresh_token="test-refresh-token",
     )
 
 

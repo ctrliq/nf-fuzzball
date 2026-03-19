@@ -17,7 +17,10 @@ import nextflow.util.Duration
 import nextflow.util.ServiceName
 import org.pf4j.ExtensionPoint
 
+import okhttp3.Authenticator
+
 import com.ciq.fuzzball.api.ApiConfig
+import com.ciq.fuzzball.api.ApiUtils
 import com.ciq.fuzzball.api.WorkflowServiceApi
 import com.ciq.fuzzball.api.StorageClassServiceApi
 import com.ciq.fuzzball.model.*
@@ -58,8 +61,18 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
         if (!(executorWfName && executorWfId)) {
             throw new AbortOperationException('Controller job is not running as a fuzzball workflow')
         }
-        fuzzballWfService = new WorkflowServiceApi(fuzzballApiConfig)
-        storageClassService = new StorageClassServiceApi(fuzzballApiConfig)
+        String envRefreshToken = System.getenv('FUZZBALL_REFRESH_TOKEN')
+        Authenticator authenticator = Authenticator.NONE
+        if (envRefreshToken) {
+            if (!fuzzballApiConfig.oidcServerURL || !fuzzballApiConfig.accountId) {
+                log.warn('FUZZBALL_REFRESH_TOKEN is set but oidcServerURL or accountId is missing from the Fuzzball config — token refresh on 401 disabled')
+            } else {
+                log.info('FUZZBALL_REFRESH_TOKEN detected — token refresh on 401 enabled')
+                authenticator = new FuzzballTokenRefresher(fuzzballApiConfig, envRefreshToken, ApiUtils.createRefreshClient())
+            }
+        }
+        fuzzballWfService = new WorkflowServiceApi(fuzzballApiConfig, authenticator)
+        storageClassService = new StorageClassServiceApi(fuzzballApiConfig, authenticator)
         Workflow wf
         try {
             wf = fuzzballWfService.getWorkflow(executorWfId)

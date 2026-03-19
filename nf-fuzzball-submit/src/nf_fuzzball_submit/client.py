@@ -17,7 +17,7 @@ import yaml
 from jinja2 import Environment, PackageLoader
 from urllib3.util import Retry
 
-from .auth import ConfigFileAuthenticator, DirectLoginAuthenticator, FuzzballAuthenticator
+from .auth import ConfigFileAuthenticator, DeviceLoginAuthenticator, DirectLoginAuthenticator, FuzzballAuthenticator
 from .models import NAMESPACE_CONTENT, ApiConfig
 from .utils import find_and_import_local_files
 
@@ -260,8 +260,8 @@ class FuzzballClient:
         wd = f"{args.nextflow_work_base}/{job_name}"
         home = f"{wd}/home"
         files = f"{wd}/files"
-        ca_cert_path = f"{home}/.config/fuzzball/ca.crt"
-        config_path = f"{home}/.config/fuzzball/config.yaml"
+        ca_cert_path = f"{SCRATCH_MOUNT}/.config/fuzzball/ca.crt"
+        config_path = f"{SCRATCH_MOUNT}/.config/fuzzball/config.yaml"
 
         secret_name = str(uuid.uuid4())
         # we use a v prefix for tag but gradle idiomatically does not use a prefix
@@ -311,176 +311,171 @@ class FuzzballClient:
 
         config_secret_id = None
         cert_secret_id = None
-        user_secret_id = None
-        pass_secret_id = None
+        refresh_token_secret_id = None
+        credentials_file = None
 
         setup_env = env.copy()
+        # Track secrets created so they can be deleted if submission fails or on dry-run.
+        # Cleared on successful submission — jobs handle cleanup from that point.
+        created_secret_ids: list[str | None] = []
 
-        if self._api_config.user:  # Direct login
-            user_secret_name = f"{secret_name}-user"
-            pass_secret_name = f"{secret_name}-pass"
-            user_secret_id = self.create_value_secret(
-                user_secret_name,
-                base64.b64encode(self._api_config.user.encode()).decode(),
-            )
-            pass_secret_id = self.create_value_secret(
-                pass_secret_name,
-                base64.b64encode(self._api_config.password.encode()).decode(),
-            )
-            setup_env.extend(
-                [
-                    f"FB_USER_SECRET=secret://user/{user_secret_name}",
-                    f"FB_PASS_SECRET=secret://user/{pass_secret_name}",
-                ],
-            )
-        # create secret from minimal fuzzball config
-        config_secret_name = f"{secret_name}-conf"
-        config_secret_id = self.create_value_secret(config_secret_name, self._encode_config())
-        setup_env.append(f"FB_CONFIG_SECRET=secret://user/{config_secret_name}")
+        try:
+            if self._api_config.refresh_token:  # Direct login
+                refresh_token_secret_name = f"{secret_name}-refresh"
+                # Store the raw refresh token; setup script writes it to a per-job
+                # credentials file and deletes this secret immediately.
+                refresh_token_secret_id = self.create_value_secret(
+                    refresh_token_secret_name, self._api_config.refresh_token
+                )
+                created_secret_ids.append(refresh_token_secret_id)
+                setup_env.append(f"FB_REFRESH_TOKEN=secret://user/{refresh_token_secret_name}")
+                credentials_file = f"{SCRATCH_MOUNT}/.refresh_token"
 
-        if self._ca_cert_file:
-            cert_secret_name = f"{secret_name}-cert"
-            cert_secret_id = self.create_value_secret(cert_secret_name, self._encode_ca_cert())
-            setup_env.append(f"FB_CA_CERT_SECRET=secret://user/{cert_secret_name}")
+            # create secret from minimal fuzzball config
+            config_secret_name = f"{secret_name}-conf"
+            config_secret_id = self.create_value_secret(config_secret_name, self._encode_config())
+            created_secret_ids.append(config_secret_id)
+            setup_env.append(f"FB_CONFIG_SECRET=secret://user/{config_secret_name}")
 
-        nxf_fuzzball_config = base64.b64encode(
-            textwrap.dedent(f"""\
-        plugins {{ id 'nf-fuzzball@{plugin_version}' }}
-        profiles {{
-            fuzzball {{
-                executor {{
-                    '$fuzzball' {{
-                        queueSize = {args.queue_size}
+            if self._ca_cert_file:
+                cert_secret_name = f"{secret_name}-cert"
+                cert_secret_id = self.create_value_secret(cert_secret_name, self._encode_ca_cert())
+                created_secret_ids.append(cert_secret_id)
+                setup_env.append(f"FB_CA_CERT_SECRET=secret://user/{cert_secret_name}")
+
+            nxf_fuzzball_config = base64.b64encode(
+                textwrap.dedent(f"""\
+            plugins {{ id 'nf-fuzzball@{plugin_version}' }}
+            profiles {{
+                fuzzball {{
+                    executor {{
+                        '$fuzzball' {{
+                            queueSize = {args.queue_size}
+                        }}
+                    }}
+                    process {{
+                        executor = 'fuzzball'
+                        errorStrategy = 'retry'
+                        maxRetries = 3
+                    }}
+                    {"docker { registry = 'quay.io' }" if args.nf_core else ""}
+                    fuzzball {{
+                        cfgFile = '{config_path}'
                     }}
                 }}
-                process {{
-                    executor = 'fuzzball'
-                    errorStrategy = 'retry'
-                    maxRetries = 3
-                }}
-                {"docker { registry = 'quay.io' }" if args.nf_core else ""}
-                fuzzball {{
-                    cfgFile = '{config_path}'
-                }}
             }}
-        }}
-        """).encode("utf-8"),
-        ).decode("utf-8")
-        nxf_fuzzball_config_name = str(uuid.uuid5(NAMESPACE_CONTENT, nxf_fuzzball_config))
+            """).encode("utf-8"),
+            ).decode("utf-8")
+            nxf_fuzzball_config_name = str(uuid.uuid5(NAMESPACE_CONTENT, nxf_fuzzball_config))
 
-        # Note: the setup job uses /tmp as the cwd in order to manually create the working dir
-        #       for nextflow as part of the job. This makes sure ownership and permissions are as expected
-        # Prepare cleanup secrets list for template
-        cleanup_secrets = [
-            config_secret_id,
-            cert_secret_id,
-            user_secret_id,
-            pass_secret_id,
-        ]
-
-        setup_script = self._jinja_env.get_template("setup.sh.j2").render(
-            wd=wd,
-            home=home,
-            plugin_version=plugin_version,
-            scratch_mount=SCRATCH_MOUNT,
-            config_path=config_path,
-            ca_cert_secret=self._ca_cert_file is not None,
-            ca_cert_path=ca_cert_path,
-            api_url=self._api_config.api_url,
-            cleanup_secrets=cleanup_secrets,
-            files=files,
-            nxf_fuzzball_config_name=nxf_fuzzball_config_name,
-            config_files=config_files,
-        )
-
-        nextflow_script = self._jinja_env.get_template("nextflow.sh.j2").render(
-            mangled_nextflow_cmd_str=mangled_nextflow_cmd_str,
-            files=files,
-            nxf_fuzzball_config_name=nxf_fuzzball_config_name,
-        )
-
-        workflow: dict[str, Any] = {
-            "name": job_name,
-            "definition": {
-                "version": "v1",
-                "files": {
-                    nxf_fuzzball_config_name: nxf_fuzzball_config,
-                },
-                "volumes": volumes,
-                "jobs": {
-                    "setup": {
-                        "image": {"uri": "docker://curlimages/curl"},
-                        "files": {
-                            f"/tmp/{nxf_fuzzball_config_name}": f"file://{nxf_fuzzball_config_name}",  # noqa: S108
-                        },
-                        "mounts": mounts,
-                        "cwd": "/tmp",  # noqa: S108
-                        "script": setup_script,
-                        "env": setup_env,
-                        "policy": {"timeout": {"execute": "5m"}},
-                        "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
-                    },
-                    "nextflow": {
-                        "image": {"uri": f"docker://nextflow/nextflow:{args.nextflow_version}"},
-                        "mounts": mounts,
-                        "cwd": wd,
-                        "script": nextflow_script,
-                        "env": env + ([f"FB_CA_CERT={ca_cert_path}"] if self._ca_cert_file is not None else []),
-                        "policy": {"timeout": {"execute": args.timelimit}},
-                        "resource": {"cpu": {"cores": args.cores}, "memory": {"size": args.memory}},
-                        "requires": ["setup"],
-                    },
-                },
-            },
-        }
-
-        # optionally add egress job
-        if args.egress_source:
-            egress_script = self._jinja_env.get_template("egress.j2").render(
-                egress_source=args.egress_source,
-                egress_s3_dest=args.egress_s3_dest,
+            setup_script = self._jinja_env.get_template("setup.sh.j2").render(
+                wd=wd,
+                home=home,
+                plugin_version=plugin_version,
+                scratch_mount=SCRATCH_MOUNT,
+                config_path=config_path,
+                ca_cert_secret=self._ca_cert_file is not None,
+                ca_cert_path=ca_cert_path,
+                api_url=self._api_config.api_url,
+                cleanup_secrets=created_secret_ids,
+                files=files,
+                nxf_fuzzball_config_name=nxf_fuzzball_config_name,
+                config_files=config_files,
+                kc_login=credentials_file is not None,
+                credentials_file=credentials_file,
             )
-            workflow["definition"]["jobs"]["egress"] = {
-                "image": {"uri": "docker://amazon/aws-cli:2.34.2"},
-                "mounts": {"data": mounts["data"]},
-                "cwd": "/tmp",  # noqa: S108
-                "script": egress_script,
-                "env": [
-                    f"AWS_ACCESS_KEY_ID={args.egress_s3_aki}",
-                    f"AWS_SECRET_ACCESS_KEY={args.egress_s3_sak}",
-                    f"AWS_DEFAULT_REGION={args.egress_s3_region}",
-                ],
-                "policy": {"timeout": {"execute": args.egress_timelimit}},
-                "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
-                "requires": ["nextflow"],
+
+            nextflow_script = self._jinja_env.get_template("nextflow.sh.j2").render(
+                mangled_nextflow_cmd_str=mangled_nextflow_cmd_str,
+                files=files,
+                nxf_fuzzball_config_name=nxf_fuzzball_config_name,
+                credentials_file=credentials_file,
+                auth_url=self._api_config.auth_url if credentials_file else None,
+            )
+
+            workflow: dict[str, Any] = {
+                "name": job_name,
+                "definition": {
+                    "version": "v1",
+                    "files": {
+                        nxf_fuzzball_config_name: nxf_fuzzball_config,
+                    },
+                    "volumes": volumes,
+                    "jobs": {
+                        "setup": {
+                            "image": {"uri": "docker://curlimages/curl"},
+                            "files": {
+                                f"/tmp/{nxf_fuzzball_config_name}": f"file://{nxf_fuzzball_config_name}",  # noqa: S108
+                            },
+                            "mounts": mounts,
+                            "cwd": "/tmp",  # noqa: S108
+                            "script": setup_script,
+                            "env": setup_env,
+                            "policy": {"timeout": {"execute": "5m"}},
+                            "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
+                        },
+                        "nextflow": {
+                            "image": {"uri": f"docker://nextflow/nextflow:{args.nextflow_version}"},
+                            "mounts": mounts,
+                            "cwd": wd,
+                            "script": nextflow_script,
+                            "env": env + ([f"FB_CA_CERT={ca_cert_path}"] if self._ca_cert_file is not None else []),
+                            "policy": {"timeout": {"execute": args.timelimit}},
+                            "resource": {"cpu": {"cores": args.cores}, "memory": {"size": args.memory}},
+                            "requires": ["setup"],
+                        },
+                    },
+                },
             }
 
-        # add in the local files
-        for f in config_files:
-            workflow["definition"]["files"][f.remote_name] = f.content
-            if "files" not in workflow["definition"]["jobs"]["setup"]:
-                workflow["definition"]["jobs"]["setup"]["files"] = {}
-            workflow["definition"]["jobs"]["setup"]["files"][f"/tmp/{f.remote_name}"] = (  # noqa: S108
-                f"file://{f.remote_name}"
-            )
+            # optionally add egress job
+            if args.egress_source:
+                egress_script = self._jinja_env.get_template("egress.j2").render(
+                    egress_source=args.egress_source,
+                    egress_s3_dest=args.egress_s3_dest,
+                )
+                workflow["definition"]["jobs"]["egress"] = {
+                    "image": {"uri": "docker://amazon/aws-cli:2.34.2"},
+                    "mounts": {"data": mounts["data"]},
+                    "cwd": "/tmp",  # noqa: S108
+                    "script": egress_script,
+                    "env": [
+                        f"AWS_ACCESS_KEY_ID={args.egress_s3_aki}",
+                        f"AWS_SECRET_ACCESS_KEY={args.egress_s3_sak}",
+                        f"AWS_DEFAULT_REGION={args.egress_s3_region}",
+                    ],
+                    "policy": {"timeout": {"execute": args.egress_timelimit}},
+                    "resource": {"cpu": {"cores": 1}, "memory": {"size": "1GB"}},
+                    "requires": ["nextflow"],
+                }
 
-        if args.verbose or args.dry_run:
-            yaml.dump(workflow, sys.stdout, default_flow_style=False)
-        if args.dry_run:
-            logger.info("Dry run mode: not submitting the workflow.")
-            # Clean up secrets created during dry run
-            if config_secret_id:
-                self._request("DELETE", f"/secrets/{config_secret_id}")
-            if cert_secret_id:
-                self._request("DELETE", f"/secrets/{cert_secret_id}")
-            if user_secret_id:
-                self._request("DELETE", f"/secrets/{user_secret_id}")
-            if pass_secret_id:
-                self._request("DELETE", f"/secrets/{pass_secret_id}")
-            return
-        response = self._request("POST", "/workflows", data=workflow)
-        response_data = json.loads(response.data.decode("utf-8"))
-        logger.info(f"Submitted nextflow workflow {response_data['id']}")
+            # add in the local files
+            for f in config_files:
+                workflow["definition"]["files"][f.remote_name] = f.content
+                if "files" not in workflow["definition"]["jobs"]["setup"]:
+                    workflow["definition"]["jobs"]["setup"]["files"] = {}
+                workflow["definition"]["jobs"]["setup"]["files"][f"/tmp/{f.remote_name}"] = (  # noqa: S108
+                    f"file://{f.remote_name}"
+                )
+
+            if args.verbose or args.dry_run:
+                yaml.dump(workflow, sys.stdout, default_flow_style=False)
+            if args.dry_run:
+                logger.info("Dry run mode: not submitting the workflow.")
+                return  # finally block handles secret cleanup
+
+            response = self._request("POST", "/workflows", data=workflow)
+            created_secret_ids.clear()  # jobs handle cleanup from here
+            response_data = json.loads(response.data.decode("utf-8"))
+            logger.info(f"Submitted nextflow workflow {response_data['id']}")
+
+        finally:
+            for sid in created_secret_ids:
+                if sid:
+                    try:
+                        self._request("DELETE", f"/secrets/{sid}")
+                    except Exception:
+                        logger.warning(f"Failed to clean up secret {sid}")
 
 
 # Factory functions for easy client creation
@@ -512,6 +507,26 @@ def create_direct_login_client(
         auth_url=auth_url,
         user=user,
         password=password,
+        account_id=account_id,
+    )
+    return FuzzballClient(
+        authenticator=authenticator,
+        ca_cert_file=ca_cert_file,
+        fb_version=fb_version,
+    )
+
+
+def create_device_login_client(
+    api_url: str,
+    auth_url: str,
+    account_id: str,
+    ca_cert_file: str | None = None,
+    fb_version: str | None = None,
+) -> FuzzballClient:
+    """Create a client using device authorization grant authentication."""
+    authenticator = DeviceLoginAuthenticator(
+        api_url=api_url,
+        auth_url=auth_url,
         account_id=account_id,
     )
     return FuzzballClient(
@@ -555,6 +570,7 @@ def create_fuzzball_client(
     user: str | None = None,
     password: str | None = None,
     account_id: str | None = None,
+    device_login: bool = False,
     fb_version: str | None = None,
 ) -> FuzzballClient:
     """Factory function to create appropriate client type based on parameters.
@@ -563,11 +579,12 @@ def create_fuzzball_client(
         config_path: Path to the Fuzzball configuration file.
         context: Optional context name to use from config.
         ca_cert_file: Optional CA certificate file path.
-        api_url: API URL for direct login.
-        auth_url: Authentication URL for direct login.
-        user: Username for direct login.
+        api_url: API URL for direct or device login.
+        auth_url: Authentication URL for direct or device login.
+        user: Username for direct login (password grant).
         password: Password for direct login.
-        account_id: Account ID for direct login.
+        account_id: Account ID for direct or device login.
+        device_login: Use device authorization grant instead of password grant.
         fb_version: Manually override the expected fuzzball version.
 
     Returns:
@@ -576,6 +593,17 @@ def create_fuzzball_client(
     Raises:
         ValueError: If required parameters are missing.
     """
+    if device_login:
+        if not all([api_url, auth_url, account_id]):
+            raise ValueError("For device login, api-url, auth-url, and account-id are required")
+        assert api_url and auth_url and account_id
+        return create_device_login_client(
+            api_url=api_url,
+            auth_url=auth_url,
+            account_id=account_id,
+            ca_cert_file=ca_cert_file,
+            fb_version=fb_version,
+        )
     if user:
         if not all([api_url, auth_url, password, account_id]):
             raise ValueError("For direct login, all credentials must be provided")

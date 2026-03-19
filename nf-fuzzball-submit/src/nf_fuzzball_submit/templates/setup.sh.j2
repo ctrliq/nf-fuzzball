@@ -1,41 +1,56 @@
 #!/bin/sh
-mkdir -p {{ wd }} || exit 1
-rm -rf {{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }} \
-  && mkdir -p {{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }} {{ home }}/.config/fuzzball \
-  && unzip {{ scratch_mount }}/nf-fuzzball.zip \
-    -d {{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }} > /dev/null \
-  && echo "$FB_CONFIG_SECRET" | base64 -d > {{ config_path }} \
-  || exit 1
-
-{% if ca_cert_secret -%}
-# Setup CA certificate if provided
-if [ ! -z "$FB_CA_CERT_SECRET" ]; then
-    echo "$FB_CA_CERT_SECRET" | base64 -d > {{ ca_cert_path }} || exit 1
-fi
-
-{% endif -%}
-TOKEN="$(awk '/token:/ {print $2}' {{ config_path }})"
-CURL_CA_OPT=""
-if [ -n "$FB_CA_CERT_SECRET" ]; then
-    CURL_CA_OPT="--cacert {{ ca_cert_path }}"
-fi
 
 cleanup() {
+    # Ensure TOKEN is available and print error if it is not
+    if [ -z "$TOKEN" ]; then
+      echo "ERROR: Unable to clean up secrets. Please remove manually"
+      return
+    fi
     echo "Cleaning up secrets..."
-{% for secret_id in cleanup_secrets %}
-{% if secret_id -%}
-    curl -s $CURL_CA_OPT -X DELETE "{{ api_url }}/secrets/{{ secret_id }}" \
-      -H "Authorization: Bearer $TOKEN" > /dev/null 2>&1 &
-{% endif -%}
-{% endfor -%}
+{%- for secret_id in cleanup_secrets %}
+{%- if secret_id %}
+    curl -s $CURL_CA_OPT -X DELETE "{{ api_url }}/secrets/{{ secret_id }}" -H "Authorization: Bearer $TOKEN" > /dev/null 2>&1 &
+{%- endif %}
+{%- endfor %}
     wait
     echo "Cleanup finished."
 }
 trap cleanup EXIT
 
-mkdir -p {{ files }}
+TOKEN="$(echo "$FB_CONFIG_SECRET" | base64 -d | awk '/token:/ {print $2}')"
+
+mkdir -p "{{ wd }}" || exit 1
+rm -rf "{{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }}" \
+  && mkdir -p "{{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }}" "$(dirname "{{ config_path }}")" \
+  && unzip "{{ scratch_mount }}/nf-fuzzball.zip" \
+    -d "{{ home }}/.nextflow/plugins/nf-fuzzball-{{ plugin_version }}" > /dev/null \
+  && echo "$FB_CONFIG_SECRET" | base64 -d > "{{ config_path }}" \
+  || exit 1
+
+
+CURL_CA_OPT=""
+
+{% if ca_cert_secret -%}
+# Setup CA certificate if provided
+if [ -n "$FB_CA_CERT_SECRET" ]; then
+    mkdir -p "$(dirname "{{ ca_cert_path }}")" || exit 1
+    echo "$FB_CA_CERT_SECRET" | base64 -d > "{{ ca_cert_path }}" || exit 1
+    CURL_CA_OPT="--cacert {{ ca_cert_path }}"
+fi
+{% endif -%}
+
+{% if kc_login -%}
+# Write the refresh token for the nextflow job before doing anything else that could fail.
+mkdir -p "$(dirname "{{ credentials_file }}")" || exit 1
+printf '%s' "$FB_REFRESH_TOKEN" > "{{ credentials_file }}"
+chmod 600 "{{ credentials_file }}"
+{% endif -%}
+
+
+
+mkdir -p "{{ files }}"
 # copy the config files to the working directory
-cat /tmp/{{ nxf_fuzzball_config_name }} | base64 -d > {{ files }}/{{ nxf_fuzzball_config_name }}.config || exit 1
+cat "/tmp/{{ nxf_fuzzball_config_name }}" | base64 -d > "{{ files }}/{{ nxf_fuzzball_config_name }}.config" || exit 1
 {% for file in config_files -%}
-cat /tmp/{{ file.remote_name }} | base64 -d > {{ file.remote_path }} || exit 1
+cat "/tmp/{{ file.remote_name }}" | base64 -d > "{{ file.remote_path }}" || exit 1
 {% endfor -%}

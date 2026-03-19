@@ -20,8 +20,7 @@ class TestApiConfig:
         assert config.auth_url == "https://auth.example.com/auth/realms/test-realm"
         assert config.token == "test-token-12345"
         assert config.account_id == "test-account-id"
-        assert config.user is None
-        assert config.password is None
+        assert config.refresh_token is None
 
     def test_api_host_property(self, sample_api_config):
         """Test api_host property extraction."""

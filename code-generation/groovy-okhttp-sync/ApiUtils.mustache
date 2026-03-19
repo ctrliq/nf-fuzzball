@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
+import okhttp3.Authenticator
 import okhttp3.HttpUrl
 import okhttp3.MediaType
 import okhttp3.OkHttpClient
@@ -48,42 +49,35 @@ class ApiUtils {
             .build()
 
     /**
-     * Creates an OkHttpClient with optional custom CA certificate support.
-     * Checks for FB_CA_CERT environment variable to configure SSL with custom certificates.
+     * Applies custom CA certificate SSL configuration to a builder, if FB_CA_CERT is set.
+     * Shared by both the main API client and the token-refresh client.
      *
-     * @return Configured OkHttpClient instance
+     * @param builder OkHttpClient.Builder to configure
+     * @return the same builder, for chaining
      */
-    private static OkHttpClient createHttpClient() {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-
-        // Check for custom CA certificate
+    static OkHttpClient.Builder configureSsl(OkHttpClient.Builder builder) {
         String caCertPath = System.getenv('FB_CA_CERT')
         if (caCertPath) {
             try {
-                // Load the custom CA certificate
                 File caCertFile = new File(caCertPath)
                 if (caCertFile.exists()) {
                     staticLog.debug("Loading custom CA certificate from: ${caCertPath}")
 
                     CertificateFactory cf = CertificateFactory.getInstance('X.509')
-                    X509Certificate caCert = (X509Certificate) cf.generateCertificate(
-                        new FileInputStream(caCertFile)
-                    )
+                    X509Certificate caCert
+                    new FileInputStream(caCertFile).withCloseable { fis ->
+                        caCert = (X509Certificate) cf.generateCertificate(fis)
+                    }
 
-                    // Create KeyStore with the custom CA
                     KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
                     keyStore.load(null, null)
                     keyStore.setCertificateEntry('ca', caCert)
 
-                    // Create TrustManager
                     TrustManagerFactory tmf = TrustManagerFactory.getInstance(
                         TrustManagerFactory.getDefaultAlgorithm()
                     )
                     tmf.init(keyStore)
 
-                    // Configure SSL context
                     SSLContext sslContext = SSLContext.getInstance('TLS')
                     sslContext.init(null, tmf.getTrustManagers(), null)
 
@@ -99,16 +93,37 @@ class ApiUtils {
                 // Continue with default SSL settings
             }
         }
-
-        return builder.build()
+        return builder
     }
 
-    static final OkHttpClient CLIENT = createHttpClient()
+    /**
+     * Creates an OkHttpClient with the given authenticator and optional custom CA certificate.
+     *
+     * @param authenticator Authenticator to register (use Authenticator.NONE for no-auth clients)
+     * @return Configured OkHttpClient instance
+     */
+    private static OkHttpClient createHttpClient(Authenticator authenticator) {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .authenticator(authenticator)
+        return configureSsl(builder).build()
+    }
 
     final ApiConfig config
+    final OkHttpClient client
 
-    ApiUtils(ApiConfig config){
+    ApiUtils(ApiConfig config, Authenticator authenticator = Authenticator.NONE) {
         this.config = config
+        this.client = createHttpClient(authenticator)
+    }
+
+    /**
+     * Creates an SSL-configured OkHttpClient with no authenticator, suitable for use as
+     * the refresh client passed to FuzzballTokenRefresher.
+     */
+    static OkHttpClient createRefreshClient() {
+        return createHttpClient(Authenticator.NONE)
     }
 
     /**
@@ -162,7 +177,7 @@ class ApiUtils {
         log.debug(request.toString().replaceAll(/Authorization:Bearer\s+[^ \t\n\x0B\f\r,\]]+/, 'Authorization:Bearer <REDACTED>'))
         Response response
         try {
-            response = this.CLIENT.newCall(request).execute()
+            response = this.client.newCall(request).execute()
         } catch (IOException e) {
             response?.body()?.close()
             throw e

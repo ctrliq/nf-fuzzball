@@ -10,8 +10,8 @@ _No changelog was maintained before v0.2.0._
 
 ### Added
 
-- **Renewable tokens**. The `nf-fuzzball-submig` submission script can now renew Fuzzball tokens
-  when using direct or device based authentication to allow long running nextflow pipelines.
+- **Renewable tokens**. The `nf-fuzzball-submit` submission script can now renew Fuzzball tokens
+  when using direct or device-based authentication to allow long-running Nextflow pipelines.
 - **Device flow login**. The `nf-fuzzball-submit` submission script can now use `--device` to use
   the interactive, browser based, Fuzzball login flow.
 - **Optional S3 egress for pipeline output**. A new `--egress-*` family of options allows pipeline
@@ -21,7 +21,7 @@ _No changelog was maintained before v0.2.0._
   memory (`--memory`) are now configurable via CLI options.
 - **`--fb-version` override**. The Fuzzball API version used by the submission script can now be
   overridden via `--fb-version`, useful when targeting non-default Fuzzball versions.
-- **Fuzzball v3.1 and v3.2 support**. The nextflow groovy plugin now supports Fuzzball v3.1 and v3.2
+- **Fuzzball v3.1 and v3.2 support**. The Nextflow Groovy plugin now supports Fuzzball v3.1 and v3.2.
 - **Submission script packaged as an installable Python package**. The submission script has been
   refactored from a single file into an installable `nf-fuzzball-submit` package with a proper CLI
   entry point, enabling `uv tool install` / `pip install` workflows.

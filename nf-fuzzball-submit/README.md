@@ -74,7 +74,7 @@ nf-fuzzball-submit -- \
 
 ### 2. Direct Login Authentication
 
-Authenticate directly using username/password. This method is used if a username is specified
+Authenticate directly using username/password. This method is used if a username is specified.
 via `--user` or `$FUZZBALL_USER`.
 
 ```sh
@@ -90,11 +90,11 @@ nf-fuzzball-submit -- nextflow run -profile fuzzball hello
 ```
 
 If `FUZZBALL_API_URL`, `FUZZBALL_AUTH_URL`, and `FUZZBALL_ACCOUNT_ID` or their corresponding
-CLI options are not provided and a fuzzball configuration file exists the values are parsed
-from that file. In that case the minimal command would be
+CLI options are not provided and a fuzzball configuration file exists, the values are parsed
+from that file. In that case, the minimal command would be:
 
 ```sh
-nf-fuzzball-submit --user user@email.com -- nextflow run -profile fuzzball hello
+nf-fuzzball-submit --user user@example.com -- nextflow run -profile fuzzball hello
 ```
 
 ### 3. Device Flow Authentication
@@ -176,8 +176,9 @@ Options for optional S3 egress of pipeline results:
 | `--egress-s3-region` | `$FUZZBALL_EGRESS_S3_REGION` / `$AWS_DEFAULT_REGION` | AWS region where the bucket is located                     |
 | `--egress-timelimit` | `4h`                                                 | Timelimit for the egress job                               |
 
-`--egress-source` and `--egress-s3-dest` must both be specified together, along with all three
-credential options (`--egress-s3-aki`, `--egress-s3-sak`, `--egress-s3-region`).
+`--egress-source` and `--egress-s3-dest` must both be specified together, and the three credential
+options (`--egress-s3-aki`, `--egress-s3-sak`, `--egress-s3-region`) must be provided either via
+CLI flags or their corresponding environment variables.
 
 Options for development:
 

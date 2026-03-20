@@ -12,8 +12,8 @@ _No changelog was maintained before v0.2.0._
 
 - **Renewable tokens**. The `nf-fuzzball-submit` submission script can now renew Fuzzball tokens
   when using direct or device-based authentication to allow long-running Nextflow pipelines.
-- **Device flow login**. The `nf-fuzzball-submit` submission script can now use `--device` to use
-  the interactive, browser based, Fuzzball login flow.
+- **Device flow login**. The `nf-fuzzball-submit` submission script can now use `--device` for
+  the interactive, browser-based Fuzzball login flow.
 - **Optional S3 egress for pipeline output**. A new `--egress-*` family of options allows pipeline
   output to be automatically copied to an S3 bucket at the end of a run. Environment variables can be
   used as defaults for egress options.

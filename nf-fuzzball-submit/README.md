@@ -82,7 +82,6 @@ FUZZBALL_AUTH_URL="https://auth.example.com/auth/realms/fuzzball"
 FUZZBALL_USER="user@example.com"
 FUZZBALL_ACCOUNT_ID="account-id"
 read -rs FUZZBALL_PASSWORD  ## securely read password without echoing to the terminal
-***********
 export FUZZBALL_API_URL FUZZBALL_AUTH_URL FUZZBALL_USER FUZZBALL_ACCOUNT_ID FUZZBALL_PASSWORD
 
 nf-fuzzball-submit -- nextflow run -profile fuzzball hello
@@ -206,7 +205,7 @@ There are two ways to run a development version of the submission tool:
    bucket or a location accessible via https from the Fuzzball cluster (see main
    Readme). You can then use the development version by specifying `--plugin-base-uri`
    and (of S3) `--s3-secret`.
-2. You can specify a release version of the actual plugin with `--nf-fuzzball-release`
+2. You can specify a release version of the actual plugin with `--nf-fuzzball-version`
    which will obtain the plugin from this repository.
 
 ### Code formatting

@@ -74,7 +74,8 @@ nf-fuzzball-submit -- \
 
 ### 2. Direct Login Authentication
 
-Authenticate directly using username/password. This method is used if a username is specified.
+Authenticate directly using username/password. This method is used if a username is specified
+via `--user` or `$FUZZBALL_USER`.
 
 ```sh
 FUZZBALL_API_URL="https://api.example.com"
@@ -88,6 +89,37 @@ export FUZZBALL_API_URL FUZZBALL_AUTH_URL FUZZBALL_USER FUZZBALL_ACCOUNT_ID FUZZ
 nf-fuzzball-submit -- nextflow run -profile fuzzball hello
 ```
 
+If `FUZZBALL_API_URL`, `FUZZBALL_AUTH_URL`, and `FUZZBALL_ACCOUNT_ID` or their corresponding
+CLI options are not provided and a fuzzball configuration file exists the values are parsed
+from that file. In that case the minimal command would be
+
+```sh
+nf-fuzzball-submit --user user@email.com -- nextflow run -profile fuzzball hello
+```
+
+### 3. Device Flow Authentication
+
+Authenticate interactively via the browser. This method is used if `--device` is specified.
+The tool prints a URL and a code; open the URL in a browser, enter the code, and the
+submission continues once authorization is confirmed.
+
+```sh
+nf-fuzzball-submit \
+    --api-url "https://api.example.com" \
+    --auth-url "https://auth.example.com/auth/realms/fuzzball" \
+    --account-id "account-id" \
+    --device \
+    -- nextflow run -profile fuzzball hello
+```
+
+If `FUZZBALL_API_URL`, `FUZZBALL_AUTH_URL`, and `FUZZBALL_ACCOUNT_ID` or their corresponding
+CLI options are not provided and a fuzzball configuration file exists the values are parsed
+from that file. In that case the minimal command would be
+
+```sh
+nf-fuzzball-submit --device -- nextflow run -profile fuzzball hello
+```
+
 ## Command Line Options
 
 ### Arguments
@@ -96,42 +128,65 @@ The nextflow command to be executed is specified after a `--` following the opti
 
 General options
 
-| Argument                | Default                     | Description                                                         |
-|-------------------------|-----------------------------|---------------------------------------------------------------------|
-| `-v`, `--verbose`       | False                       | Dump the workflow before submitting and add debug logging           |
-| `-n`, `--dry-run`       | False                       | Don't submit the workflow, just print it                            |
-| `--job-name`            | (UUID from command)         | Name of the Fuzzball workflow                                       |
-| `--nextflow-work-base`  | `/data/nextflow/executions` | Base directory for Nextflow execution paths                         |
-| `--nf-fuzzball-version` | `0.2.0`                     | nf-fuzzball plugin version                                          |
-| `--nextflow-version`    | `25.05.0-edge`              | Nextflow version to use in the Fuzzball job                         |
-| `--timelimit`           | `8h`                        | Timelimit for the pipeline job                                      |
-| `--scratch-volume`      | `volume://user/ephemeral`   | Ephemeral scratch volume reference                                  |
-| `--data-volume`         | `volume://user/persistent`  | Persistent data volume reference                                    |
-| `--nf-core`             | False                       | Use nf-core conventions                                             |
-| `--queue-size`          | 20                          | Queue size for the Fuzzball executor                                |
-| `--plugin-base-uri`     | GitHub releases             | Base URI for the nf-fuzzball plugin                                 |
-| `--s3-secret`           | (none)                      | Fuzzball S3 secret for plugin download if using S3 URI              |
-| `--ca-cert`             | (none)                      | CA certificate for Fuzzball clusters with a self-signed certificate |
+| Argument               | Default                     | Description                                                         |
+|------------------------|-----------------------------|---------------------------------------------------------------------|
+| `-v`, `--verbose`      | False                       | Enable verbose logging                                              |
+| `-n`, `--dry-run`      | False                       | Print the workflow without submitting                               |
+| `--job-name`           | (UUID from command)         | Name of the Fuzzball workflow                                       |
+| `--nextflow-work-base` | `/data/nextflow/executions` | Base directory for Nextflow execution paths                         |
+| `--nextflow-version`   | `25.05.0-edge`              | Nextflow version to use in the Fuzzball job                         |
+| `--timelimit`          | `8h`                        | Timelimit for the pipeline job                                      |
+| `--memory`             | `4GB`                       | Memory allocated for the Nextflow controller job                    |
+| `--cores`              | `1`                         | Cores allocated for the Nextflow controller job                     |
+| `--scratch-volume`     | `volume://user/ephemeral`   | Ephemeral scratch volume reference                                  |
+| `--data-volume`        | `volume://user/persistent`  | Persistent data volume reference                                    |
+| `--nf-core`            | False                       | Use nf-core conventions                                             |
+| `--queue-size`         | `20`                        | Queue size for the Fuzzball executor                                |
+| `--ca-cert`            | (none)                      | CA certificate for Fuzzball clusters with a self-signed certificate |
 
-Options for authenticting via the Fuzzball config file:
+Options for authenticating via the Fuzzball config file:
 
 | Argument            | Default                          | Description                                          |
 |---------------------|----------------------------------|------------------------------------------------------|
 | `-c`, `--context`   | (active context in config)       | Name of the Fuzzball context to use from config.yaml |
 | `--fuzzball-config` | `~/.config/fuzzball/config.yaml` | Path to the Fuzzball configuration file              |
 
-Options for autheniting via direct login:
+Options for authenticating via direct or device login:
 
-| Argument       | Default              | Description                             |
-|----------------|----------------------|-----------------------------------------|
-| `--api-url`    | $FUZZBALL_API_URL    | API URL of Fuzzball cluster []          |
-| `--auth-url`   | $FUZZBALL_AUTH_URL   | AUTH URL of Fuzzball cluster []         |
-| `--user`       | $FUZZBALL_USER       | Username/email for direct login []      |
-| `--password`   | $FUZZBALL_PASSWORD   | Prompt for password for direct login [] |
-| `--account-id` | $FUZZBALL_ACCOUNT_ID | Fuzzball account ID for direct login [] |
+| Argument       | Default                | Description                                                            |
+|----------------|------------------------|------------------------------------------------------------------------|
+| `--api-url`    | `$FUZZBALL_API_URL`    | API URL of Fuzzball cluster                                            |
+| `--auth-url`   | `$FUZZBALL_AUTH_URL`   | Auth URL of Fuzzball cluster                                           |
+| `--user`       | `$FUZZBALL_USER`       | Username/email for direct login                                        |
+| `--password`   | (flag)                 | Prompt for password interactively; otherwise uses `$FUZZBALL_PASSWORD` |
+| `--device`     | False                  | Use device authorization grant (browser-based login)                   |
+| `--account-id` | `$FUZZBALL_ACCOUNT_ID` | Fuzzball account ID                                                    |
 
-If a user has been specified with `--user` or by setting `$FUZZBALL_USER` it is
-assumed that direct login authentication should be used.
+If `--user` or `$FUZZBALL_USER` is set, direct login is used. If `--device` is set, device flow
+is used (and `--user`/`--password` are ignored).
+
+Options for optional S3 egress of pipeline results:
+
+| Argument             | Default                                              | Description                                                |
+|----------------------|------------------------------------------------------|------------------------------------------------------------|
+| `--egress-source`    | (none)                                               | Path under `/data` to copy to S3 after the run             |
+| `--egress-s3-dest`   | (none)                                               | S3 URI to copy results to (e.g., `s3://my-bucket/results`) |
+| `--egress-s3-aki`    | `$FUZZBALL_EGRESS_S3_AKI`                            | Fuzzball secret containing the AWS access key ID           |
+| `--egress-s3-sak`    | `$FUZZBALL_EGRESS_S3_SAK`                            | Fuzzball secret containing the AWS secret access key       |
+| `--egress-s3-region` | `$FUZZBALL_EGRESS_S3_REGION` / `$AWS_DEFAULT_REGION` | AWS region where the bucket is located                     |
+| `--egress-timelimit` | `4h`                                                 | Timelimit for the egress job                               |
+
+`--egress-source` and `--egress-s3-dest` must both be specified together, along with all three
+credential options (`--egress-s3-aki`, `--egress-s3-sak`, `--egress-s3-region`).
+
+Options for development:
+
+| Argument                | Default         | Description                                             |
+|-------------------------|-----------------|---------------------------------------------------------|
+| `--nf-fuzzball-version` | `0.2.0`         | nf-fuzzball plugin version                              |
+| `--plugin-base-uri`     | GitHub releases | Base URI for the nf-fuzzball plugin                     |
+| `--s3-secret`           | (none)          | Fuzzball S3 secret for plugin download if using S3 URI  |
+| `--fb-version`          | (auto-detected) | Override the Fuzzball API version (e.g., `v3.2`)        |
 
 ## Development
 

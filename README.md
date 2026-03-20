@@ -7,26 +7,27 @@ the [nf-core](https://nf-co.re) on Fuzzball.
 
 ## Overview
 
-A submission script `submit/submit_nextflow.py` is provided which submits a
-parent workflow which starts the Nextflow workflow in a Fuzzball deployment. The
-parent workflow performs the following tasks to setup the environment to submit
-child Nextflow jobs to Fuzzball:
+The `nf-fuzzball-submit` tool is provided to submit a parent workflow that
+starts the Nextflow workflow in a Fuzzball deployment. The parent workflow
+performs the following tasks to set up the environment to submit child Nextflow
+jobs to Fuzzball:
 
-1. Sets up the Fuzzball executor plugin in the parent workflow though Fuzzball
+1. Sets up the Fuzzball executor plugin in the parent workflow through Fuzzball
 file ingress and the `setup` job.
-2. Packages up your local active Fuzzball context and valid token as a Fuzzball
-secret and sets up the parent workflow to use it. This task is also done in the
-`setup` job of the parent workflow that is submited.
+2. Authenticates with Fuzzball (via config file, direct login, or device flow)
+and passes credentials as a Fuzzball secret so the plugin can renew tokens
+during long-running pipelines. This is handled in the `setup` job of the
+submitted parent workflow.
 
 When the Nextflow workflow is executed within Fuzzball using the Fuzzball
 executor, child jobs are translated into Fuzzball workflows (Fuzzfiles) and
-submited to your Fuzzball deployment. If you are running on-premise, jobs should
+submitted to your Fuzzball deployment. If you are running on-premise, jobs should
 be scheduled on compute resources running Fuzzball Substrate that have available
 resources. If you are running in the cloud, instances will be provisioned to run
 Nextflow child jobs.
 
 For more information on submission script usage, please see the
-[submission script usage documentation](submit/README.md).
+[submission script usage documentation](nf-fuzzball-submit/README.md).
 
 ## Building and using development versions of the nextflow plugin
 

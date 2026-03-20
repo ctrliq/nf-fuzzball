@@ -193,7 +193,7 @@ class FuzzballClient:
             Base64 encoded config string safe for transport. Empty string if no cert was passed
 
         Raises:
-            IOError: If the certificate file cannot be read.
+            OSError: If the certificate file cannot be read.
         """
         if not self._ca_cert_file:
             return ""
@@ -248,7 +248,7 @@ class FuzzballClient:
 
         Raises:
             urllib3.exceptions.HTTPError: If any API request fails.
-            IOError: If any local files cannot be read or processed.
+            OSError: If any local files cannot be read or processed.
             Exception: If there is any other (unspecific) error.
         """
         nextflow_cmd_str = shlex.join(args.nextflow_cmd)

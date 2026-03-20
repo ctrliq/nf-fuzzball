@@ -2,7 +2,7 @@
 
 import pathlib
 import tempfile
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 import urllib3
@@ -197,6 +197,73 @@ class TestFindAndImportLocalFiles:
 
             assert mangled_cmd == cmd  # unchanged
             assert local_files == []
+
+    def test_single_file_exceeds_size_limit(self, temp_file_content):
+        """Test that a single file exceeding the size limit raises ValueError."""
+        temp_path, _ = temp_file_content
+        cmd = ["nextflow", "run", "-c", str(temp_path)]
+        mock_stat = MagicMock()
+        mock_stat.st_size = 1048577  # 1MB + 1
+        with patch.object(pathlib.Path, "stat", return_value=mock_stat):
+            with pytest.raises(ValueError, match="larger than limit"):
+                find_and_import_local_files(cmd)
+
+    def test_comma_separated_file_exceeds_size_limit(self, temp_file_content):
+        """Test that a comma-separated file exceeding the size limit raises ValueError."""
+        temp_path, _ = temp_file_content
+        cmd = ["nextflow", "run", f"hello,{temp_path}"]
+        mock_stat = MagicMock()
+        mock_stat.st_size = 1048577  # 1MB + 1
+        with patch.object(pathlib.Path, "stat", return_value=mock_stat):
+            with pytest.raises(ValueError, match="larger than limit"):
+                find_and_import_local_files(cmd)
+
+    def test_total_size_exceeds_limit(self):
+        """Test that files whose combined size exceeds the total limit raises ValueError."""
+        with (
+            tempfile.NamedTemporaryFile(delete=False) as f1,
+            tempfile.NamedTemporaryFile(delete=False) as f2,
+            tempfile.NamedTemporaryFile(delete=False) as f3,
+            tempfile.NamedTemporaryFile(delete=False) as f4,
+            tempfile.NamedTemporaryFile(delete=False) as f5,
+        ):
+            for f in (f1, f2, f3, f4, f5):
+                f.write(b"x")
+            paths = [pathlib.Path(f.name) for f in (f1, f2, f3, f4, f5)]
+        try:
+            cmd = ["nextflow", "run"] + [str(p) for p in paths]
+            # Each file reports 1MB; 5 files = 5MB > 4MB total limit
+            mock_stat = MagicMock()
+            mock_stat.st_size = 1048576
+            with patch.object(pathlib.Path, "stat", return_value=mock_stat):
+                with pytest.raises(ValueError, match="exceeds limit"):
+                    find_and_import_local_files(cmd)
+        finally:
+            for p in paths:
+                p.unlink(missing_ok=True)
+
+    def test_total_size_exceeds_limit_comma_separated(self):
+        """Test total size limit with comma-separated files."""
+        with (
+            tempfile.NamedTemporaryFile(delete=False) as f1,
+            tempfile.NamedTemporaryFile(delete=False) as f2,
+            tempfile.NamedTemporaryFile(delete=False) as f3,
+            tempfile.NamedTemporaryFile(delete=False) as f4,
+            tempfile.NamedTemporaryFile(delete=False) as f5,
+        ):
+            for f in (f1, f2, f3, f4, f5):
+                f.write(b"x")
+            paths = [pathlib.Path(f.name) for f in (f1, f2, f3, f4, f5)]
+        try:
+            cmd = ["nextflow", "run", ",".join(str(p) for p in paths)]
+            mock_stat = MagicMock()
+            mock_stat.st_size = 1048576
+            with patch.object(pathlib.Path, "stat", return_value=mock_stat):
+                with pytest.raises(ValueError, match="exceeds limit"):
+                    find_and_import_local_files(cmd)
+        finally:
+            for p in paths:
+                p.unlink(missing_ok=True)
 
 
 class TestDie:

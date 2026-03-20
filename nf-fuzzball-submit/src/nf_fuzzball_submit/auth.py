@@ -244,7 +244,7 @@ class ConfigFileAuthenticator(FuzzballAuthenticator):
             The parsed configuration as a dictionary.
 
         Raises:
-            IOError: If the file cannot be read.
+            OSError: If the file cannot be read.
             ValueError: If the file cannot be parsed or has invalid format.
         """
         try:

@@ -74,8 +74,7 @@ nf-fuzzball-submit -- \
 
 ### 2. Direct Login Authentication
 
-Authenticate directly using username/password. This method is used if a username is specified.
-via `--user` or `$FUZZBALL_USER`.
+Authenticate directly using username/password. This method is used if a username is specified via `--user` or `$FUZZBALL_USER`.
 
 ```sh
 FUZZBALL_API_URL="https://api.example.com"
@@ -113,8 +112,8 @@ nf-fuzzball-submit \
 ```
 
 If `FUZZBALL_API_URL`, `FUZZBALL_AUTH_URL`, and `FUZZBALL_ACCOUNT_ID` or their corresponding
-CLI options are not provided and a fuzzball configuration file exists the values are parsed
-from that file. In that case the minimal command would be
+CLI options are not provided and a fuzzball configuration file exists, the values are parsed
+from that file. In that case the minimal command would be:
 
 ```sh
 nf-fuzzball-submit --device -- nextflow run -profile fuzzball hello

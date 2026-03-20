@@ -249,6 +249,7 @@ class FuzzballClient:
         Raises:
             urllib3.exceptions.HTTPError: If any API request fails.
             OSError: If any local files cannot be read or processed.
+            ValueError: If importing local files fails due to exceeding configured
             Exception: If there is any other (unspecific) error.
         """
         nextflow_cmd_str = shlex.join(args.nextflow_cmd)

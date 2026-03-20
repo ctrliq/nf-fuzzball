@@ -1,5 +1,6 @@
 """Tests for nf_fuzzball_submit.utils module."""
 
+import os
 import pathlib
 import tempfile
 from unittest.mock import MagicMock, Mock, patch
@@ -204,7 +205,8 @@ class TestFindAndImportLocalFiles:
         cmd = ["nextflow", "run", "-c", str(temp_path)]
         mock_stat = MagicMock()
         mock_stat.st_size = 1048577  # 1MB + 1
-        with patch.object(pathlib.Path, "stat", return_value=mock_stat):
+        with patch.object(pathlib.Path, "stat", return_value=mock_stat), \
+             patch.object(pathlib.Path, "is_file", new=lambda self: os.path.isfile(self)):
             with pytest.raises(ValueError, match="larger than limit"):
                 find_and_import_local_files(cmd)
 
@@ -214,7 +216,8 @@ class TestFindAndImportLocalFiles:
         cmd = ["nextflow", "run", f"hello,{temp_path}"]
         mock_stat = MagicMock()
         mock_stat.st_size = 1048577  # 1MB + 1
-        with patch.object(pathlib.Path, "stat", return_value=mock_stat):
+        with patch.object(pathlib.Path, "stat", return_value=mock_stat), \
+             patch.object(pathlib.Path, "is_file", new=lambda self: os.path.isfile(self)):
             with pytest.raises(ValueError, match="larger than limit"):
                 find_and_import_local_files(cmd)
 
@@ -235,7 +238,8 @@ class TestFindAndImportLocalFiles:
             # Each file reports 1MB; 5 files = 5MB > 4MB total limit
             mock_stat = MagicMock()
             mock_stat.st_size = 1048576
-            with patch.object(pathlib.Path, "stat", return_value=mock_stat):
+            with patch.object(pathlib.Path, "stat", return_value=mock_stat), \
+                 patch.object(pathlib.Path, "is_file", new=lambda self: os.path.isfile(self)):
                 with pytest.raises(ValueError, match="exceeds limit"):
                     find_and_import_local_files(cmd)
         finally:
@@ -258,7 +262,8 @@ class TestFindAndImportLocalFiles:
             cmd = ["nextflow", "run", ",".join(str(p) for p in paths)]
             mock_stat = MagicMock()
             mock_stat.st_size = 1048576
-            with patch.object(pathlib.Path, "stat", return_value=mock_stat):
+            with patch.object(pathlib.Path, "stat", return_value=mock_stat), \
+                 patch.object(pathlib.Path, "is_file", new=lambda self: os.path.isfile(self)):
                 with pytest.raises(ValueError, match="exceeds limit"):
                     find_and_import_local_files(cmd)
         finally:

@@ -93,9 +93,12 @@ def find_and_import_local_files(
         - A list of LocalFile objects representing the local files found.
 
     Raises:
-        IOError: If a local file cannot be read.
-        Exception: If there is an error processing a local file.
+        OSError: If a local file cannot be read.
+        ValueError: If local files are too large to be included in the workflow
     """
+    max_single_file_size = 1048576
+    max_total_file_size = 4194304
+    total_size = 0
     mangled_command = []
     local_files = []
     for arg in nextflow_cmd:
@@ -104,7 +107,14 @@ def find_and_import_local_files(
             cs_str = []
             for sub_arg in arg.split(","):
                 p = pathlib.Path(sub_arg.strip())
-                if p.is_file() and p.exists():
+                if p.is_file():
+                    sz = p.stat().st_size
+                    if sz > max_single_file_size:
+                        raise ValueError(f"Size of '{p}' ({sz}) is larger than limit of {max_single_file_size}b")
+                    if (total_size := total_size + sz) > max_total_file_size:
+                        raise ValueError(
+                            f"Size of local files to include in workflow exceeds limit of {max_total_file_size}b"
+                        )
                     local_file = LocalFile(p, remote_prefix)
                     local_files.append(local_file)
                     cs_str.append(str(local_file.remote_path))
@@ -116,7 +126,12 @@ def find_and_import_local_files(
             mangled_command.append(",".join(cs_str))
             continue
         p = pathlib.Path(arg.strip())
-        if p.is_file() and p.exists():
+        if p.is_file():
+            sz = p.stat().st_size
+            if sz > max_single_file_size:
+                raise ValueError(f"Size of '{p}' ({sz}) is larger than limit of {max_single_file_size}b")
+            if (total_size := total_size + sz) > max_total_file_size:
+                raise ValueError(f"Size of local files to include in workflow exceeds limit of {max_total_file_size}b")
             local_file = LocalFile(p, remote_prefix)
             local_files.append(local_file)
             mangled_command.append(str(local_file.remote_path))

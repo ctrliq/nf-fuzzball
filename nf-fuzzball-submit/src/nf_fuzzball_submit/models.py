@@ -87,8 +87,7 @@ class LocalFile:
             remote_prefix: Optional prefix for the remote file name.
 
         Raises:
-            IOError: If the file cannot be read.
-            Exception: If there is an error processing the file.
+            OSError: If the file cannot be read.
         """
         self.local_path = local_path
         try:
@@ -99,5 +98,3 @@ class LocalFile:
             self.remote_path: str = f"{remote_prefix.rstrip('/')}/{self.remote_name}"
         except OSError as e:
             raise OSError(f"Failed to read file {local_path}") from e
-        except Exception as e:
-            raise Exception(f"Error processing file {local_path}") from e

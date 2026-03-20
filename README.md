@@ -13,11 +13,11 @@ performs the following tasks to set up the environment to submit child Nextflow
 jobs to Fuzzball:
 
 1. Sets up the Fuzzball executor plugin in the parent workflow through Fuzzball
-file ingress and the `setup` job.
+   file ingress and the `setup` job.
 2. Authenticates with Fuzzball (via config file, direct login, or device flow)
-and passes credentials as a Fuzzball secret so the plugin can renew tokens
-during long-running pipelines. This is handled in the `setup` job of the
-submitted parent workflow.
+   and passes credentials as a Fuzzball secret so the plugin can renew tokens
+   during long-running pipelines. This is handled in the `setup` job of the
+   submitted parent workflow.
 
 When the Nextflow workflow is executed within Fuzzball using the Fuzzball
 executor, child jobs are translated into Fuzzball workflows (Fuzzfiles) and

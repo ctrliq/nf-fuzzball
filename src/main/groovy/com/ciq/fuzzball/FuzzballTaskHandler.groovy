@@ -175,7 +175,7 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
             fuzzballWfService.stopWorkflow(wfId)
             log.trace("Killed workflow with id: ${wfId}")
         } catch (Exception e) {
-            log.warn("[Fuzzball Executor] Failed to stop workflow ${wfId} for task: ${task.name} | ${e.message}")
+            log.warn("[Fuzzball Executor] Failed to stop workflow ${wfId} for task: ${task.name}", e)
         }
     }
 

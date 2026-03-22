@@ -27,7 +27,7 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
     private final Path wrapperFile
     private final Path outputFile
     private final Path errorFile
-    private volatile String wfId
+    @groovy.transform.PackageScope volatile String wfId
     private boolean destroyed
     private FuzzballExecutor executor
     private WorkflowServiceApi fuzzballWfService
@@ -171,8 +171,12 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
     @Override
     protected void killTask() {
         if( !wfId ) return
-        fuzzballWfService.stopWorkflow(wfId)
-        log.trace("Killing workflow with id: ${wfId}")
+        try {
+            fuzzballWfService.stopWorkflow(wfId)
+            log.trace("Killed workflow with id: ${wfId}")
+        } catch (Exception e) {
+            log.warn("[Fuzzball Executor] Failed to stop workflow ${wfId} for task: ${task.name} | ${e.message}")
+        }
     }
 
     /**

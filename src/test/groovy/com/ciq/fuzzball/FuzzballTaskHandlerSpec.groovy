@@ -20,16 +20,15 @@ class FuzzballTaskHandlerSpec extends Specification {
         }
         def executor = Mock(FuzzballExecutor) {
             session >> Mock(Session)
-            fuzzballWfService >> wfService
         }
-        return new FuzzballTaskHandler(task, executor)
+        def handler = new FuzzballTaskHandler(task, executor)
+        handler.fuzzballWfService = wfService
+        return handler
     }
 
     def 'killTask swallows exception when stopWorkflow fails'() {
         given:
-        def wfService = Mock(WorkflowServiceApi) {
-            stopWorkflow(_) >> { throw new IOException('simulated API failure') }
-        }
+        def wfService = Mock(WorkflowServiceApi)
         def handler = makeHandler(wfService)
         handler.wfId = 'test-workflow-id'
 
@@ -37,6 +36,7 @@ class FuzzballTaskHandlerSpec extends Specification {
         handler.killTask()
 
         then:
+        1 * wfService.stopWorkflow('test-workflow-id') >> { throw new IOException('simulated API failure') }
         noExceptionThrown()
     }
 

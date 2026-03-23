@@ -30,7 +30,7 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
     @groovy.transform.PackageScope volatile String wfId
     private boolean destroyed
     private FuzzballExecutor executor
-    private WorkflowServiceApi fuzzballWfService
+    @groovy.transform.PackageScope WorkflowServiceApi fuzzballWfService
     private String wfDefinitionYaml
     private Session session
 

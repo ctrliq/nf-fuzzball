@@ -164,7 +164,7 @@ class ApiUtils {
                         : new JsonBuilder(bodyParams, JSON_GEN).toString()
             requestBody = RequestBody.create(json, MediaType.parse(contentType ?: 'application/json'))
         } else if (method?.toUpperCase() in ['POST', 'PUT', 'PATCH']) {
-            requestBody = RequestBody.create(new byte[0], MediaType.parse(contentType ?: 'application/json'))
+            requestBody = RequestBody.create('{}', MediaType.parse(contentType ?: 'application/json'))
         }
 
         Request.Builder requestBuilder = new Request.Builder()

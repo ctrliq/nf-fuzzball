@@ -128,6 +128,8 @@ General options
 
 | Argument               | Default                     | Description                                                         |
 |------------------------|-----------------------------|---------------------------------------------------------------------|
+| `-h`, `--help`         | n/a                         | show this help message and exit                                     |
+| `--version`            | n/a                         | show program's version number and exit                              |
 | `-v`, `--verbose`      | False                       | Enable verbose logging                                              |
 | `-n`, `--dry-run`      | False                       | Print the workflow without submitting                               |
 | `--job-name`           | (UUID from command)         | Name of the Fuzzball workflow                                       |

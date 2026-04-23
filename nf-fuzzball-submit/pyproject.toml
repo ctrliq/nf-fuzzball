@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "nf-fuzzball-submit"
-version = "0.2.0"
+version = "0.3.0"
 description = "Submit Nextflow pipelines to Fuzzball clusters"
 authors = [{name = "CIQ", email = "info@ciq.com"}]
 license = {text = "Apache-2.0"}

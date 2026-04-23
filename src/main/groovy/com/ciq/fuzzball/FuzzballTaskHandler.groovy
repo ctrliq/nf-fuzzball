@@ -16,7 +16,12 @@ import nextflow.exception.ProcessException
 import java.nio.file.Path
 
 import com.ciq.fuzzball.api.WorkflowServiceApi
-import com.ciq.fuzzball.model.*
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionJob as WorkflowDefinitionJob
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinition as WorkflowDefinition
+import com.ciq.fuzzball.model.FuzzballApiV3StartWorkflowRequest as StartWorkflowRequest
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowIDResponse as WorkflowIDResponse
+import com.ciq.fuzzball.model.FuzzballApiV3GetWorkflowStatusResponse as GetWorkflowStatusResponse
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowStatus as WorkflowStatus
 
 @Slf4j
 @CompileStatic

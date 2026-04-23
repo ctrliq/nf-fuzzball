@@ -5,7 +5,7 @@ import nextflow.config.schema.ConfigScope
 import nextflow.config.schema.ScopeName
 import nextflow.script.dsl.Description
 
-import com.ciq.fuzzball.model.Volume
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionVolume as Volume
 
 @ScopeName('fuzzball')
 @Description('''

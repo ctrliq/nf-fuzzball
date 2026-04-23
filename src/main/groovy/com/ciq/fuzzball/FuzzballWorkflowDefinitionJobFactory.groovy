@@ -4,13 +4,13 @@ package com.ciq.fuzzball
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 
-import com.ciq.fuzzball.model.Policy
-import com.ciq.fuzzball.model.Timeout
-import com.ciq.fuzzball.model.URI
-import com.ciq.fuzzball.model.WorkflowDefinitionJob
-import com.ciq.fuzzball.model.WorkflowDefinitionJobResource
-import com.ciq.fuzzball.model.WorkflowDefinitionJobResourceCpu
-import com.ciq.fuzzball.model.WorkflowDefinitionJobResourceMemory
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionPolicy as Policy
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionPolicyTimeout as Timeout
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionURI as URI
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionJob as WorkflowDefinitionJob
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionJobResource as WorkflowDefinitionJobResource
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionJobResourceCpu as WorkflowDefinitionJobResourceCpu
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionJobResourceMemory as WorkflowDefinitionJobResourceMemory
 
 import nextflow.processor.TaskRun
 import nextflow.executor.BashWrapperBuilder

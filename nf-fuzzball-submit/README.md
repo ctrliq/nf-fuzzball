@@ -18,7 +18,7 @@ Installation as a tool (see the [uv tool documentation](https://docs.astral.sh/u
 # from the main branch
 uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@main#subdirectory=nf-fuzzball-submit"
 # from a release
-uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@v0.2.0#subdirectory=nf-fuzzball-submit"
+uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@v0.3.0#subdirectory=nf-fuzzball-submit"
 
 nf-fuzzball-submit --help
 ```
@@ -128,6 +128,8 @@ General options
 
 | Argument               | Default                     | Description                                                         |
 |------------------------|-----------------------------|---------------------------------------------------------------------|
+| `-h`, `--help`         | n/a                         | show this help message and exit                                     |
+| `--version`            | n/a                         | show program's version number and exit                              |
 | `-v`, `--verbose`      | False                       | Enable verbose logging                                              |
 | `-n`, `--dry-run`      | False                       | Print the workflow without submitting                               |
 | `--job-name`           | (UUID from command)         | Name of the Fuzzball workflow                                       |
@@ -180,12 +182,12 @@ CLI flags or their corresponding environment variables.
 
 Options for development:
 
-| Argument                | Default         | Description                                             |
-|-------------------------|-----------------|---------------------------------------------------------|
-| `--nf-fuzzball-version` | `0.2.0`         | nf-fuzzball plugin version                              |
-| `--plugin-base-uri`     | GitHub releases | Base URI for the nf-fuzzball plugin                     |
-| `--s3-secret`           | (none)          | Fuzzball S3 secret for plugin download if using S3 URI  |
-| `--fb-version`          | (auto-detected) | Override the Fuzzball API version (e.g., `v3.2`)        |
+| Argument                | Default                   | Description                                            |
+|-------------------------|---------------------------|--------------------------------------------------------|
+| `--nf-fuzzball-version` | same as submission script | nf-fuzzball plugin version                             |
+| `--plugin-base-uri`     | GitHub releases           | Base URI for the nf-fuzzball plugin                    |
+| `--s3-secret`           | (none)                    | Fuzzball S3 secret for plugin download if using S3 URI |
+| `--fb-version`          | (auto-detected)           | Override the Fuzzball API version (e.g., `v3.2`)       |
 
 ## Development
 

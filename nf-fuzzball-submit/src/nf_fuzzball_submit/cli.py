@@ -7,6 +7,7 @@ import posixpath
 import re
 import textwrap
 from collections.abc import Callable
+from importlib.metadata import version
 from urllib.parse import urlparse
 
 from .client import DATA_MOUNT
@@ -318,6 +319,7 @@ Notes:
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {version('nf-fuzzball-submit')}")
     auth_group = parser.add_argument_group("Fuzzball config based authentication")
     auth_group.add_argument(
         "-c",
@@ -433,7 +435,7 @@ Notes:
     dev_group.add_argument(
         "--nf-fuzzball-version",
         type=valid_version(prefix="", parts=3),
-        default="0.2.0",
+        default=version("nf-fuzzball-submit"),
         help="nf-fuzzball plugin version.",
     )
 

@@ -23,7 +23,11 @@ import com.ciq.fuzzball.api.ApiConfig
 import com.ciq.fuzzball.api.ApiUtils
 import com.ciq.fuzzball.api.WorkflowServiceApi
 import com.ciq.fuzzball.api.StorageClassServiceApi
-import com.ciq.fuzzball.model.*
+import com.ciq.fuzzball.model.FuzzballApiV3Workflow as Workflow
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinition as WorkflowDefinition
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionJobMount as WorkflowDefinitionJobMount
+import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionVolume as Volume
+import com.ciq.fuzzball.model.FuzzballApiV3ListStorageClassesResponse as ListStorageClassesResponse
 
 // TODO: task batching possibly with TaskArrayExecutor
 

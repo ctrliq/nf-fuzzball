@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # Constants
 DATA_MOUNT = "/data"
 SCRATCH_MOUNT = "/scratch"
+MIN_FUZZBALL_VERSION = (3, 3)
 
 
 class FuzzballClient:
@@ -83,7 +84,8 @@ class FuzzballClient:
         """Validate connection to Fuzzball API and get version.
 
         Raises:
-            ValueError: If connection fails or version cannot be retrieved.
+            ValueError: If connection fails, version cannot be retrieved, or minimum
+                        version is not satisfied.
         """
         try:
             response = self._request("GET", "/version")
@@ -95,6 +97,11 @@ class FuzzballClient:
             raise ValueError("Unexpected error occurred") from e
         else:
             logger.info(f"Connected to Fuzzball {detected_version} API server")
+
+        version_tuple = tuple(int(x.lstrip("v")) for x in detected_version.split("."))
+        if version_tuple < MIN_FUZZBALL_VERSION:
+            min_str = ".".join(str(x) for x in MIN_FUZZBALL_VERSION)
+            raise ValueError(f"Fuzzball v{min_str} or later is required, got {detected_version}")
 
         if self._fb_version is None:
             self._fb_version = detected_version

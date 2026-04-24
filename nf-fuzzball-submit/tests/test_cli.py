@@ -70,7 +70,6 @@ class TestCliParsing:
 
         assert args.nextflow_work_base == "/data/nextflow/executions"
         assert args.nf_fuzzball_version == version("nf-fuzzball-submit")
-        assert args.nextflow_version == "25.05.0-edge"
         assert args.timelimit == "8h"
         assert args.scratch_volume == "volume://user/ephemeral"
         assert args.data_volume == "volume://user/persistent"

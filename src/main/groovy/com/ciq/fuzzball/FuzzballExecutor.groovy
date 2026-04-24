@@ -147,7 +147,7 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
      */
     @Override
     protected TaskMonitor createTaskMonitor() {
-        return TaskPollingMonitor.create(session, name, 20, Duration.of('20 sec'))
+        return TaskPollingMonitor.create(session, config, name, 20, Duration.of('20 sec'))
     }
 
     /**

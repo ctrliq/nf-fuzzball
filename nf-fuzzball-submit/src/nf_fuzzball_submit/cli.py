@@ -411,7 +411,7 @@ Notes:
         "--egress-timelimit",
         type=valid_timelimit,
         default="4h",
-        help="Timelimit for the egress job (e.g., '4h', '1d', '120m').",
+        help="Timelimit for the egress job (e.g., '4h', '1d', '120m'). [%(default)s]",
     )
 
     dev_group = parser.add_argument_group("Options for development")
@@ -424,7 +424,7 @@ Notes:
         "--plugin-base-uri",
         type=valid_url,
         default="https://github.com/ctrliq/nf-fuzzball/releases/download",
-        help="Base URI for the nf-fuzzball plugin. Change to fetch development builds.",
+        help="Base URI for the nf-fuzzball plugin. Change to fetch development builds. [%(default)s]",
     )
     dev_group.add_argument(
         "--fb-version",
@@ -436,7 +436,7 @@ Notes:
         "--nf-fuzzball-version",
         type=valid_version(prefix="", parts=3),
         default=version("nf-fuzzball-submit"),
-        help="nf-fuzzball plugin version.",
+        help="nf-fuzzball plugin version. [%(default)s]",
     )
 
     parser.add_argument(
@@ -464,51 +464,51 @@ Notes:
         "--nextflow-work-base",
         type=str,
         default=f"{DATA_MOUNT}/nextflow/executions",
-        help="Base directory for Nextflow execution.",
+        help="Base directory for Nextflow execution. [%(default)s]",
     )
 
     parser.add_argument(
         "--nextflow-version",
         type=str,
         default="25.10.4",
-        help="Nextflow version.",
+        help="Nextflow version. [%(default)s]",
     )
     parser.add_argument(
         "--timelimit",
         type=valid_timelimit,
         default="8h",
-        help="Timelimit for the pipeline job (e.g., '8h', '1d8h30m', '120m').",
+        help="Timelimit for the pipeline job (e.g., '8h', '1d8h30m', '120m'). [%(default)s]",
     )
     parser.add_argument(
         "--memory",
         type=valid_memory,
         default="4GB",
-        help="Memory allocated for the nextflow controller job (e.g., '4GB', '512MB').",
+        help="Memory allocated for the nextflow controller job (e.g., '4GB', '512MB'). [%(default)s]",
     )
     parser.add_argument(
         "--cores",
         type=valid_cores,
         default="1",
-        help="Cores allocated for the nextflow controller job.",
+        help="Cores allocated for the nextflow controller job. [%(default)s]",
     )
     parser.add_argument(
         "--scratch-volume",
         type=valid_fuzzball_volume,
         default="volume://user/ephemeral",
-        help="Ephemeral scratch volume.",
+        help="Ephemeral scratch volume. [%(default)s]",
     )
     parser.add_argument(
         "--data-volume",
         type=valid_fuzzball_volume,
         default="volume://user/persistent",
-        help="Persistent data volume.",
+        help="Persistent data volume. [%(default)s]",
     )
     parser.add_argument("--nf-core", action="store_true", help="Use nf-core conventions.")
     parser.add_argument(
         "--queue-size",
         type=valid_queue_size,
         default=20,
-        help="Queue size for the Fuzzball executor.",
+        help="Queue size for the Fuzzball executor. [%(default)s]",
     )
     parser.add_argument("nextflow_cmd", nargs=argparse.REMAINDER, help="Nextflow command.")
 

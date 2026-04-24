@@ -295,8 +295,8 @@ class FuzzballClient:
         env = [
             f"HOME={home}",
             f"NXF_HOME={home}/.nextflow",
-            "NXF_ANSI_CONSOLE=false",
-            "NXF_ANSI_SUMMARY=false",
+            f"NXF_ANSI_LOG={str(args.ansi).lower()}",
+            f"NXF_ANSI_SUMMARY={str(args.ansi).lower()}",
         ]
         volumes = {
             "data": {

@@ -439,7 +439,15 @@ Notes:
         help="nf-fuzzball plugin version.",
     )
 
-    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose logging.")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging from the submission script."
+    )
+    parser.add_argument(
+        "--ansi-log",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable Nextflow ANSI log output [%(default)s].",
+    )
     parser.add_argument(
         "--ca-cert",
         type=str,

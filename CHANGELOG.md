@@ -24,7 +24,7 @@ _No changelog was maintained before v0.2.0._
 ### Internal
 
 - Gradle updated to 8.14.3.
-- Migrated type checking from mypy to `ty` for python code.
+- Migrated type checking from mypy to `ty` for Python code.
 - Dependency bumps to address security advisories.
 
 ## [0.2.0] 2026-03-23

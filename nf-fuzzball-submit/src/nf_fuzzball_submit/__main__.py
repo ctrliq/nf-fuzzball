@@ -1,7 +1,6 @@
 """Main entry point for nf-fuzzball-submit."""
 
 import getpass
-import logging
 import os
 import sys
 from importlib.metadata import PackageNotFoundError
@@ -23,9 +22,7 @@ def main() -> None:
         except SystemExit:
             raise
         except PackageNotFoundError:
-            logger.error(
-                "Package metadata including the package version could not be determined. Is nf-fuzzball-submit installed?"
-            )
+            logger.error("Package metadata could not be determined. Is nf-fuzzball-submit installed?")
             sys.exit(1)
 
         if args.verbose or args.dry_run:

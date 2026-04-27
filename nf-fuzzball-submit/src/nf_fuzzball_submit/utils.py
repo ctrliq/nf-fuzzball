@@ -2,13 +2,12 @@
 
 import logging
 import pathlib
-import sys
 
+import urllib3
+import yaml
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.theme import Theme
-import urllib3
-import yaml
 
 from .models import LocalFile
 
@@ -29,7 +28,7 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     Returns:
         The ``nf_fuzzball_submit`` logger, pre-configured via the root handler.
     """
-    _theme = Theme(
+    theme = Theme(
         {
             "logging.level.debug": "white on grey42",
             "logging.level.info": "white on dodger_blue3",
@@ -41,8 +40,8 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     )
 
     console_handler = RichHandler(
-        console=Console(stderr=True, theme=_theme),
-        markup=True,
+        console=Console(stderr=True, theme=theme),
+        markup=False,
         show_time=verbose,
         show_path=verbose,
         log_time_format="%H:%M:%S",
@@ -51,7 +50,9 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
 
     # Configure root so all libraries route through the same RichHandler.
     root = logging.getLogger()
-    root.handlers.clear()
+    for handler in list(root.handlers):
+        root.removeHandler(handler)
+        handler.close()
     root.addHandler(console_handler)
     root.setLevel(logging.DEBUG if verbose else logging.INFO)
 

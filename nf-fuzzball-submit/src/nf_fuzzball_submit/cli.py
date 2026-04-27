@@ -13,8 +13,6 @@ from importlib.metadata import version
 from typing import NoReturn
 from urllib.parse import urlparse
 
-from rich.markup import escape
-
 from .client import DATA_MOUNT
 
 logger = logging.getLogger(__name__)
@@ -22,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 class _RichArgumentParser(argparse.ArgumentParser):
     def error(self, message: str) -> NoReturn:
-        logger.error(escape(message))
-        logger.info(f"Try '[bold]{escape(self.prog)} --help[/bold]' for usage.")
+        logger.error(message)
+        logger.info(f"Try '{self.prog} --help' for usage.")
         sys.exit(2)
 
 

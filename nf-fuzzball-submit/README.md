@@ -220,7 +220,7 @@ uv run ruff format
 ### Type checking
 
 ```sh
-uv run mypy src/
+uv run ty check src/
 ```
 
 ### Linting

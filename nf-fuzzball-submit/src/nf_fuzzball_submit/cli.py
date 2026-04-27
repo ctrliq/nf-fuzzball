@@ -1,16 +1,28 @@
 """Command line interface for nf-fuzzball-submit."""
 
 import argparse
+import logging
 import os
 import pathlib
 import posixpath
 import re
+import sys
 import textwrap
 from collections.abc import Callable
 from importlib.metadata import version
+from typing import NoReturn
 from urllib.parse import urlparse
 
 from .client import DATA_MOUNT
+
+logger = logging.getLogger(__name__)
+
+
+class _RichArgumentParser(argparse.ArgumentParser):
+    def error(self, message: str) -> NoReturn:
+        logger.error(message)
+        logger.info(f"Try '{self.prog} --help' for usage.")
+        sys.exit(2)
 
 
 def valid_timelimit(value: str) -> str:
@@ -214,7 +226,7 @@ def valid_version(prefix: str, parts: int) -> Callable[[str], str]:
         Function to validate a version string
 
     Raises:
-        ValueError if parts is not 2 or 3
+        ValueError: If parts is not 2 or 3.
     """
     if parts == 2:
         vre = re.compile(rf"^{re.escape(prefix)}\d+\.\d+$")
@@ -286,7 +298,7 @@ def parse_cli() -> argparse.Namespace:
     Raises:
         SystemExit: If required arguments are missing or invalid.
     """
-    parser = argparse.ArgumentParser(
+    parser = _RichArgumentParser(
         description="""
 Submit a nextflow pipeline to Fuzzball.
 

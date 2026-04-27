@@ -2,14 +2,63 @@
 
 import logging
 import pathlib
-import sys
 
 import urllib3
 import yaml
+from rich.console import Console
+from rich.logging import RichHandler
+from rich.theme import Theme
 
 from .models import LocalFile
 
 logger = logging.getLogger(__name__)
+
+
+def setup_logging(verbose: bool = False) -> logging.Logger:
+    """Configure logging with RichHandler on the root logger.
+
+    Replaces any existing root handlers. Safe to call more than once
+    (e.g., to upgrade from INFO to DEBUG after argument parsing).
+
+    Args:
+        verbose (bool): If True, sets DEBUG level and shows timestamps and
+            source paths. If False, sets INFO level and suppresses urllib3
+            below ERROR.
+
+    Returns:
+        The ``nf_fuzzball_submit`` logger, pre-configured via the root handler.
+    """
+    theme = Theme(
+        {
+            "logging.level.debug": "white on grey42",
+            "logging.level.info": "white on dodger_blue3",
+            "logging.level.warning": "white on gold3",
+            "logging.level.error": "white on indian_red",
+            "logging.level.critical": "bold white on red3",
+            "log.time": "dim",
+        }
+    )
+
+    console_handler = RichHandler(
+        console=Console(stderr=True, theme=theme),
+        markup=False,
+        show_time=verbose,
+        show_path=verbose,
+        log_time_format="%H:%M:%S",
+    )
+    console_handler.setFormatter(logging.Formatter("%(message)s", datefmt="[%X]"))
+
+    # Configure root so all libraries route through the same RichHandler.
+    root = logging.getLogger()
+    for handler in list(root.handlers):
+        root.removeHandler(handler)
+        handler.close()
+    root.addHandler(console_handler)
+    root.setLevel(logging.DEBUG if verbose else logging.INFO)
+
+    logging.getLogger("urllib3").setLevel(logging.WARNING if verbose else logging.ERROR)
+
+    return logging.getLogger("nf_fuzzball_submit")
 
 
 def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.Node:
@@ -31,28 +80,23 @@ def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.Node:
 yaml.add_representer(str, str_presenter)
 
 
-def die(error: str) -> None:
-    """Log an error message and exit the program.
-
-    Args:
-        error: The error message to log before exiting.
-    """
-    logger.fatal(error)
-    sys.exit(1)
-
-
 def get_canonical_api_url(url: str, http_client: urllib3.PoolManager) -> str:
-    """Returns full API url including base path.
+    """Return the full API URL including the versioned base path.
+
+    If ``url`` already ends with a known versioned path (e.g. ``/v3``), it
+    is returned unchanged. Otherwise the function probes candidate paths and
+    returns the first one that responds with an HTTP status below 400.
 
     Args:
-        url: Base URL to test for API versioning.
-        http_client: HTTP client for making requests.
+        url: Base URL of the Fuzzball API server.
+        http_client: HTTP client used to probe candidate paths.
 
     Returns:
-        The full API URL with the correct base path.
+        The full API URL with a versioned base path appended.
 
     Raises:
-        ValueError: If unable to determine the API base path.
+        ValueError: If none of the candidate versioned paths respond
+            successfully at the given URL.
     """
     base_url = url.rstrip("/")
     if not url.startswith("http"):
@@ -74,27 +118,34 @@ def get_canonical_api_url(url: str, http_client: urllib3.PoolManager) -> str:
                 return test_url
         except Exception:  # noqa: S112
             continue
-    raise ValueError("Unable to sniff API base path")
+    raise ValueError(f"Unable to reach Fuzzball API at {base_url} (tried paths: {', '.join(candidates)})")
 
 
 def find_and_import_local_files(
     nextflow_cmd: list[str],
     remote_prefix: str = "",
 ) -> tuple[list[str], list[LocalFile]]:
-    """Find local files in the Nextflow command and prepare them for upload to Fuzzball.
+    """Find local files in a Nextflow command and prepare them for upload to Fuzzball.
+
+    Scans each argument (including comma-separated lists) for paths that exist
+    as local files, replaces them with their remote equivalents, and collects
+    the corresponding ``LocalFile`` objects.
 
     Args:
         nextflow_cmd: The Nextflow command as a list of arguments.
-        remote_prefix: Optional prefix for the remote file names.
+        remote_prefix: Prefix prepended to the remote file name for each
+            discovered local file.
 
     Returns:
-        A tuple containing:
-        - A modified command list with local file paths replaced by their remote equivalents.
-        - A list of LocalFile objects representing the local files found.
+        A tuple of:
+        - A command list with local file paths replaced by their remote paths.
+        - A list of ``LocalFile`` objects for all discovered local files.
 
     Raises:
-        OSError: If a local file cannot be read.
-        ValueError: If local files are too large to be included in the workflow
+        OSError: If file metadata (size, permissions) cannot be retrieved for
+            a path that passed the existence check.
+        ValueError: If any single local file exceeds the per-file size limit,
+            or if the combined size of all local files exceeds the total limit.
     """
     max_single_file_size = 1048576
     max_total_file_size = 4194304

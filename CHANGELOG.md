@@ -5,6 +5,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changelog was maintained before v0.2.0._
 
+## [0.3.0] 2026-04-28
+
+### Added
+
+- **Fuzzball v3.3 support**. The Nextflow Groovy plugin now supports Fuzzball v3.3.
+- **Minimum Fuzzball version enforcement**. The submission script now validates the Fuzzball cluster
+  version at startup and exits with a clear error if the cluster is too old.
+- **Nextflow ANSI output control**. A new `--ansi` / `--no-ansi` flag controls whether Nextflow uses
+  ANSI log and summary output. Defaults to enabled.
+- **`--version` flag**. The submission script now supports `--version` to print the installed version.
+
+### Changed
+
+- **Nextflow updated to 25.10.4**. The bundled Nextflow version used by the plugin has been updated.
+- **Improved error handling**. Clearer error messages and more systematic logging configuration.
+
+### Internal
+
+- Gradle updated to 8.14.3.
+- Migrated type checking from mypy to `ty` for Python code.
+- Dependency bumps to address security advisories.
+
+## [0.2.1] 2026-04-28
+
+### Added
+
+- **Nextflow ANSI output control**. A new `--ansi` / `--no-ansi` flag controls whether Nextflow uses
+  ANSI log and summary output. Defaults to enabled.
+- **`--version` flag**. The submission script now supports `--version` to print the installed version.
+
+### Changed
+
+- **Nextflow updated to 25.10.4**. The bundled Nextflow version used by the plugin has been updated.
+- **Improved error handling**. Clearer error messages and more systematic logging configuration.
+
+### Internal
+
+- Gradle updated to 8.14.3.
+- Migrated type checking from mypy to `ty` for Python code.
+- Dependency bumps to address security advisories.
 
 ## [0.2.0] 2026-03-23
 

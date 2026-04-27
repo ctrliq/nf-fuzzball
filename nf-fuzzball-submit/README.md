@@ -130,11 +130,12 @@ General options
 |------------------------|-----------------------------|---------------------------------------------------------------------|
 | `-h`, `--help`         | n/a                         | show this help message and exit                                     |
 | `--version`            | n/a                         | show program's version number and exit                              |
-| `-v`, `--verbose`      | False                       | Enable verbose logging                                              |
+| `-v`, `--verbose`      | False                       | Enable verbose logging from the submission script                   |
+| `--ansi` / `--no-ansi` | True                        | Enable Nextflow ANSI log and summary output                         |
 | `-n`, `--dry-run`      | False                       | Print the workflow without submitting                               |
 | `--job-name`           | (UUID from command)         | Name of the Fuzzball workflow                                       |
 | `--nextflow-work-base` | `/data/nextflow/executions` | Base directory for Nextflow execution paths                         |
-| `--nextflow-version`   | `25.05.0-edge`              | Nextflow version to use in the Fuzzball job                         |
+| `--nextflow-version`   | `25.10.4`                   | Nextflow version to use in the Fuzzball job                         |
 | `--timelimit`          | `8h`                        | Timelimit for the pipeline job                                      |
 | `--memory`             | `4GB`                       | Memory allocated for the Nextflow controller job                    |
 | `--cores`              | `1`                         | Cores allocated for the Nextflow controller job                     |

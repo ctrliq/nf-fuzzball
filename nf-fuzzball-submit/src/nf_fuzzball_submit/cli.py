@@ -462,7 +462,7 @@ Notes:
     parser.add_argument(
         "--nextflow-version",
         type=str,
-        default="25.05.0-edge",
+        default="25.10.4",
         help="Nextflow version.",
     )
     parser.add_argument(

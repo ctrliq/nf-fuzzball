@@ -18,8 +18,16 @@ logger = logging.getLogger(__name__)
 def setup_logging(verbose: bool = False) -> logging.Logger:
     """Configure logging with RichHandler on the root logger.
 
+    Replaces any existing root handlers. Safe to call more than once
+    (e.g., to upgrade from INFO to DEBUG after argument parsing).
+
     Args:
-        verbose (bool): Enable DEBUG level logging.
+        verbose (bool): If True, sets DEBUG level and shows timestamps and
+            source paths. If False, sets INFO level and suppresses urllib3
+            below ERROR.
+
+    Returns:
+        The ``nf_fuzzball_submit`` logger, pre-configured via the root handler.
     """
     _theme = Theme(
         {
@@ -72,17 +80,22 @@ yaml.add_representer(str, str_presenter)
 
 
 def get_canonical_api_url(url: str, http_client: urllib3.PoolManager) -> str:
-    """Returns full API url including base path.
+    """Return the full API URL including the versioned base path.
+
+    If ``url`` already ends with a known versioned path (e.g. ``/v3``), it
+    is returned unchanged. Otherwise the function probes candidate paths and
+    returns the first one that responds with an HTTP status below 400.
 
     Args:
-        url: Base URL to test for API versioning.
-        http_client: HTTP client for making requests.
+        url: Base URL of the Fuzzball API server.
+        http_client: HTTP client used to probe candidate paths.
 
     Returns:
-        The full API URL with the correct base path.
+        The full API URL with a versioned base path appended.
 
     Raises:
-        ValueError: If unable to determine the API base path.
+        ValueError: If none of the candidate versioned paths respond
+            successfully at the given URL.
     """
     base_url = url.rstrip("/")
     if not url.startswith("http"):
@@ -111,20 +124,27 @@ def find_and_import_local_files(
     nextflow_cmd: list[str],
     remote_prefix: str = "",
 ) -> tuple[list[str], list[LocalFile]]:
-    """Find local files in the Nextflow command and prepare them for upload to Fuzzball.
+    """Find local files in a Nextflow command and prepare them for upload to Fuzzball.
+
+    Scans each argument (including comma-separated lists) for paths that exist
+    as local files, replaces them with their remote equivalents, and collects
+    the corresponding ``LocalFile`` objects.
 
     Args:
         nextflow_cmd: The Nextflow command as a list of arguments.
-        remote_prefix: Optional prefix for the remote file names.
+        remote_prefix: Prefix prepended to the remote file name for each
+            discovered local file.
 
     Returns:
-        A tuple containing:
-        - A modified command list with local file paths replaced by their remote equivalents.
-        - A list of LocalFile objects representing the local files found.
+        A tuple of:
+        - A command list with local file paths replaced by their remote paths.
+        - A list of ``LocalFile`` objects for all discovered local files.
 
     Raises:
-        OSError: If a local file cannot be read.
-        ValueError: If local files are too large to be included in the workflow
+        OSError: If file metadata (size, permissions) cannot be retrieved for
+            a path that passed the existence check.
+        ValueError: If any single local file exceeds the per-file size limit,
+            or if the combined size of all local files exceeds the total limit.
     """
     max_single_file_size = 1048576
     max_total_file_size = 4194304

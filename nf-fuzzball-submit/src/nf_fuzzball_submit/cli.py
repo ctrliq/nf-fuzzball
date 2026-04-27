@@ -228,7 +228,7 @@ def valid_version(prefix: str, parts: int) -> Callable[[str], str]:
         Function to validate a version string
 
     Raises:
-        ValueError if parts is not 2 or 3
+        ValueError: If parts is not 2 or 3.
     """
     if parts == 2:
         vre = re.compile(rf"^{re.escape(prefix)}\d+\.\d+$")

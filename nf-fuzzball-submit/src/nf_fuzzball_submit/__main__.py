@@ -91,7 +91,7 @@ def main() -> None:
         logger.warning("Interrupted.")
         sys.exit(130)
     except Exception as e:
-        logger.error(f"{e}", exc_info=verbose)
+        logger.error(f"Unexpected error: {e}", exc_info=verbose)
         sys.exit(1)
 
 

@@ -47,7 +47,6 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     root.addHandler(console_handler)
     root.setLevel(logging.DEBUG if verbose else logging.INFO)
 
-    # urllib3 is noisy at DEBUG; keep it at WARNING unless verbose.
     logging.getLogger("urllib3").setLevel(logging.WARNING if verbose else logging.ERROR)
 
     return logging.getLogger("nf_fuzzball_submit")

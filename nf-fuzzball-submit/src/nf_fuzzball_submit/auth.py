@@ -330,6 +330,9 @@ class ConfigFileAuthenticator(FuzzballAuthenticator):
 
         Returns:
             ApiConfig with authentication details.
+
+        Raises:
+            ValueError
         """
         context_name = self._determine_context()
         context = self._extract_context_info(context_name)

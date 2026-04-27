@@ -137,7 +137,7 @@ class TestFuzzballClientInitialization:
             auth.authenticate.return_value = None
 
             client = FuzzballClient(auth)
-            client._api_config = None
+            client._api_config = None  # ty: ignore[invalid-assignment]
 
             with pytest.raises(ValueError, match="Authentication token is not available"):
                 _ = client._headers

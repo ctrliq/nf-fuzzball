@@ -602,7 +602,7 @@ def create_fuzzball_client(
         ValueError: If required parameters are missing.
     """
     if device_login:
-        if not all([api_url, auth_url, account_id]):
+        if api_url is None or auth_url is None or account_id is None:
             raise ValueError("For device login, api-url, auth-url, and account-id are required")
         assert api_url and auth_url and account_id
         return create_device_login_client(
@@ -613,7 +613,7 @@ def create_fuzzball_client(
             fb_version=fb_version,
         )
     if user:
-        if not all([api_url, auth_url, password, account_id]):
+        if api_url is None or auth_url is None or account_id is None or password is None:
             raise ValueError("For direct login, all credentials must be provided")
         return create_direct_login_client(
             api_url=api_url,

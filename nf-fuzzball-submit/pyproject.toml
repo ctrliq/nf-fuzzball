@@ -40,9 +40,9 @@ dev = [
     "pytest-cov>=4.0",
     "pytest-mock>=3.0",
     "isort>=5.0",
-    "mypy>=1.0",
     "ruff",
     "types-pyyaml>=6.0,<7",
+    "ty>=0.0.32",
 ]
 
 [tool.pytest.ini_options]

@@ -92,9 +92,9 @@ class FuzzballClient:
             version_data = json.loads(response.data.decode("utf-8"))
             detected_version = ".".join(version_data["version"].split(".")[0:2])
         except urllib3.exceptions.HTTPError as e:
-            raise ValueError("Failed to connect to Fuzzball API") from e
+            raise ValueError(f"Failed to connect to Fuzzball API at {self._api_config.api_url}: {e}") from e
         except Exception as e:
-            raise ValueError("Unexpected error occurred") from e
+            raise ValueError(f"Unexpected error connecting to Fuzzball API at {self._api_config.api_url}: {e}") from e
         else:
             logger.info(f"Connected to Fuzzball {detected_version} API server")
 

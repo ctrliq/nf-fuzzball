@@ -316,8 +316,8 @@ class ConfigFileAuthenticator(FuzzballAuthenticator):
                 address = f"https://{address}"
             return {
                 "api_url": address or None,
-                "auth_url": ctx.get("oidcServerURL"),
-                "account_id": ctx.get("currentaccountid"),
+                "auth_url": ctx.get("oidcServerURL", None),
+                "account_id": ctx.get("currentaccountid", None),
             }
         except Exception:
             return {}
@@ -333,10 +333,13 @@ class ConfigFileAuthenticator(FuzzballAuthenticator):
         """
         context_name = self._determine_context()
         context = self._extract_context_info(context_name)
-        api_url = get_canonical_api_url(context["address"], http_client)
-        return ApiConfig(
-            api_url=api_url,
-            auth_url=context["oidcServerURL"],
-            token=context["auth"]["credentials"]["token"],
-            account_id=context["currentaccountid"],
-        )
+        try:
+            api_url = get_canonical_api_url(context["address"], http_client)
+            return ApiConfig(
+                api_url=api_url,
+                auth_url=context["oidcServerURL"],
+                token=context["auth"]["credentials"]["token"],
+                account_id=context["currentaccountid"],
+            )
+        except KeyError as e:
+            raise ValueError(f"Fuzzball config file is missing expected field {e} in context '{context_name}'") from e

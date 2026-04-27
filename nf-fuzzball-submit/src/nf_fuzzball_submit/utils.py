@@ -4,12 +4,53 @@ import logging
 import pathlib
 import sys
 
+from rich.console import Console
+from rich.logging import RichHandler
+from rich.theme import Theme
 import urllib3
 import yaml
 
 from .models import LocalFile
 
 logger = logging.getLogger(__name__)
+
+
+def setup_logging(verbose: bool = False) -> logging.Logger:
+    """Configure logging with RichHandler on the root logger.
+
+    Args:
+        verbose (bool): Enable DEBUG level logging.
+    """
+    _theme = Theme(
+        {
+            "logging.level.debug": "white on grey42",
+            "logging.level.info": "white on dodger_blue3",
+            "logging.level.warning": "white on gold3",
+            "logging.level.error": "white on indian_red",
+            "logging.level.critical": "bold white on red3",
+            "log.time": "dim",
+        }
+    )
+
+    console_handler = RichHandler(
+        console=Console(stderr=True, theme=_theme),
+        markup=True,
+        show_time=verbose,
+        show_path=verbose,
+        log_time_format="%H:%M:%S",
+    )
+    console_handler.setFormatter(logging.Formatter("%(message)s", datefmt="[%X]"))
+
+    # Configure root so all libraries route through the same RichHandler.
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(console_handler)
+    root.setLevel(logging.DEBUG if verbose else logging.INFO)
+
+    # urllib3 is noisy at DEBUG; keep it at WARNING unless verbose.
+    logging.getLogger("urllib3").setLevel(logging.WARNING if verbose else logging.ERROR)
+
+    return logging.getLogger("nf_fuzzball_submit")
 
 
 def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.Node:
@@ -29,16 +70,6 @@ def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.Node:
 
 # Configure YAML to use block literals for multiline strings
 yaml.add_representer(str, str_presenter)
-
-
-def die(error: str) -> None:
-    """Log an error message and exit the program.
-
-    Args:
-        error: The error message to log before exiting.
-    """
-    logger.fatal(error)
-    sys.exit(1)
 
 
 def get_canonical_api_url(url: str, http_client: urllib3.PoolManager) -> str:
@@ -74,7 +105,7 @@ def get_canonical_api_url(url: str, http_client: urllib3.PoolManager) -> str:
                 return test_url
         except Exception:  # noqa: S112
             continue
-    raise ValueError("Unable to sniff API base path")
+    raise ValueError(f"Unable to reach Fuzzball API at {base_url} (tried paths: {', '.join(candidates)})")
 
 
 def find_and_import_local_files(

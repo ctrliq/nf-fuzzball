@@ -1,7 +1,5 @@
 """nf-fuzzball-submit: Submit Nextflow pipelines to Fuzzball clusters."""
 
-__version__ = "0.2.0"
-
 from .auth import ConfigFileAuthenticator, DirectLoginAuthenticator, FuzzballAuthenticator
 from .client import (
     FuzzballClient,

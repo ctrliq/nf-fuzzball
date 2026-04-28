@@ -3,7 +3,7 @@
 ## Requirements
 
 - java >= 17
-- nextflow >= 25.03.1-edge
+- nextflow >= 25.10.4
 - if using the `launcher.sh` script a clone of the nextflow repo in a sister
     directory. This is awkward and will not support all possible scenarios of
     plugin development

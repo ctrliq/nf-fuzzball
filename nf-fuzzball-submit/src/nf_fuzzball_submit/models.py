@@ -23,27 +23,31 @@ class ApiConfig:
 
     @property
     def api_host(self) -> str:
-        """Hostname of the API Server.
+        """Hostname of the API server.
 
         Returns:
-            str: Host name of the api.
+            The hostname extracted from the API URL, or ``"unknown"`` if it
+            cannot be parsed.
         """
         return urlparse(self.api_url).hostname or "unknown"
 
     @property
     def api_port(self) -> int:
-        """Port number of the API.
-
-        If the URL does not specify a port, returns 443 as the default port.
+        """Port number of the API server.
 
         Returns:
-            int: The port number extracted from the API URL, or 443 if not specified.
+            The port extracted from the API URL, or 443 if not specified.
         """
         return urlparse(self.api_url).port or 443
 
     @property
     def cli_config(self) -> dict[str, Any]:
-        """Return a Fuzzball compatible config dict with a single active context."""
+        """Return a Fuzzball-compatible config dict with a single active context.
+
+        Returns:
+            A config dictionary compatible with the Fuzzball CLI YAML format,
+            containing a single context named ``"nextflow"``.
+        """
         return {
             "activeContext": "nextflow",
             "contexts": [

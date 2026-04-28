@@ -103,7 +103,7 @@ def mock_nextflow_args():
         nextflow_work_base="/data/nextflow/executions",
         nf_fuzzball_version="0.2.0",
         plugin_base_uri="https://github.com/ctrliq/nf-fuzzball/releases/download",
-        nextflow_version="25.05.0-edge",
+        nextflow_version="25.10.4",
         timelimit="8h",
         scratch_volume="volume://user/ephemeral",
         data_volume="volume://user/persistent",

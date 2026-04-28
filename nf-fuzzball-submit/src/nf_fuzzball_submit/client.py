@@ -40,10 +40,17 @@ class FuzzballClient:
     ):
         """Initialize client with an authenticator.
 
+        Immediately authenticates and validates the connection to the Fuzzball API.
+
         Args:
             authenticator: Authentication strategy to use.
-            ca_cert_file: Optional CA certificate file path.
-            fb_version: Manually override the auto-detected Fuzzball version
+            ca_cert_file: Optional path to a CA certificate file for SSL verification.
+            fb_version: Manually override the auto-detected Fuzzball version.
+
+        Raises:
+            ssl.SSLError: If ``ca_cert_file`` is provided but invalid or cannot be loaded.
+            ValueError: If authentication fails, the API is unreachable, or the
+                server version is below the minimum required.
         """
         self._authenticator = authenticator
         self._ca_cert_file = ca_cert_file
@@ -60,13 +67,22 @@ class FuzzballClient:
         self._initialize()
 
     def _initialize(self) -> None:
-        """Initialize the client using the provided authenticator."""
+        """Set up the HTTP client, authenticate, and validate the server connection.
+
+        Raises:
+            ssl.SSLError: Propagated from ``_setup_http_client`` if the CA cert is invalid.
+            ValueError: Propagated from ``authenticate`` or ``_validate_connection``.
+        """
         self._setup_http_client()
         self._api_config = self._authenticator.authenticate(self._http)
         self._validate_connection()
 
     def _setup_http_client(self) -> None:
-        """Setup urllib3 HTTP client with appropriate SSL configuration."""
+        """Set up the urllib3 HTTP client with appropriate SSL configuration.
+
+        Raises:
+            ssl.SSLError: If ``ca_cert_file`` is set but cannot be loaded.
+        """
         if self._ca_cert_file:
             ssl_context = ssl.create_default_context()
             ssl_context.load_verify_locations(self._ca_cert_file)
@@ -90,9 +106,9 @@ class FuzzballClient:
             version_data = json.loads(response.data.decode("utf-8"))
             detected_version = ".".join(version_data["version"].split(".")[0:2])
         except urllib3.exceptions.HTTPError as e:
-            raise ValueError("Failed to connect to Fuzzball API") from e
+            raise ValueError(f"Failed to connect to Fuzzball API at {self._api_config.api_url}: {e}") from e
         except Exception as e:
-            raise ValueError("Unexpected error occurred") from e
+            raise ValueError(f"Unexpected error connecting to Fuzzball API at {self._api_config.api_url}: {e}") from e
         else:
             logger.info(f"Connected to Fuzzball {detected_version} API server")
 
@@ -248,9 +264,10 @@ class FuzzballClient:
 
         Raises:
             urllib3.exceptions.HTTPError: If any API request fails.
-            OSError: If any local files cannot be read or processed.
-            ValueError: If importing local files fails due to exceeding configured
-            Exception: If there is any other (unspecific) error.
+            OSError: If local files cannot be read or processed.
+            ValueError: If local files exceed the configured per-file or total size limit.
+            Exception: If the nf-fuzzball plugin for the detected Fuzzball version
+                is inaccessible at the resolved plugin URI.
         """
         nextflow_cmd_str = shlex.join(args.nextflow_cmd)
         job_name = args.job_name if len(args.job_name) > 0 else str(uuid.uuid5(NAMESPACE_CONTENT, nextflow_cmd_str))
@@ -288,8 +305,8 @@ class FuzzballClient:
         env = [
             f"HOME={home}",
             f"NXF_HOME={home}/.nextflow",
-            "NXF_ANSI_CONSOLE=false",
-            "NXF_ANSI_SUMMARY=false",
+            f"NXF_ANSI_LOG={str(args.ansi).lower()}",
+            f"NXF_ANSI_SUMMARY={str(args.ansi).lower()}",
         ]
         volumes = {
             "data": {
@@ -524,7 +541,18 @@ def create_device_login_client(
     ca_cert_file: str | None = None,
     fb_version: str | None = None,
 ) -> FuzzballClient:
-    """Create a client using device authorization grant authentication."""
+    """Create a client using device authorization grant authentication.
+
+    Args:
+        api_url: API URL of the Fuzzball cluster.
+        auth_url: Authentication URL of the Fuzzball cluster.
+        account_id: Fuzzball account ID.
+        ca_cert_file: Optional CA certificate file path.
+        fb_version: Manually override the expected Fuzzball version.
+
+    Returns:
+        Configured FuzzballClient instance.
+    """
     authenticator = DeviceLoginAuthenticator(
         api_url=api_url,
         auth_url=auth_url,
@@ -595,7 +623,7 @@ def create_fuzzball_client(
         ValueError: If required parameters are missing.
     """
     if device_login:
-        if not all([api_url, auth_url, account_id]):
+        if api_url is None or auth_url is None or account_id is None:
             raise ValueError("For device login, api-url, auth-url, and account-id are required")
         assert api_url and auth_url and account_id
         return create_device_login_client(
@@ -606,7 +634,7 @@ def create_fuzzball_client(
             fb_version=fb_version,
         )
     if user:
-        if not all([api_url, auth_url, password, account_id]):
+        if api_url is None or auth_url is None or account_id is None or password is None:
             raise ValueError("For direct login, all credentials must be provided")
         return create_direct_login_client(
             api_url=api_url,

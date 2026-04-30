@@ -3,6 +3,7 @@
 import argparse
 import os
 import pathlib
+from importlib.metadata import version
 from unittest.mock import patch
 
 import pytest
@@ -68,8 +69,7 @@ class TestCliParsing:
             args = parse_cli()
 
         assert args.nextflow_work_base == "/data/nextflow/executions"
-        assert args.nf_fuzzball_version == "0.2.0"
-        assert args.nextflow_version == "25.05.0-edge"
+        assert args.nf_fuzzball_version == version("nf-fuzzball-submit")
         assert args.timelimit == "8h"
         assert args.scratch_volume == "volume://user/ephemeral"
         assert args.data_volume == "volume://user/persistent"

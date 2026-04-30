@@ -29,6 +29,10 @@ class FuzzballAuthenticator(ABC):
 
         Returns:
             ApiConfig with authentication details.
+
+        Raises:
+            ValueError: If authentication fails or required configuration is missing.
+            OSError: If a required file (e.g., config file) cannot be read.
         """
 
 
@@ -40,7 +44,14 @@ class KeycloakAuthenticator(FuzzballAuthenticator):
     """
 
     def __init__(self, api_url: str, auth_url: str, account_id: str):
-        """Initialize KeycloakAuthenticator-based classes."""
+        """Initialize KeycloakAuthenticator-based classes.
+
+        Args:
+            api_url: Base API URL of the Fuzzball cluster (versioned path is
+                probed on first authenticate).
+            auth_url: Keycloak authentication server URL.
+            account_id: Fuzzball account ID.
+        """
         self._raw_api_url = api_url  # can leave off the API base path
         self._api_url: str | None = None  # canonical URL resolved on first authenticate()
         self._auth_url = auth_url
@@ -50,8 +61,15 @@ class KeycloakAuthenticator(FuzzballAuthenticator):
     def _get_auth_token(self, http_client: urllib3.PoolManager) -> tuple[str, str]:
         """Obtain a Keycloak access token and offline refresh token.
 
+        Args:
+            http_client: HTTP client for making requests.
+
         Returns:
             Tuple of (access_token, refresh_token).
+
+        Raises:
+            ValueError: If the token request fails or the response is missing
+                expected fields.
         """
 
     def _get_api_token(self, http_client: urllib3.PoolManager, auth_token: str) -> str:
@@ -88,6 +106,10 @@ class KeycloakAuthenticator(FuzzballAuthenticator):
 
         Returns:
             ApiConfig with authentication details.
+
+        Raises:
+            ValueError: If the canonical API URL cannot be resolved, the auth
+                token request fails, or the API token exchange fails.
         """
         if not self._api_url:
             self._api_url = get_canonical_api_url(self._raw_api_url, http_client)
@@ -113,7 +135,18 @@ class DirectLoginAuthenticator(KeycloakAuthenticator):
         password: str,
         account_id: str,
     ):
-        """Initialize direct login authenticator and validate parameters."""
+        """Initialize direct login authenticator and validate parameters.
+
+        Args:
+            api_url: Base API URL of the Fuzzball cluster.
+            auth_url: Keycloak authentication server URL.
+            user: Username for the OAuth2 password grant.
+            password: Password for the OAuth2 password grant.
+            account_id: Fuzzball account ID.
+
+        Raises:
+            ValueError: If any required parameter is empty or missing.
+        """
         super().__init__(api_url, auth_url, account_id)
         self._user = user
         self._password = password
@@ -124,7 +157,18 @@ class DirectLoginAuthenticator(KeycloakAuthenticator):
             )
 
     def _get_auth_token(self, http_client: urllib3.PoolManager) -> tuple[str, str]:
-        """Password grant with offline_access scope.  Returns (access_token, refresh_token)."""
+        """Perform an OAuth2 password grant and return tokens.
+
+        Args:
+            http_client: HTTP client for making requests.
+
+        Returns:
+            Tuple of (access_token, refresh_token).
+
+        Raises:
+            ValueError: If the request fails or the response is missing expected
+                token fields.
+        """
         data = {
             "client_id": "fuzzball-cli",
             "grant_type": "password",
@@ -158,7 +202,16 @@ class DeviceLoginAuthenticator(KeycloakAuthenticator):
     """
 
     def __init__(self, api_url: str, auth_url: str, account_id: str):
-        """Initialize device login authenticator and validate parameters."""
+        """Initialize device login authenticator and validate parameters.
+
+        Args:
+            api_url: Base API URL of the Fuzzball cluster.
+            auth_url: Keycloak authentication server URL.
+            account_id: Fuzzball account ID.
+
+        Raises:
+            ValueError: If any required parameter is empty or missing.
+        """
         super().__init__(api_url, auth_url, account_id)
         if not all([self._raw_api_url, self._auth_url, self._account_id]):
             raise ValueError(
@@ -232,7 +285,16 @@ class ConfigFileAuthenticator(FuzzballAuthenticator):
     """
 
     def __init__(self, config_path: pathlib.Path, context: str | None = None):
-        """Initialize ConfigFileAuthenticator and read/validate config file."""
+        """Initialize ConfigFileAuthenticator and read/validate config file.
+
+        Args:
+            config_path: Path to the Fuzzball YAML configuration file.
+            context: Context name to use; falls back to ``activeContext`` if None.
+
+        Raises:
+            OSError: If the config file cannot be read.
+            ValueError: If the config file cannot be parsed or has invalid format.
+        """
         self._config_path = config_path
         self._context = context
         self._config = self._load_config_file()
@@ -316,8 +378,8 @@ class ConfigFileAuthenticator(FuzzballAuthenticator):
                 address = f"https://{address}"
             return {
                 "api_url": address or None,
-                "auth_url": ctx.get("oidcServerURL"),
-                "account_id": ctx.get("currentaccountid"),
+                "auth_url": ctx.get("oidcServerURL", None),
+                "account_id": ctx.get("currentaccountid", None),
             }
         except Exception:
             return {}
@@ -330,13 +392,21 @@ class ConfigFileAuthenticator(FuzzballAuthenticator):
 
         Returns:
             ApiConfig with authentication details.
+
+        Raises:
+            ValueError: If no active context is configured, the context is not
+                found in the config, required fields are absent, or the API
+                cannot be reached.
         """
         context_name = self._determine_context()
         context = self._extract_context_info(context_name)
-        api_url = get_canonical_api_url(context["address"], http_client)
-        return ApiConfig(
-            api_url=api_url,
-            auth_url=context["oidcServerURL"],
-            token=context["auth"]["credentials"]["token"],
-            account_id=context["currentaccountid"],
-        )
+        try:
+            api_url = get_canonical_api_url(context["address"], http_client)
+            return ApiConfig(
+                api_url=api_url,
+                auth_url=context["oidcServerURL"],
+                token=context["auth"]["credentials"]["token"],
+                account_id=context["currentaccountid"],
+            )
+        except KeyError as e:
+            raise ValueError(f"Fuzzball config file is missing expected field {e} in context '{context_name}'") from e

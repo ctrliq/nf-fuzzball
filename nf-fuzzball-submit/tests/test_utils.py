@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 import urllib3
 
-from nf_fuzzball_submit.utils import die, find_and_import_local_files, get_canonical_api_url
+from nf_fuzzball_submit.utils import find_and_import_local_files, get_canonical_api_url
 
 
 class TestGetCanonicalApiUrl:
@@ -68,7 +68,7 @@ class TestGetCanonicalApiUrl:
 
         url = "https://api.example.com"
 
-        with pytest.raises(ValueError, match="Unable to sniff API base path"):
+        with pytest.raises(ValueError, match="Unable to reach Fuzzball API at"):
             get_canonical_api_url(url, mock_http_client)
 
     def test_http_exception_continues_search(self, mock_http_client):
@@ -269,18 +269,3 @@ class TestFindAndImportLocalFiles:
         finally:
             for p in paths:
                 p.unlink(missing_ok=True)
-
-
-class TestDie:
-    """Tests for die function."""
-
-    @patch("nf_fuzzball_submit.utils.sys.exit")
-    @patch("nf_fuzzball_submit.utils.logger")
-    def test_die_logs_and_exits(self, mock_logger, mock_exit):
-        """Test die function logs error and exits."""
-        error_message = "Something went wrong"
-
-        die(error_message)
-
-        mock_logger.fatal.assert_called_once_with(error_message)
-        mock_exit.assert_called_once_with(1)

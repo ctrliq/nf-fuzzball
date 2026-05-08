@@ -44,6 +44,23 @@ class ApiUtils {
     static final ObjectMapper JACKSON_MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule())
 
+    private static final int MAX_RESP_BODY_PREVIEW = 4096
+
+    /**
+     * Returns a compact preview of an HTTP response body suitable for inclusion in
+     * exception messages. Collapses whitespace runs to a single space and caps length
+     * at MAX_RESP_BODY_PREVIEW so a pathological or sensitive body cannot dominate logs.
+     */
+    private static String summarizeResponseBody(String body) {
+        if (!body) {
+            return ''
+        }
+        String collapsed = body.replaceAll(/\s+/, ' ').trim()
+        return collapsed.length() > MAX_RESP_BODY_PREVIEW
+                ? collapsed.substring(0, MAX_RESP_BODY_PREVIEW) + '... [truncated]'
+                : collapsed
+    }
+
     /**
      * Applies custom CA certificate SSL configuration to a builder, if FB_CA_CERT is set.
      * Shared by both the main API client and the token-refresh client.
@@ -186,7 +203,7 @@ class ApiUtils {
         if (response.isSuccessful()) {
             return respBody ? JsonSlurper.newInstance().parseText(respBody) : null
         }
-        throw new ApiException(response.code(), "${response.message()}: ${respBody}")
+        throw new ApiException(response.code(), "${response.message()}: ${summarizeResponseBody(respBody)}")
     }
 
     /**

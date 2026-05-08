@@ -3,7 +3,9 @@
 /* groovylint-disable DuplicateNumberLiteral, UnnecessaryGetter */
 package {{apiPackage}}
 
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import groovy.json.JsonSlurper
 import groovy.transform.CompileStatic
@@ -43,6 +45,8 @@ class ApiUtils {
 
     static final ObjectMapper JACKSON_MAPPER = new ObjectMapper()
             .registerModule(new JavaTimeModule())
+            .configure(SerializationFeature.WRITE_ENUMS_USING_TO_STRING, true)
+            .configure(DeserializationFeature.READ_ENUMS_USING_TO_STRING, true)
 
     private static final int MAX_RESP_BODY_PREVIEW = 4096
 

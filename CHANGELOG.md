@@ -5,6 +5,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changelog was maintained before v0.2.0._
 
+## [0.3.1] Unreleased
+
+### Fixed
+
+- **Workflow submission against Fuzzball v3.3+ clusters**. API request serialization now uses Jackson's
+  `ObjectMapper` instead of Groovy's `JsonBuilder`, so `@JsonProperty` annotations are honoured.
+  Previously, fields renamed to kebab-case in the v3.3 schema (e.g. `task-array`, `depends-on`) were
+  sent as camelCase and rejected with HTTP 400 by clusters that no longer silently drop unknown
+  fields.
+- **API error messages**. `ApiException` now includes the response body, so server-side error
+  details are surfaced instead of just the bare HTTP status phrase.
+
 ## [0.3.0] 2026-04-28
 
 ### Added

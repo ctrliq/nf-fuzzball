@@ -21,15 +21,12 @@ class {{classname}} {
     {{{datatypeWithEnum}}} {{name}}{{#defaultValue}} = {{{.}}}{{/defaultValue}}{{#description}}  // {{{.}}}{{/description}}
 {{/vars}}
 
-    private static final ObjectMapper JACKSON_MAPPER = new ObjectMapper()
-        .registerModule(new JavaTimeModule())
-
     /**
      * Factory method to create a {{classname}} from a Map (e.g., from JsonSlurper).
      * Uses Jackson for robust mapping.
      */
     static {{classname}} fromMap(Map data) {
-        return this.JACKSON_MAPPER.convertValue(data, {{classname}})
+        return ApiUtils.JACKSON_MAPPER.convertValue(data, {{classname}})
     }
 
 }

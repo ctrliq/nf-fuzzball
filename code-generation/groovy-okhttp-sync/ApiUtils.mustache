@@ -3,8 +3,10 @@
 /* groovylint-disable DuplicateNumberLiteral, UnnecessaryGetter */
 package {{apiPackage}}
 
-import groovy.json.JsonBuilder
-import groovy.json.JsonGenerator
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import groovy.json.JsonSlurper
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
@@ -41,12 +43,27 @@ class ApiUtils {
     static final String PATCH = 'PATCH'
     static final String DELETE = 'DELETE'
 
+    static final ObjectMapper JACKSON_MAPPER = new ObjectMapper()
+            .registerModule(new JavaTimeModule())
+            .configure(SerializationFeature.WRITE_ENUMS_USING_TO_STRING, true)
+            .configure(DeserializationFeature.READ_ENUMS_USING_TO_STRING, true)
 
-    static final JsonGenerator JSON_GEN = new JsonGenerator.Options()
-            .addConverter(Enum) { Enum u, String key ->
-                u.toString()
-            }
-            .build()
+    private static final int MAX_RESP_BODY_PREVIEW = 4096
+
+    /**
+     * Returns a compact preview of an HTTP response body suitable for inclusion in
+     * exception messages. Collapses whitespace runs to a single space and caps length
+     * at MAX_RESP_BODY_PREVIEW so a pathological or sensitive body cannot dominate logs.
+     */
+    private static String summarizeResponseBody(String body) {
+        if (!body) {
+            return ''
+        }
+        String collapsed = body.replaceAll(/\s+/, ' ').trim()
+        return collapsed.length() > MAX_RESP_BODY_PREVIEW
+                ? collapsed.substring(0, MAX_RESP_BODY_PREVIEW) + '... [truncated]'
+                : collapsed
+    }
 
     /**
      * Applies custom CA certificate SSL configuration to a builder, if FB_CA_CERT is set.
@@ -161,7 +178,7 @@ class ApiUtils {
             /* groovylint-disable-next-line Instanceof */
             String json = (bodyParams instanceof String || bodyParams instanceof GString)
                         ? bodyParams.toString()
-                        : new JsonBuilder(bodyParams, JSON_GEN).toString()
+                        : JACKSON_MAPPER.writeValueAsString(bodyParams)
             requestBody = RequestBody.create(json, MediaType.parse(contentType ?: 'application/json'))
         } else if (method?.toUpperCase() in ['POST', 'PUT', 'PATCH']) {
             requestBody = RequestBody.create('{}', MediaType.parse(contentType ?: 'application/json'))
@@ -190,7 +207,7 @@ class ApiUtils {
         if (response.isSuccessful()) {
             return respBody ? JsonSlurper.newInstance().parseText(respBody) : null
         }
-        throw new ApiException(response.code(), response.message())
+        throw new ApiException(response.code(), "${response.message()}: ${summarizeResponseBody(respBody)}")
     }
 
     /**

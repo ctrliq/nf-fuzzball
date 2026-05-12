@@ -7,8 +7,6 @@ import groovy.transform.CompileStatic
 import okhttp3.Authenticator
 import groovy.transform.Canonical
 import groovy.util.logging.Slf4j
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 {{#imports}}import {{import}}
 {{/imports}}
 
@@ -19,8 +17,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 class {{classname}} {
 
     ApiUtils apiUtils
-    private static final ObjectMapper JACKSON_MAPPER = new ObjectMapper()
-        .registerModule(new JavaTimeModule())
 
     {{classname}}(ApiConfig config) {
         this.apiUtils = new ApiUtils(config)
@@ -101,7 +97,7 @@ class {{classname}} {
                     contentType)
         {{#returnBaseType}}
         try {
-            return this.JACKSON_MAPPER.convertValue(result, {{returnBaseType}})
+            return ApiUtils.JACKSON_MAPPER.convertValue(result, {{returnBaseType}})
         } catch (Exception e) {
             throw new IOException('unable to convert API response to {{.}}')
         }

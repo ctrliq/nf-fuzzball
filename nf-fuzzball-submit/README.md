@@ -17,8 +17,8 @@ Installation as a tool (see the [uv tool documentation](https://docs.astral.sh/u
 ```sh
 # from the main branch
 uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@main#subdirectory=nf-fuzzball-submit"
-# from a release
-uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@v0.2.1#subdirectory=nf-fuzzball-submit"
+# from a release (e.g. 0.2.2)
+uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@v0.2.2#subdirectory=nf-fuzzball-submit"
 
 nf-fuzzball-submit --help
 ```

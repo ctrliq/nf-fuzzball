@@ -5,6 +5,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changelog was maintained before v0.2.0._
 
+## [0.2.2] 2026-05-19
+
+### Added
+
+- **AWS egress retry**. Added AWS CLI retry plus a re-sync loop to make nf-fuzzball-submit egress
+  more robust.
+
 ## [0.2.1] 2026-04-28
 
 ### Added

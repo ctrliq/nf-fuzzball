@@ -5,7 +5,7 @@ if [ ! -d "{{ egress_source }}" ]; then
 fi
 
 export AWS_RETRY_MODE=adaptive
-export AWS_MAX_ATTEMPTS=10
+export AWS_MAX_ATTEMPTS=5
 
 attempt=1
 max_attempts=3

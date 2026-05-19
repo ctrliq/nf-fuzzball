@@ -3,4 +3,18 @@ if [ ! -d "{{ egress_source }}" ]; then
     echo "Egress source directory '{{ egress_source }}' does not exist. Skipping egress."
     exit 0
 fi
-aws s3 sync "{{ egress_source }}" "{{ egress_s3_dest }}"
+
+export AWS_RETRY_MODE=adaptive
+export AWS_MAX_ATTEMPTS=10
+
+attempt=1
+max_attempts=3
+until aws s3 sync "{{ egress_source }}" "{{ egress_s3_dest }}"; do
+    if [ $attempt -ge $max_attempts ]; then
+        echo "Egress failed after $max_attempts attempts."
+        exit 1
+    fi
+    echo "Egress attempt $attempt failed. Retrying in $((attempt * 15))s..."
+    sleep $((attempt * 15))
+    attempt=$((attempt + 1))
+done

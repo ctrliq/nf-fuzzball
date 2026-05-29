@@ -99,9 +99,10 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
         loadEphemeralStorageClasses()
         volumes = filterEphemeralVolumes(allVolumes)
 
-        // Filter mounts to only include those with persistent volumes
-        mounts = allMounts.findAll { mountName, mount ->
-            volumes.containsKey(mountName)
+        // Filter mounts to only include those with persistent volumes.
+        // Path-keyed format (current): map key = container path, mount.volume = volume name.
+        mounts = allMounts.findAll { mountPath, mount ->
+            volumes.containsKey(mount.volume)
         }
     }
 

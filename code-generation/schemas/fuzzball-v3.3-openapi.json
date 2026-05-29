@@ -9053,7 +9053,7 @@
     "fuzzball.api.v3.WorkflowDefinition.Defaults.Job.Mount": {
       "type": "object",
       "properties": {
-        "location": {
+        "volume": {
           "type": "string",
           "description": "location specifies the destination within the container filesystem to\nmount a volume directory. This must be an absolute path."
         }
@@ -9243,7 +9243,7 @@
     "fuzzball.api.v3.WorkflowDefinition.Job.Mount": {
       "type": "object",
       "properties": {
-        "location": {
+        "volume": {
           "type": "string",
           "description": "location specifies the destination within the container filesystem to\nmount a volume directory. This must be an absolute path."
         }
@@ -9625,7 +9625,7 @@
         },
         "readiness-probe": {
           "$ref": "#/definitions/fuzzball.api.v3.WorkflowDefinition.Probe",
-          "title": "readinessProbe controls the STARTED → RUNNING transition of the service (required for proper lifecycle monitoring)"
+          "title": "readinessProbe controls the STARTED \u2192 RUNNING transition of the service (required for proper lifecycle monitoring)"
         }
       }
     },

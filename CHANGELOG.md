@@ -5,6 +5,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changelog was maintained before v0.2.0._
 
+## [0.4.0] 2026-05-29
+
+### Fixed
+
+- **Path-keyed mount format compatibility**. The executor now correctly reads the `volume` field
+  (introduced in Fuzzball v4 path-keyed mount format) when filtering persistent volume mounts for
+  child jobs. Previously the executor compared container paths against volume names, producing an
+  empty mount set.
+- **Unknown API fields no longer crash the executor**. All generated model classes now carry
+  `@JsonIgnoreProperties(ignoreUnknown = true)` so future additive API changes don't cause
+  deserialization failures.
+
+### Changed
+
+- **SDK schema updated** to reflect the path-keyed mount format: `WorkflowDefinition.Job.Mount`
+  field renamed from `location` to `volume`.
+
 ## [0.3.0] 2026-04-28
 
 ### Added

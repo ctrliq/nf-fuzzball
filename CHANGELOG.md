@@ -5,10 +5,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changelog was maintained before v0.2.0._
 
-## [0.3.2] unreleased
+## [0.3.2] Unreleased
+
+### Added
 
 - **Fuzzball v3.4 support**
-
 ## [0.3.1] 2026-05-19
 
 ### Added

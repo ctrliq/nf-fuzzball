@@ -5,6 +5,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changelog was maintained before v0.2.0._
 
+## [0.3.2] Unreleased
+
+### Added
+
+- **Fuzzball v3.4 support**
 ## [0.3.1] 2026-05-19
 
 ### Added
@@ -29,6 +34,13 @@ _No changelog was maintained before v0.2.0._
 - **Fuzzball v3.3 support**. The Nextflow Groovy plugin now supports Fuzzball v3.3.
 - **Minimum Fuzzball version enforcement**. The submission script now validates the Fuzzball cluster
   version at startup and exits with a clear error if the cluster is too old.
+
+## [0.2.2] 2026-05-19
+
+### Added
+
+- **AWS egress retry**. Added AWS CLI retry plus a re-sync loop to make nf-fuzzball-submit egress
+  more robust.
 
 ## [0.2.1] 2026-04-28
 

@@ -22,12 +22,10 @@ import okhttp3.Authenticator
 import com.ciq.fuzzball.api.ApiConfig
 import com.ciq.fuzzball.api.ApiUtils
 import com.ciq.fuzzball.api.WorkflowServiceApi
-import com.ciq.fuzzball.api.StorageClassServiceApi
-import com.ciq.fuzzball.model.FuzzballApiV3Workflow as Workflow
-import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinition as WorkflowDefinition
-import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionJobMount as WorkflowDefinitionJobMount
-import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionVolume as Volume
-import com.ciq.fuzzball.model.FuzzballApiV3ListStorageClassesResponse as ListStorageClassesResponse
+import com.ciq.fuzzball.model.FuzzballApiV4Workflow as Workflow
+import com.ciq.fuzzball.model.FuzzballApiV4WorkflowDefinition as WorkflowDefinition
+import com.ciq.fuzzball.model.FuzzballApiV4WorkflowDefinitionJobMount as WorkflowDefinitionJobMount
+import com.ciq.fuzzball.model.FuzzballApiV4WorkflowDefinitionVolume as Volume
 
 // TODO: task batching possibly with TaskArrayExecutor
 
@@ -40,11 +38,8 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
     protected String executorWfId = null
     protected String executorWfName = null
     protected WorkflowServiceApi fuzzballWfService
-    protected StorageClassServiceApi storageClassService
-    protected Map<String, WorkflowDefinitionJobMount> mounts = [:] // only includes persistent volumes
-    protected Map<String, Volume> allVolumes = [:]
-    protected Map<String, Volume> volumes = [:] // volume only include persistent volumes
-    protected Set<String> ephemeralStorageClasses = [] as Set<String>
+    protected Map<String, WorkflowDefinitionJobMount> mounts = [:] // path-keyed mounts of persistent volumes
+    protected Map<String, Volume> volumes = [:] // only persistent volumes
 
     @Override
     protected void register() {
@@ -76,7 +71,6 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
             }
         }
         fuzzballWfService = new WorkflowServiceApi(fuzzballApiConfig, authenticator)
-        storageClassService = new StorageClassServiceApi(fuzzballApiConfig, authenticator)
         Workflow wf
         try {
             wf = fuzzballWfService.getWorkflow(executorWfId)
@@ -90,19 +84,9 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
         if (!wfDef) {
             throw new AbortOperationException("Unable to load workflow definition for workflow: $executorWfName")
         }
-        allVolumes = wfDef.volumes?.collectEntries { k, v ->
-            [(k): new Volume(reference: v.reference)]
-        } ?: [:]
+        volumes = filterPersistentVolumes(wfDef.volumes ?: [:])
         Map<String, WorkflowDefinitionJobMount> allMounts = wfDef.jobs[executorWfName]?.mounts ?: [:]
-
-        // Filter out ephemeral volumes
-        loadEphemeralStorageClasses()
-        volumes = filterEphemeralVolumes(allVolumes)
-
-        // Filter mounts to only include those with persistent volumes
-        mounts = allMounts.findAll { mountName, mount ->
-            volumes.containsKey(mountName)
-        }
+        mounts = filterMounts(allMounts, volumes)
     }
 
     /**
@@ -203,61 +187,47 @@ class FuzzballExecutor extends Executor implements ExtensionPoint {
     }
 
     /**
-     * Load ephemeral storage classes by querying the API
+     * Keep only the persistent volumes of the enclosing workflow so they can be
+     * re-declared in the per-task workflows. In a v4 workflow definition a volume
+     * is persistent iff it sets use == 'persistent' or an explicit volume name.
+     * Everything else (empty block, use == 'ephemeral', provisioner-backed volume
+     * without a name) is ephemeral, scoped to the enclosing workflow, and cannot
+     * be shared with task workflows.
+     *
+     * Only the fields needed to bind the existing volume (use, name) are copied;
+     * ingress/egress and size must not be repeated in task workflows.
+     *
+     * Volumes that still carry a legacy v1 reference were not upgraded by the
+     * server (e.g. an identity-scoped reference without an explicit name fetched
+     * without identity context) and are skipped with a warning.
      */
-    protected void loadEphemeralStorageClasses() {
-        try {
-            ListStorageClassesResponse response = storageClassService.listStorageClasses(null, null, null, null)
-            ephemeralStorageClasses = response.classes
-                .findAll { !it.persistent }
-                .collect { it.name } as Set<String>
-            log.debug "Loaded ${ephemeralStorageClasses.size()} ephemeral storage classes: ${ephemeralStorageClasses}"
-        } catch (Exception e) {
-            log.warn "Failed to load storage classes for ephemeral volume filtering", e
-            // Continue without filtering if API call fails
-            ephemeralStorageClasses = [] as Set<String>
-        }
-    }
-
-    /**
-     * Parse storage class name from fuzzball volume reference
-     * Volume reference format: "volume://SCOPE/STORAGE_CLASS[/USERDATA]"
-     */
-    protected String parseStorageClassFromReference(String reference) {
-        if (!reference) return null
-
-        if (reference.startsWith('volume://')) {
-            // Format: volume://SCOPE/STORAGE_CLASS[/USERDATA]
-            String withoutProtocol = reference.substring(9) // Remove "volume://"
-            String[] parts = withoutProtocol.split('/')
-            if (parts.length >= 2) {
-                return parts[1] // STORAGE_CLASS is the second part
-            }
-        }
-
-        return null
-    }
-
-    /**
-     * Filter out volumes that use ephemeral storage classes
-     */
-    protected Map<String, Volume> filterEphemeralVolumes(Map<String, Volume> originalVolumes) {
-        if (!originalVolumes || ephemeralStorageClasses.isEmpty()) {
-            return originalVolumes
-        }
-
+    protected static Map<String, Volume> filterPersistentVolumes(Map<String, Volume> allVolumes) {
         Map<String, Volume> filtered = [:]
-        originalVolumes.each { name, volume ->
-            String storageClassName = parseStorageClassFromReference(volume.reference)
-            if (storageClassName && ephemeralStorageClasses.contains(storageClassName)) {
-                log.debug "Excluding ephemeral volume '${name}' with storage class '${storageClassName}'"
+        allVolumes.each { String name, Volume vol ->
+            if (vol.reference) {
+                log.warn "Skipping volume '${name}': legacy v1 reference '${vol.reference}' was not upgraded by the server — use v4 volume syntax or an explicit volume name"
+            } else if (vol.use == 'persistent' || vol.name) {
+                filtered[name] = new Volume(use: vol.use, name: vol.name)
             } else {
-                filtered[name] = volume
+                log.debug "Excluding ephemeral volume '${name}' from task workflows"
             }
         }
-
-        log.info "Filtered volumes: ${filtered.size()} persistent volumes out of ${originalVolumes.size()} total volumes"
+        log.info "Filtered volumes: ${filtered.size()} persistent volumes out of ${allVolumes.size()} total volumes"
         return filtered
+    }
+
+    /**
+     * Keep only the mounts that point at a persistent volume. v4 mounts are
+     * path-keyed: the map key is the container path and mount.volume holds the
+     * volume name.
+     */
+    protected static Map<String, WorkflowDefinitionJobMount> filterMounts(
+        Map<String, WorkflowDefinitionJobMount> allMounts,
+        Map<String, Volume> persistentVolumes
+    ) {
+        return allMounts.findAll { String path, WorkflowDefinitionJobMount mount ->
+            persistentVolumes.containsKey(mount.volume)
+        }
     }
 
 }

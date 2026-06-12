@@ -278,9 +278,10 @@ class FuzzballClient:
         """
         nextflow_cmd_str = shlex.join(args.nextflow_cmd)
         job_name = args.job_name if len(args.job_name) > 0 else str(uuid.uuid5(NAMESPACE_CONTENT, nextflow_cmd_str))
+        # v4 path-keyed mount format: key = container path, volume = volume name
         mounts = {
-            "data": {"location": DATA_MOUNT},
-            "scratch": {"location": SCRATCH_MOUNT},
+            DATA_MOUNT: {"volume": "data"},
+            SCRATCH_MOUNT: {"volume": "scratch"},
         }
         wd = f"{args.nextflow_work_base}/{job_name}"
         home = f"{wd}/home"
@@ -461,7 +462,7 @@ class FuzzballClient:
                 )
                 workflow["definition"]["jobs"]["egress"] = {
                     "image": {"uri": "docker://amazon/aws-cli:2.34.2"},
-                    "mounts": {"data": mounts["data"]},
+                    "mounts": {DATA_MOUNT: mounts[DATA_MOUNT]},
                     "cwd": "/tmp",  # noqa: S108
                     "script": egress_script,
                     "env": [

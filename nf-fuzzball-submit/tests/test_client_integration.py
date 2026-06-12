@@ -88,6 +88,22 @@ class TestFuzzballClientInitialization:
         # Should use the override, not the auto-detected "4.1"
         assert client._fb_version == "v5.0"
 
+    @patch("nf_fuzzball_submit.auth.get_canonical_api_url")
+    @patch("urllib3.PoolManager")
+    def test_rejects_pre_v4_server(self, mock_pool_manager, mock_canonical_url, temp_config_file, mock_http_client):
+        """Servers older than v4.0 are rejected."""
+        mock_canonical_url.return_value = "https://api.example.com/v3"
+        mock_pool_manager.return_value = mock_http_client
+
+        version_response = Mock()
+        version_response.status = 200
+        version_response.data = json.dumps({"version": "v3.4.0"}).encode()
+        mock_http_client.request.return_value = version_response
+
+        auth = ConfigFileAuthenticator(temp_config_file)
+        with pytest.raises(ValueError, match=r"v4\.0 or later is required"):
+            FuzzballClient(auth)
+
     def test_client_initialization_with_ca_cert(self, sample_api_config):
         """Test client initialization with CA certificate."""
         with (

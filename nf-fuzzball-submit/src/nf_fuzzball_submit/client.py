@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # Constants
 DATA_MOUNT = "/data"
 SCRATCH_MOUNT = "/scratch"
-MIN_FUZZBALL_VERSION = (3, 3)
+MIN_FUZZBALL_VERSION = (4, 0)
 EPHEMERAL_STORAGE_CLASSES = frozenset({"ephemeral", "scratch"})
 
 

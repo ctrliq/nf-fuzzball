@@ -51,14 +51,33 @@ tasks.register('generateFuzzballSdk', Exec) {
     )
     outputs.dir generatedSdkDir
 
-    // Build commandLine args based on which property was provided
+    // Build commandLine args based on which property was provided; without
+    // openapiFile/openapiUrl, default to the latest vendored schema (same
+    // selection as the Makefile)
     def args = [codegenFile.getAsFile().getAbsolutePath()]
     if (project.hasProperty('openapiFile')) {
         args.add("--file=${project.property('openapiFile')}")
     } else if (project.hasProperty('openapiUrl')) {
         args.add("--url=${project.property('openapiUrl')}")
+    } else {
+        def schemas = codegenDir.dir('schemas').getAsFile()
+            .listFiles({ dir, name -> name ==~ /fuzzball-v\d+\.\d+-openapi\.json/ } as FilenameFilter)
+        if (!schemas) {
+            throw new GradleException('No vendored OpenAPI schemas found in code-generation/schemas')
+        }
+        def latest = schemas.max { f ->
+            def (major, minor) = (f.name =~ /v(\d+)\.(\d+)/)[0][1..2]*.toInteger()
+            major * 1000 + minor
+        }
+        args.add("--file=${latest.absolutePath}")
     }
     args.add(generatedSdkDir.get().getAsFile().getAbsolutePath())
+
+    // re-run generation when the spec selection or its content changes
+    inputs.property('spec', args[1])
+    if (args[1].startsWith('--file=')) {
+        inputs.file(args[1].substring('--file='.length()))
+    }
 
     commandLine args
 }

@@ -335,10 +335,10 @@ def parse_cli() -> argparse.Namespace:
 Submit a nextflow pipeline to Fuzzball.
 
 Notes:
-  - Requires a persistent data volume (mounted at /data) and an ephemeral volume (mounted
-    at /scratch).
+  - Requires Fuzzball v4.0 or later, a named persistent data volume (mounted at /data,
+    specified with --data-volume) and an ephemeral volume (mounted at /scratch).
   - Paths for input, workdir, and output in your nextflow command should be absolute. For
-    paths in persistent storate they should include the persistent storage mount point.
+    paths in persistent storage they should include the persistent storage mount point.
   - Any explicitly specified config and/or parameter files will be included in the
     fuzzball job but implicit files (i.e. $HOME/.nextflow/config and ./nextflow.config)
     will not.
@@ -354,7 +354,9 @@ Notes:
         epilog=textwrap.dedent(
             """\
             Example:
-              %(prog)s -- nextflow run -profile fuzzball \\
+              %(prog)s \\
+                  --data-volume volume://user/persistent/mydata \\
+                  -- nextflow run -profile fuzzball \\
                   -with-report report.html \\
                   -with-trace \\
                   -with-timeline timeline.html \\
@@ -539,7 +541,7 @@ Notes:
         "--scratch-volume",
         type=valid_fuzzball_volume,
         default="volume://user/ephemeral",
-        help="Ephemeral scratch volume. [%(default)s]",
+        help="Scratch volume reference (typically ephemeral). [%(default)s]",
     )
     parser.add_argument(
         "--data-volume",

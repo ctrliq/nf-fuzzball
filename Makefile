@@ -1,6 +1,6 @@
 # Copyright 2025 CIQ, Inc. All rights reserved.
 # Build the plugin
-SPEC_URL ?= https://api.stable.fuzzball.ciq.dev/v3/schema
+SPEC_URL ?= https://api.stable.fuzzball.ciq.dev/v4/schema
 SPEC_FILE ?= __none__
 
 # Check for required tools
@@ -66,7 +66,7 @@ clean: ## Clean build artifacts and temporary files
 	./gradlew clean
 
 test: ## Run plugin unit tests
-	./gradlew test
+	./gradlew test $(GRADLEW_PROPS)
 
 install: ## Install the plugin into local nextflow plugins dir
 	./gradlew install $(GRADLEW_PROPS)

@@ -10,13 +10,16 @@ import pytest
 
 from nf_fuzzball_submit.cli import parse_cli, valid_version
 
+# --data-volume is required; prepend to argv in tests that don't exercise it
+REQUIRED_ARGS = ["--data-volume", "volume://user/persistent/mydata"]
+
 
 class TestCliParsing:
     """Tests for CLI argument parsing."""
 
     def test_basic_nextflow_command(self):
         """Test parsing basic nextflow command."""
-        test_args = ["--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -27,7 +30,7 @@ class TestCliParsing:
 
     def test_nextflow_command_with_double_dash(self):
         """Test nextflow command parsing strips leading double dash."""
-        test_args = ["--", "nextflow", "run", "hello", "-profile", "fuzzball"]
+        test_args = [*REQUIRED_ARGS, "--", "nextflow", "run", "hello", "-profile", "fuzzball"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -36,7 +39,7 @@ class TestCliParsing:
 
     def test_verbose_flag(self):
         """Test verbose flag parsing."""
-        test_args = ["-v", "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "-v", "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -45,7 +48,7 @@ class TestCliParsing:
 
     def test_dry_run_flag(self):
         """Test dry run flag parsing."""
-        test_args = ["--dry-run", "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--dry-run", "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -54,7 +57,7 @@ class TestCliParsing:
 
     def test_job_name_option(self):
         """Test job name option parsing."""
-        test_args = ["--job-name", "my-test-job", "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--job-name", "my-test-job", "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -63,7 +66,7 @@ class TestCliParsing:
 
     def test_default_values(self):
         """Test default values are set correctly."""
-        test_args = ["--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -72,13 +75,12 @@ class TestCliParsing:
         assert args.nf_fuzzball_version == version("nf-fuzzball-submit")
         assert args.timelimit == "8h"
         assert args.scratch_volume == "volume://user/ephemeral"
-        assert args.data_volume == "volume://user/persistent"
         assert args.queue_size == 20
         assert args.nf_core is False
 
     def test_config_file_authentication_options(self):
         """Test config file authentication options."""
-        test_args = ["--context", "prod", "--fuzzball-config", "/custom/config.yaml", "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--context", "prod", "--fuzzball-config", "/custom/config.yaml", "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -89,6 +91,7 @@ class TestCliParsing:
     def test_direct_login_authentication_options(self):
         """Test direct login authentication options."""
         test_args = [
+            *REQUIRED_ARGS,
             "--api-url",
             "https://api.example.com",
             "--auth-url",
@@ -122,7 +125,7 @@ class TestCliParsing:
             "FUZZBALL_ACCOUNT_ID": "env-account-123",
         }
 
-        test_args = ["--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args), patch.dict(os.environ, env_vars):
             args = parse_cli()
@@ -138,7 +141,7 @@ class TestCliParsing:
             "FUZZBALL_API_URL": "https://env-api.example.com",
         }
 
-        test_args = ["--api-url", "https://cli-api.example.com", "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--api-url", "https://cli-api.example.com", "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args), patch.dict(os.environ, env_vars):
             args = parse_cli()
@@ -147,7 +150,7 @@ class TestCliParsing:
 
     def test_fuzzball_config_default_path_no_xdg(self):
         """Test default fuzzball config path when XDG_CONFIG_HOME is not set"""
-        test_args = ["--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             os.environ.pop("XDG_CONFIG_HOME", None)
@@ -159,7 +162,7 @@ class TestCliParsing:
 
     def test_fuzzball_config_default_path_with_xdg(self):
         """Test default fuzzball config path when XDG_CONFIG_HOME is set"""
-        test_args = ["--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             os.environ["XDG_CONFIG_HOME"] = "~/ops/cluster1/config"
@@ -173,7 +176,7 @@ class TestCliParsing:
     def test_fuzzball_config_xdg_config_home(self):
         """Test fuzzball config path with XDG_CONFIG_HOME."""
         env_vars = {"XDG_CONFIG_HOME": "/custom/config"}
-        test_args = ["--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args), patch.dict(os.environ, env_vars):
             args = parse_cli()
@@ -183,7 +186,7 @@ class TestCliParsing:
 
     def test_s3_plugin_uri_requires_secret(self):
         """Test S3 plugin URI requires S3 secret."""
-        test_args = ["--plugin-base-uri", "s3://my-bucket/plugins", "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--plugin-base-uri", "s3://my-bucket/plugins", "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):  # argparse calls sys.exit on error
@@ -192,6 +195,7 @@ class TestCliParsing:
     def test_s3_plugin_uri_with_secret_succeeds(self):
         """Test S3 plugin URI with secret succeeds."""
         test_args = [
+            *REQUIRED_ARGS,
             "--plugin-base-uri",
             "s3://my-bucket/plugins",
             "--s3-secret",
@@ -210,7 +214,7 @@ class TestCliParsing:
 
     def test_missing_nextflow_command_raises_error(self):
         """Test missing nextflow command raises error."""
-        test_args = ["--verbose"]
+        test_args = [*REQUIRED_ARGS, "--verbose"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):  # argparse calls sys.exit on error
@@ -218,7 +222,7 @@ class TestCliParsing:
 
     def test_nextflow_command_must_start_with_nextflow(self):
         """Test nextflow command must start with 'nextflow'."""
-        test_args = ["--", "python", "script.py"]
+        test_args = [*REQUIRED_ARGS, "--", "python", "script.py"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):  # argparse calls sys.exit on error
@@ -226,7 +230,7 @@ class TestCliParsing:
 
     def test_ca_cert_option(self):
         """Test CA certificate option parsing."""
-        test_args = ["--ca-cert", "/path/to/ca.crt", "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--ca-cert", "/path/to/ca.crt", "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -235,7 +239,7 @@ class TestCliParsing:
 
     def test_nf_core_flag(self):
         """Test nf-core flag parsing."""
-        test_args = ["--nf-core", "--", "nextflow", "run", "nf-core/rnaseq"]
+        test_args = [*REQUIRED_ARGS, "--nf-core", "--", "nextflow", "run", "nf-core/rnaseq"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -245,7 +249,7 @@ class TestCliParsing:
     @pytest.mark.parametrize("url", ["foo", "foo/bar", "https:/foo/bar"])
     def test_invalid_url(self, url):
         """Test that invalid url raises exception."""
-        test_args = ["--plugin-base-uri", url, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--plugin-base-uri", url, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
@@ -254,7 +258,7 @@ class TestCliParsing:
     @pytest.mark.parametrize("qs", ["2", "10", "100"])
     def test_valid_queue_size_option(self, qs):
         """Test valid queue size option parsing."""
-        test_args = ["--queue-size", qs, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--queue-size", qs, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -264,7 +268,7 @@ class TestCliParsing:
     @pytest.mark.parametrize("qs", ["-1", "0", "bad"])
     def test_invalid_queue_size_option(self, qs):
         """Test invalid queue size raises exception."""
-        test_args = ["--queue-size", qs, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--queue-size", qs, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
@@ -273,7 +277,7 @@ class TestCliParsing:
     @pytest.mark.parametrize("c", ["1", "5", "10"])
     def test_valid_cores(self, c):
         """Test valid core option parsing."""
-        test_args = ["--cores", c, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--cores", c, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -283,7 +287,7 @@ class TestCliParsing:
     @pytest.mark.parametrize("c", ["-1", "0", "11", "bad"])
     def test_invalid_cores(self, c):
         """Test invalid core raises exception."""
-        test_args = ["--cores", c, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--cores", c, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
@@ -292,7 +296,7 @@ class TestCliParsing:
     @pytest.mark.parametrize("mem", ["4GB", "10GiB", "500MB", "0.5GiB"])
     def test_valid_memory_option(self, mem):
         """Test valid memory option parsing."""
-        test_args = ["--memory", mem, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--memory", mem, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -303,7 +307,7 @@ class TestCliParsing:
     @pytest.mark.parametrize("mem", ["bad", "0GB", "1.xGiB"])
     def test_invalid_memory_option(self, mem):
         """Test invalid memory option parsing."""
-        test_args = ["--memory", mem, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--memory", mem, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
@@ -321,7 +325,7 @@ class TestCliParsing:
     ])
     def test_valid_timelimit(self, timelimit):
         """Test valid time limits."""
-        test_args = ["--timelimit", timelimit, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--timelimit", timelimit, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -334,7 +338,7 @@ class TestCliParsing:
     ])
     def test_invalid_timelimit(self, timelimit):
         """Test valid time limits."""
-        test_args = ["--timelimit", timelimit, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--timelimit", timelimit, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
@@ -346,7 +350,7 @@ class TestCliParsing:
             "--scratch-volume",
             "volume://custom/scratch",
             "--data-volume",
-            "volume://custom/data",
+            "volume://user/persistent/data",
             "--",
             "nextflow",
             "run",
@@ -357,11 +361,35 @@ class TestCliParsing:
             args = parse_cli()
 
         assert args.scratch_volume == "volume://custom/scratch"
-        assert args.data_volume == "volume://custom/data"
+        assert args.data_volume == "volume://user/persistent/data"
+
+    def test_data_volume_is_required(self):
+        """--data-volume must be given."""
+        test_args = ["--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    def test_data_volume_requires_explicit_name(self):
+        """A persistent reference without a volume name is rejected."""
+        test_args = ["--data-volume", "volume://user/persistent", "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
+
+    def test_data_volume_rejects_ephemeral_class(self):
+        """An ephemeral data volume cannot back /data across task workflows."""
+        test_args = ["--data-volume", "volume://user/ephemeral/foo", "--", "nextflow", "run", "hello"]
+
+        with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
+            with pytest.raises(SystemExit):
+                parse_cli()
 
     def test_plugin_base_uri_rejects_invalid_url(self):
         """Test --plugin-base-uri rejects an invalid URL."""
-        test_args = ["--plugin-base-uri", "not-a-url", "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--plugin-base-uri", "not-a-url", "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
@@ -369,7 +397,7 @@ class TestCliParsing:
 
     def test_api_url_and_auth_url_default_to_none(self, monkeypatch):
         """Test --api-url and --auth-url default to None when env vars are unset."""
-        test_args = ["--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--", "nextflow", "run", "hello"]
         monkeypatch.delenv("FUZZBALL_API_URL", raising=False)
         monkeypatch.delenv("FUZZBALL_AUTH_URL", raising=False)
         monkeypatch.setattr("sys.argv", ["nf-fuzzball-submit"] + test_args)
@@ -395,6 +423,7 @@ class TestEgressCliOptions:
             monkeypatch.delenv(var, raising=False)
 
     EGRESS_ARGS = [
+        *REQUIRED_ARGS,
         "--egress-source", "/data/results",
         "--egress-s3-dest", "s3://my-bucket/results",
         "--egress-s3-aki", "secret://user/aki",
@@ -436,6 +465,7 @@ class TestEgressCliOptions:
     def test_egress_source_without_dest_errors(self):
         """Test --egress-source without --egress-s3-dest errors."""
         test_args = [
+            *REQUIRED_ARGS,
             "--egress-source", "/data/results",
             "--egress-s3-aki", "secret://user/aki",
             "--egress-s3-sak", "secret://user/sak",
@@ -450,6 +480,7 @@ class TestEgressCliOptions:
     def test_egress_dest_without_source_errors(self):
         """Test --egress-s3-dest without --egress-source errors."""
         test_args = [
+            *REQUIRED_ARGS,
             "--egress-s3-dest", "s3://my-bucket/results",
             "--egress-s3-aki", "secret://user/aki",
             "--egress-s3-sak", "secret://user/sak",
@@ -464,6 +495,7 @@ class TestEgressCliOptions:
     def test_egress_without_credentials_errors(self):
         """Test egress without S3 credentials errors."""
         test_args = [
+            *REQUIRED_ARGS,
             "--egress-source", "/data/results",
             "--egress-s3-dest", "s3://my-bucket/results",
             "--", "nextflow", "run", "hello",
@@ -476,6 +508,7 @@ class TestEgressCliOptions:
     def test_egress_missing_region_errors(self):
         """Test egress with aki and sak but no region errors."""
         test_args = [
+            *REQUIRED_ARGS,
             "--egress-source", "/data/results",
             "--egress-s3-dest", "s3://my-bucket/results",
             "--egress-s3-aki", "secret://user/aki",
@@ -493,6 +526,7 @@ class TestEgressCliOptions:
         monkeypatch.setenv("FUZZBALL_EGRESS_S3_SAK", "secret://user/env-sak")
         monkeypatch.setenv("FUZZBALL_EGRESS_S3_REGION", "eu-west-1")
         test_args = [
+            *REQUIRED_ARGS,
             "--egress-source", "/data/results",
             "--egress-s3-dest", "s3://my-bucket/results",
             "--", "nextflow", "run", "hello",
@@ -510,6 +544,7 @@ class TestEgressCliOptions:
         monkeypatch.delenv("FUZZBALL_EGRESS_S3_REGION", raising=False)
         monkeypatch.setenv("AWS_DEFAULT_REGION", "ap-southeast-1")
         test_args = [
+            *REQUIRED_ARGS,
             "--egress-source", "/data/results",
             "--egress-s3-dest", "s3://my-bucket/results",
             "--egress-s3-aki", "secret://user/aki",
@@ -524,7 +559,7 @@ class TestEgressCliOptions:
 
     def test_egress_defaults_to_none(self):
         """Test egress options default to None when not specified."""
-        test_args = ["--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -535,7 +570,7 @@ class TestEgressCliOptions:
     @pytest.mark.parametrize("source", ["/tmp/results", "/scratch/out", "relative/path", "/data/../etc/passwd"])
     def test_egress_source_rejects_paths_outside_data_mount(self, source):
         """Test --egress-source rejects paths not under /data/."""
-        test_args = ["--egress-source", source, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--egress-source", source, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
@@ -544,7 +579,7 @@ class TestEgressCliOptions:
     @pytest.mark.parametrize("dest", ["not-s3", "s3://", "http://bucket/path"])
     def test_egress_s3_dest_rejects_invalid_uri(self, dest):
         """Test --egress-s3-dest rejects invalid S3 URIs."""
-        test_args = ["--egress-s3-dest", dest, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--egress-s3-dest", dest, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
@@ -553,7 +588,7 @@ class TestEgressCliOptions:
     @pytest.mark.parametrize("secret", ["not-a-secret", "volume://user/x"])
     def test_egress_s3_aki_rejects_invalid_secret(self, secret):
         """Test --egress-s3-aki rejects non-secret references."""
-        test_args = ["--egress-s3-aki", secret, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--egress-s3-aki", secret, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
@@ -565,6 +600,7 @@ class TestEgressCliOptions:
         monkeypatch.setenv("FUZZBALL_EGRESS_S3_SAK", "secret://user/sak")
         monkeypatch.setenv("FUZZBALL_EGRESS_S3_REGION", "us-east-1")
         test_args = [
+            *REQUIRED_ARGS,
             "--egress-source", "/data/results",
             "--egress-s3-dest", "s3://my-bucket/results",
             "--", "nextflow", "run", "hello",
@@ -577,7 +613,7 @@ class TestEgressCliOptions:
     def test_invalid_api_url_env_var_rejected(self, monkeypatch):
         """Test invalid FUZZBALL_API_URL env var is rejected."""
         monkeypatch.setenv("FUZZBALL_API_URL", "not-a-url")
-        test_args = ["--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--", "nextflow", "run", "hello"]
         monkeypatch.setattr("sys.argv", ["nf-fuzzball-submit"] + test_args)
 
         with pytest.raises(SystemExit):
@@ -637,7 +673,7 @@ class TestFbVersionCliOption:
 
     def test_fb_version_default_is_none(self):
         """Test --fb-version defaults to None."""
-        test_args = ["--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -646,7 +682,7 @@ class TestFbVersionCliOption:
 
     def test_fb_version_accepts_valid_version(self):
         """Test --fb-version accepts a valid version."""
-        test_args = ["--fb-version", "v1.2", "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--fb-version", "v1.2", "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -656,7 +692,7 @@ class TestFbVersionCliOption:
     @pytest.mark.parametrize("version", ["1.2", "foobar", "v1.2.3"])
     def test_fb_version_rejects_invalid_version(self, version):
         """Test --fb-version rejects invalid versions."""
-        test_args = ["--fb-version", version, "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--fb-version", version, "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):
@@ -664,7 +700,7 @@ class TestFbVersionCliOption:
 
     def test_nf_fuzzball_version_accepts_valid_version(self):
         """Test --nf-fuzzball-version accepts a valid three-part version."""
-        test_args = ["--nf-fuzzball-version", "0.3.0", "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--nf-fuzzball-version", "0.3.0", "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             args = parse_cli()
@@ -673,7 +709,7 @@ class TestFbVersionCliOption:
 
     def test_nf_fuzzball_version_rejects_two_part(self):
         """Test --nf-fuzzball-version rejects a two-part version."""
-        test_args = ["--nf-fuzzball-version", "0.3", "--", "nextflow", "run", "hello"]
+        test_args = [*REQUIRED_ARGS, "--nf-fuzzball-version", "0.3", "--", "nextflow", "run", "hello"]
 
         with patch("sys.argv", ["nf-fuzzball-submit"] + test_args):
             with pytest.raises(SystemExit):

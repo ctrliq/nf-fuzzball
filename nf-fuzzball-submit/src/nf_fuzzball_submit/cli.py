@@ -13,7 +13,7 @@ from importlib.metadata import version
 from typing import NoReturn
 from urllib.parse import urlparse
 
-from .client import DATA_MOUNT
+from .client import DATA_MOUNT, EPHEMERAL_STORAGE_CLASSES
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +127,38 @@ def valid_fuzzball_volume(value: str) -> str:
     if not value.startswith("volume://"):
         raise argparse.ArgumentTypeError(
             f"Invalid Fuzzball volume string: {value}. Expected format: volume://SCOPE/STORAGE_CLASS[/CUSTOM_NAME]"
+        )
+    return value
+
+
+def valid_persistent_fuzzball_volume(value: str) -> str:
+    """Validate a fuzzball volume reference that must name a persistent volume.
+
+    Requires the full form volume://SCOPE/CLASS/NAME (e.g.
+    volume://user/persistent/mydata). Ephemeral classes are rejected because
+    the data volume must outlive individual task workflows.
+
+    Args:
+        value: The volume reference to validate.
+
+    Returns:
+        The validated volume reference.
+
+    Raises:
+        argparse.ArgumentTypeError: If the reference is not a named,
+            persistent volume reference.
+    """
+    value = valid_fuzzball_volume(value)
+    parts = value.removeprefix("volume://").split("/", 2)
+    if len(parts) < 3 or not parts[2]:
+        raise argparse.ArgumentTypeError(
+            f"Invalid persistent volume reference: {value}. "
+            "An explicit volume name is required, e.g. volume://user/persistent/mydata"
+        )
+    if parts[1] in EPHEMERAL_STORAGE_CLASSES:
+        raise argparse.ArgumentTypeError(
+            f"Invalid persistent volume reference: {value}. "
+            f"Storage class '{parts[1]}' is ephemeral; the data volume must be persistent"
         )
     return value
 
@@ -303,10 +335,10 @@ def parse_cli() -> argparse.Namespace:
 Submit a nextflow pipeline to Fuzzball.
 
 Notes:
-  - Requires a persistent data volume (mounted at /data) and an ephemeral volume (mounted
-    at /scratch).
+  - Requires Fuzzball v4.0 or later, a named persistent data volume (mounted at /data,
+    specified with --data-volume) and an ephemeral volume (mounted at /scratch).
   - Paths for input, workdir, and output in your nextflow command should be absolute. For
-    paths in persistent storate they should include the persistent storage mount point.
+    paths in persistent storage they should include the persistent storage mount point.
   - Any explicitly specified config and/or parameter files will be included in the
     fuzzball job but implicit files (i.e. $HOME/.nextflow/config and ./nextflow.config)
     will not.
@@ -322,7 +354,9 @@ Notes:
         epilog=textwrap.dedent(
             """\
             Example:
-              %(prog)s -- nextflow run -profile fuzzball \\
+              %(prog)s \\
+                  --data-volume volume://user/persistent/mydata \\
+                  -- nextflow run -profile fuzzball \\
                   -with-report report.html \\
                   -with-trace \\
                   -with-timeline timeline.html \\
@@ -507,13 +541,14 @@ Notes:
         "--scratch-volume",
         type=valid_fuzzball_volume,
         default="volume://user/ephemeral",
-        help="Ephemeral scratch volume. [%(default)s]",
+        help="Scratch volume reference (typically ephemeral). [%(default)s]",
     )
     parser.add_argument(
         "--data-volume",
-        type=valid_fuzzball_volume,
-        default="volume://user/persistent",
-        help="Persistent data volume. [%(default)s]",
+        type=valid_persistent_fuzzball_volume,
+        required=True,
+        help="Persistent data volume reference with an explicit volume name, "
+        "e.g. volume://user/persistent/mydata. Required.",
     )
     parser.add_argument("--nf-core", action="store_true", help="Use nf-core conventions.")
     parser.add_argument(

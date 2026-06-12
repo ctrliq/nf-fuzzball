@@ -12,12 +12,14 @@
 #>      Locate to save the auto-generated SDK to. If PATH exists it will be deleted and replaced
 #>      with the generated code.
 #>  --url
-#>      URL of the OpenAPI spec to fetch (defaults to https://api.stable.fuzzball.ciq.dev/v3/schema)
+#>      URL of the OpenAPI spec to fetch
 #>  --file
-#>      File of the OpenAPI spec. Defaults to none and when specified takes precedence over
+#>      File of the OpenAPI spec.
 #>      --url.
 #>  --keep
 #>      Keep the full generated project. Othewise only the groovy files are copied.
+#>
+#>One of --url or --file is required
 #>
 #>Copyright 2025 CIQ, Inc. All rights reserved.
 
@@ -28,10 +30,11 @@ EXIT_CODEGEN_FAILED=102
 EXIT_SED_FAILED=103
 EXIT_MISSING_FILE=104
 EXIT_MISSING_JQ=105
+EXIT_ARG_ERROR=106
 
 keep=false
 path="__none__"
-url="https://api.stable.fuzzball.ciq.dev/v3/schema"
+url="__none__"
 specfile="__none__"
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -71,7 +74,7 @@ if [[ ! "$path" =~ ^/ ]]; then
     path="${PWD}/${path}"
 fi
 
-spec="${url}"
+spec="__none__"
 if [[ "${specfile}" != "__none__" ]]; then
     if [[ ! "${specfile}" =~ ^/ ]]; then
         specfile="${PWD}/${specfile}"
@@ -81,6 +84,11 @@ if [[ "${specfile}" != "__none__" ]]; then
         exit $EXIT_MISSING_FILE
     fi
     spec="${specfile}"
+elif [[ "${url}" != "__none__" ]]; then
+    spec="${url}"
+else
+    echo "Error: one of --url or --file is required"
+    exit $EXIT_ARG_ERROR
 fi
 
 ver=7.16.0

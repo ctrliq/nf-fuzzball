@@ -69,6 +69,7 @@ download from like so:
 nf-fuzzball-submit \
     --plugin-base-uri "s3://MY_BUCKET/MY_PREFIX/nf-fuzzball" \
     --s3-secret "secret://user/MY_S3_SECRET" \
+    --data-volume volume://user/persistent/mydata \
     -- \
     nextflow run -profile fuzzball hello
 ```

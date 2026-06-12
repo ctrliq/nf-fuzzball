@@ -16,12 +16,12 @@ import nextflow.exception.ProcessException
 import java.nio.file.Path
 
 import com.ciq.fuzzball.api.WorkflowServiceApi
-import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinitionJob as WorkflowDefinitionJob
-import com.ciq.fuzzball.model.FuzzballApiV3WorkflowDefinition as WorkflowDefinition
-import com.ciq.fuzzball.model.FuzzballApiV3StartWorkflowRequest as StartWorkflowRequest
-import com.ciq.fuzzball.model.FuzzballApiV3WorkflowIDResponse as WorkflowIDResponse
-import com.ciq.fuzzball.model.FuzzballApiV3GetWorkflowStatusResponse as GetWorkflowStatusResponse
-import com.ciq.fuzzball.model.FuzzballApiV3WorkflowStatus as WorkflowStatus
+import com.ciq.fuzzball.model.FuzzballApiV4WorkflowDefinitionJob as WorkflowDefinitionJob
+import com.ciq.fuzzball.model.FuzzballApiV4WorkflowDefinition as WorkflowDefinition
+import com.ciq.fuzzball.model.FuzzballApiV4StartWorkflowRequest as StartWorkflowRequest
+import com.ciq.fuzzball.model.FuzzballApiV4WorkflowIDResponse as WorkflowIDResponse
+import com.ciq.fuzzball.model.FuzzballApiV4GetWorkflowStatusResponse as GetWorkflowStatusResponse
+import com.ciq.fuzzball.model.FuzzballApiV4WorkflowStatus as WorkflowStatus
 
 @Slf4j
 @CompileStatic
@@ -60,7 +60,7 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
         // create a fuzzball workflow definition for the task
         WorkflowDefinitionJob job = FuzzballWorkflowDefinitionJobFactory.create(task, executor)
         WorkflowDefinition wfDef = new WorkflowDefinition(
-            version: 'v1',
+            version: 'v4',
             volumes: executor.volumes,
             jobs: [(job.name): job],
         )

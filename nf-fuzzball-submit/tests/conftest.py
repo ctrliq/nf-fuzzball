@@ -106,7 +106,7 @@ def mock_nextflow_args():
         nextflow_version="25.10.4",
         timelimit="8h",
         scratch_volume="volume://user/ephemeral",
-        data_volume="volume://user/persistent",
+        data_volume="volume://user/persistent/mydata",
         nf_core=False,
         queue_size=20,
         s3_secret="",

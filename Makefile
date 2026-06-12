@@ -1,20 +1,26 @@
 # Copyright 2025 CIQ, Inc. All rights reserved.
 # Build the plugin
-SPEC_URL ?= https://api.stable.fuzzball.ciq.dev/v3/schema
-SPEC_FILE ?= __none__
+
+# Default to the latetst vendored schema; allow override to point to fuzzball instance
+SPEC_URL ?= __none__
+SPEC_FILE ?= $(shell ls code-generation/schemas/fuzzball-v*-openapi.json | sort -V | tail -1)
 
 # Check for required tools
 ifeq ($(shell command -v jq 2>/dev/null),)
   $(error "jq is required but not installed. Please install jq to continue.")
 endif
 
-ifeq ($(SPEC_FILE),__none__)
+ifneq ($(SPEC_URL),__none__)
   ifeq ($(shell command -v curl 2>/dev/null),)
     $(error "curl is required but not installed. Please install curl to continue.")
   endif
   SPEC := $(SPEC_URL)
-  FB_VERSION_FULL := $(shell curl -s "$(subst schema,version,$(SPEC_URL))" | jq -r '.version // ""')
-  BASEPATH := $(shell curl -s "$(SPEC_URL)" | jq -r '.basePath')
+  VERSION_URL := $(patsubst %/schema,%/version,$(SPEC_URL))
+  FB_VERSION_FULL := $(shell curl -fsS --connect-timeout 5 --max-time 30 "$(VERSION_URL)" | jq -r '.version // ""')
+  ifeq ($(FB_VERSION_FULL),)
+    $(error Could not fetch Fuzzball version from $(VERSION_URL) — check URL/network, or unset SPEC_URL to build from the vendored schema)
+  endif
+  BASEPATH := $(shell curl -fsS --connect-timeout 5 --max-time 30 "$(SPEC_URL)" | jq -r '.basePath // ""')
   GRADLEW_PROPS := -PopenapiUrl=$(SPEC)
 else
   SPEC := $(SPEC_FILE)
@@ -48,7 +54,7 @@ help: ## Show this help message
 	@echo ""
 	@echo "Environment Variables:"
 	@echo "  SPEC_URL     OpenAPI spec URL (default: $(SPEC_URL))"
-	@echo "  SPEC_FILE    Local OpenAPI spec file (overrides SPEC_URL if set)"
+	@echo "  SPEC_FILE    Local OpenAPI spec file (defaults to latest vendored file - $(SPEC_FILE))"
 	@echo ""
 	@echo "Current Configuration:"
 	@echo "  Spec:        $(SPEC)"
@@ -66,7 +72,7 @@ clean: ## Clean build artifacts and temporary files
 	./gradlew clean
 
 test: ## Run plugin unit tests
-	./gradlew test
+	./gradlew test $(GRADLEW_PROPS)
 
 install: ## Install the plugin into local nextflow plugins dir
 	./gradlew install $(GRADLEW_PROPS)
@@ -78,7 +84,7 @@ sdk: ## Generate Fuzzball SDK (groovy sources only)
 	./gradlew generateFuzzballSdk $(GRADLEW_PROPS)
 
 sdk-full: ## Generate complete Fuzzball SDK project in temp/fuzzball-sdk
-ifeq ($(SPEC_FILE),__none__)
+ifneq ($(SPEC_URL),__none__)
 	code-generation/generate --url "$(SPEC)" --keep temp/fuzzball-sdk
 else
 	code-generation/generate --file "$(SPEC)" --keep temp/fuzzball-sdk

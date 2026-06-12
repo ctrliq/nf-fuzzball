@@ -5,11 +5,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changelog was maintained before v0.2.0._
 
-## [0.3.2] Unreleased
+## [0.4.0] Unreleased
+
+### Added
+
+- **Fuzzball v4.0 support**. The plugin now targets the Fuzzball v4 API
+  (`/v4` base path) and submits `version: v4` workflow definitions with
+  path-keyed mounts and provisioner-based volumes. Storage-class-based
+  ephemeral volume filtering was replaced by the v4 rule (a volume is
+  persistent iff it sets `use: persistent` or an explicit `name`).
+  `nf-fuzzball-submit` translates `volume://` references to the v4 format
+  client-side and requires a Fuzzball v4.0+ cluster.
+
+### Changed
+
+- **BREAKING**: `nf-fuzzball-submit --data-volume` is now required and must
+  include an explicit volume name (e.g. `volume://user/persistent/mydata`);
+  name-less persistent references like `volume://user/persistent` cannot be resolved
+  client-side in v4.
+
+## [0.3.2] 2026-06-01
 
 ### Added
 
 - **Fuzzball v3.4 support**
+
 ## [0.3.1] 2026-05-19
 
 ### Added

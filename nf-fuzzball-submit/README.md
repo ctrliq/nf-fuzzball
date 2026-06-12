@@ -17,8 +17,8 @@ Installation as a tool (see the [uv tool documentation](https://docs.astral.sh/u
 ```sh
 # from the main branch
 uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@main#subdirectory=nf-fuzzball-submit"
-# from a release (e.g. 0.3.2)
-uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@0.3.2#subdirectory=nf-fuzzball-submit"
+# from a release (e.g. 0.4.0)
+uv tool install "git+https://github.com/ctrliq/nf-fuzzball.git@0.4.0#subdirectory=nf-fuzzball-submit"
 
 nf-fuzzball-submit --help
 ```
@@ -63,7 +63,9 @@ Uses the Fuzzball CLI configuration file at `${XDG_CONFIG_HOME:-$HOME/.config}/f
 fuzzball context login
 
 # Submit hello-world workflow
-nf-fuzzball-submit -- \
+nf-fuzzball-submit \
+    --data-volume volume://user/persistent/mydata \
+    -- \
     nextflow run \
       -profile fuzzball \
       -with-report report.html \
@@ -84,7 +86,7 @@ FUZZBALL_ACCOUNT_ID="account-id"
 read -rs FUZZBALL_PASSWORD  ## securely read password without echoing to the terminal
 export FUZZBALL_API_URL FUZZBALL_AUTH_URL FUZZBALL_USER FUZZBALL_ACCOUNT_ID FUZZBALL_PASSWORD
 
-nf-fuzzball-submit -- nextflow run -profile fuzzball hello
+nf-fuzzball-submit --data-volume volume://user/persistent/mydata -- nextflow run -profile fuzzball hello
 ```
 
 If `FUZZBALL_API_URL`, `FUZZBALL_AUTH_URL`, and `FUZZBALL_ACCOUNT_ID` or their corresponding
@@ -92,7 +94,7 @@ CLI options are not provided and a fuzzball configuration file exists, the value
 from that file. In that case, the minimal command would be:
 
 ```sh
-nf-fuzzball-submit --user user@example.com -- nextflow run -profile fuzzball hello
+nf-fuzzball-submit --user user@example.com --data-volume volume://user/persistent/mydata -- nextflow run -profile fuzzball hello
 ```
 
 ### 3. Device Flow Authentication
@@ -107,6 +109,7 @@ nf-fuzzball-submit \
     --auth-url "https://auth.example.com/auth/realms/fuzzball" \
     --account-id "account-id" \
     --device \
+    --data-volume volume://user/persistent/mydata \
     -- nextflow run -profile fuzzball hello
 ```
 
@@ -115,7 +118,7 @@ CLI options are not provided and a fuzzball configuration file exists, the value
 from that file. In that case the minimal command would be:
 
 ```sh
-nf-fuzzball-submit --device -- nextflow run -profile fuzzball hello
+nf-fuzzball-submit --device --data-volume volume://user/persistent/mydata -- nextflow run -profile fuzzball hello
 ```
 
 ## Command Line Options
@@ -126,24 +129,24 @@ The nextflow command to be executed is specified after a `--` following the opti
 
 General options
 
-| Argument               | Default                     | Description                                                         |
-|------------------------|-----------------------------|---------------------------------------------------------------------|
-| `-h`, `--help`         | n/a                         | show this help message and exit                                     |
-| `--version`            | n/a                         | show program's version number and exit                              |
-| `-v`, `--verbose`      | False                       | Enable verbose logging from the submission script                   |
-| `--ansi` / `--no-ansi` | True                        | Enable Nextflow ANSI log and summary output                         |
-| `-n`, `--dry-run`      | False                       | Print the workflow without submitting                               |
-| `--job-name`           | (UUID from command)         | Name of the Fuzzball workflow                                       |
-| `--nextflow-work-base` | `/data/nextflow/executions` | Base directory for Nextflow execution paths                         |
-| `--nextflow-version`   | `25.10.4`                   | Nextflow version to use in the Fuzzball job                         |
-| `--timelimit`          | `8h`                        | Timelimit for the pipeline job                                      |
-| `--memory`             | `4GB`                       | Memory allocated for the Nextflow controller job                    |
-| `--cores`              | `1`                         | Cores allocated for the Nextflow controller job                     |
-| `--scratch-volume`     | `volume://user/ephemeral`   | Ephemeral scratch volume reference                                  |
-| `--data-volume`        | `volume://user/persistent`  | Persistent data volume reference                                    |
-| `--nf-core`            | False                       | Use nf-core conventions                                             |
-| `--queue-size`         | `20`                        | Queue size for the Fuzzball executor                                |
-| `--ca-cert`            | (none)                      | CA certificate for Fuzzball clusters with a self-signed certificate |
+| Argument               | Default                     | Description                                                                                            |
+|------------------------|-----------------------------|--------------------------------------------------------------------------------------------------------|
+| `-h`, `--help`         | n/a                         | show this help message and exit                                                                        |
+| `--version`            | n/a                         | show program's version number and exit                                                                 |
+| `-v`, `--verbose`      | False                       | Enable verbose logging from the submission script                                                      |
+| `--ansi` / `--no-ansi` | True                        | Enable Nextflow ANSI log and summary output                                                            |
+| `-n`, `--dry-run`      | False                       | Print the workflow without submitting                                                                  |
+| `--job-name`           | (UUID from command)         | Name of the Fuzzball workflow                                                                          |
+| `--nextflow-work-base` | `/data/nextflow/executions` | Base directory for Nextflow execution paths                                                            |
+| `--nextflow-version`   | `25.10.4`                   | Nextflow version to use in the Fuzzball job                                                            |
+| `--timelimit`          | `8h`                        | Timelimit for the pipeline job                                                                         |
+| `--memory`             | `4GB`                       | Memory allocated for the Nextflow controller job                                                       |
+| `--cores`              | `1`                         | Cores allocated for the Nextflow controller job                                                        |
+| `--scratch-volume`     | `volume://user/ephemeral`   | Scratch volume reference (typically ephemeral)                                                         |
+| `--data-volume`        | (required)                  | Persistent data volume reference with an explicit volume name, e.g. `volume://user/persistent/mydata`  |
+| `--nf-core`            | False                       | Use nf-core conventions                                                                                |
+| `--queue-size`         | `20`                        | Queue size for the Fuzzball executor                                                                   |
+| `--ca-cert`            | (none)                      | CA certificate for Fuzzball clusters with a self-signed certificate                                    |
 
 Options for authenticating via the Fuzzball config file:
 
@@ -188,7 +191,7 @@ Options for development:
 | `--nf-fuzzball-version` | same as submission script | nf-fuzzball plugin version                             |
 | `--plugin-base-uri`     | GitHub releases           | Base URI for the nf-fuzzball plugin                    |
 | `--s3-secret`           | (none)                    | Fuzzball S3 secret for plugin download if using S3 URI |
-| `--fb-version`          | (auto-detected)           | Override the Fuzzball API version (e.g., `v3.2`)       |
+| `--fb-version`          | (auto-detected)           | Override the Fuzzball API version (e.g., `v4.0`)       |
 
 ## Development
 

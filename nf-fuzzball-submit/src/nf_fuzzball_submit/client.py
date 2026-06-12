@@ -27,6 +27,50 @@ logger = logging.getLogger(__name__)
 DATA_MOUNT = "/data"
 SCRATCH_MOUNT = "/scratch"
 MIN_FUZZBALL_VERSION = (3, 3)
+EPHEMERAL_STORAGE_CLASSES = frozenset({"ephemeral", "scratch"})
+
+
+def volume_from_reference(reference: str) -> dict[str, Any]:
+    """Translate a legacy volume:// reference into a v4 volume definition.
+
+    Reference format: volume://SCOPE/CLASS[/NAME]. The SCOPE has no v4
+    equivalent (named volumes are resolved across the caller's accessible
+    provisioners) and is ignored.
+
+      - CLASS ephemeral|scratch  -> {} (ephemeral volume, auto-selected provisioner)
+      - CLASS persistent + NAME  -> {"name": NAME}
+      - other CLASS [+ NAME]     -> {"use": CLASS[, "name": NAME]}
+
+    Args:
+        reference: Legacy volume reference (validated by the CLI).
+
+    Returns:
+        The v4 volume definition (without ingress/egress).
+
+    Raises:
+        ValueError: For a persistent reference without an explicit name, or a
+            reference without a storage class.
+    """
+    parts = reference.removeprefix("volume://").split("/", 2)
+    storage_class = parts[1] if len(parts) > 1 else ""
+    name = parts[2] if len(parts) > 2 else ""
+    if not storage_class:
+        raise ValueError(
+            f"Invalid volume reference {reference}: expected volume://SCOPE/CLASS[/NAME]"
+        )
+    if storage_class in EPHEMERAL_STORAGE_CLASSES:
+        return {}
+    if storage_class == "persistent":
+        if not name:
+            raise ValueError(
+                f"Cannot translate {reference} to the v4 volume format: persistent volumes "
+                "require an explicit name, e.g. volume://user/persistent/mydata"
+            )
+        return {"name": name}
+    volume: dict[str, Any] = {"use": storage_class}
+    if name:
+        volume["name"] = name
+    return volume
 
 
 class FuzzballClient:
@@ -317,11 +361,9 @@ class FuzzballClient:
             f"NXF_ANSI_SUMMARY={str(args.ansi).lower()}",
         ]
         volumes = {
-            "data": {
-                "reference": args.data_volume,
-            },
+            "data": volume_from_reference(args.data_volume),
             "scratch": {
-                "reference": args.scratch_volume,
+                **volume_from_reference(args.scratch_volume),
                 "ingress": [
                     {
                         "source": {
@@ -422,7 +464,7 @@ class FuzzballClient:
             workflow: dict[str, Any] = {
                 "name": job_name,
                 "definition": {
-                    "version": "v1",
+                    "version": "v4",
                     "files": {
                         nxf_fuzzball_config_name: nxf_fuzzball_config,
                     },

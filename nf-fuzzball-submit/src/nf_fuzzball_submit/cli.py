@@ -13,7 +13,7 @@ from importlib.metadata import version
 from typing import NoReturn
 from urllib.parse import urlparse
 
-from .client import DATA_MOUNT
+from .client import DATA_MOUNT, EPHEMERAL_STORAGE_CLASSES
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +127,38 @@ def valid_fuzzball_volume(value: str) -> str:
     if not value.startswith("volume://"):
         raise argparse.ArgumentTypeError(
             f"Invalid Fuzzball volume string: {value}. Expected format: volume://SCOPE/STORAGE_CLASS[/CUSTOM_NAME]"
+        )
+    return value
+
+
+def valid_persistent_fuzzball_volume(value: str) -> str:
+    """Validate a fuzzball volume reference that must name a persistent volume.
+
+    Requires the full form volume://SCOPE/CLASS/NAME (e.g.
+    volume://user/persistent/mydata). Ephemeral classes are rejected because
+    the data volume must outlive individual task workflows.
+
+    Args:
+        value: The volume reference to validate.
+
+    Returns:
+        The validated volume reference.
+
+    Raises:
+        argparse.ArgumentTypeError: If the reference is not a named,
+            persistent volume reference.
+    """
+    value = valid_fuzzball_volume(value)
+    parts = value.removeprefix("volume://").split("/", 2)
+    if len(parts) < 3 or not parts[2]:
+        raise argparse.ArgumentTypeError(
+            f"Invalid persistent volume reference: {value}. "
+            "An explicit volume name is required, e.g. volume://user/persistent/mydata"
+        )
+    if parts[1] in EPHEMERAL_STORAGE_CLASSES:
+        raise argparse.ArgumentTypeError(
+            f"Invalid persistent volume reference: {value}. "
+            f"Storage class '{parts[1]}' is ephemeral; the data volume must be persistent"
         )
     return value
 
@@ -511,9 +543,10 @@ Notes:
     )
     parser.add_argument(
         "--data-volume",
-        type=valid_fuzzball_volume,
-        default="volume://user/persistent",
-        help="Persistent data volume. [%(default)s]",
+        type=valid_persistent_fuzzball_volume,
+        required=True,
+        help="Persistent data volume reference with an explicit volume name, "
+        "e.g. volume://user/persistent/mydata. Required.",
     )
     parser.add_argument("--nf-core", action="store_true", help="Use nf-core conventions.")
     parser.add_argument(

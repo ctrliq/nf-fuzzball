@@ -5,10 +5,10 @@ from argparse import Namespace
 from typing import Any
 from unittest.mock import Mock
 
-import pytest  # noqa: F401
+import pytest
 from jinja2 import Environment, PackageLoader
 
-from nf_fuzzball_submit.client import DATA_MOUNT, SCRATCH_MOUNT, FuzzballClient
+from nf_fuzzball_submit.client import DATA_MOUNT, SCRATCH_MOUNT, FuzzballClient, volume_from_reference
 from nf_fuzzball_submit.models import ApiConfig
 
 V4_MOUNTS = {
@@ -121,3 +121,51 @@ class TestWorkflowDefinitionMounts:
 
         definition = captured["workflow_request"]["definition"]
         assert definition["jobs"]["egress"]["mounts"] == {DATA_MOUNT: {"volume": "data"}}
+
+
+class TestVolumeFromReference:
+    def test_ephemeral_classes_become_empty_blocks(self) -> None:
+        assert volume_from_reference("volume://user/ephemeral") == {}
+        assert volume_from_reference("volume://user/scratch") == {}
+        assert volume_from_reference("volume://user/ephemeral/named") == {}
+
+    def test_named_persistent_volume(self) -> None:
+        assert volume_from_reference("volume://group/persistent/data") == {"name": "data"}
+        assert volume_from_reference("volume://user/persistent/mydata") == {"name": "mydata"}
+
+    def test_unnamed_persistent_volume_is_rejected(self) -> None:
+        with pytest.raises(ValueError, match="explicit name"):
+            volume_from_reference("volume://user/persistent")
+
+    def test_provisioner_class_maps_to_use(self) -> None:
+        assert volume_from_reference("volume://user/nfs-prod") == {"use": "nfs-prod"}
+        assert volume_from_reference("volume://user/nfs-prod/data") == {"use": "nfs-prod", "name": "data"}
+
+    def test_class_less_reference_is_rejected(self) -> None:
+        with pytest.raises(ValueError, match="volume://SCOPE/CLASS"):
+            volume_from_reference("volume://user")
+
+
+class TestWorkflowDefinitionVolumes:
+    def test_submits_native_v4_definition(self) -> None:
+        client = make_client()
+        captured: dict[str, Any] = {}
+        install_fake_request(client, captured)
+
+        client.submit_nextflow_job(make_args(dry_run=False))
+
+        definition = captured["workflow_request"]["definition"]
+        assert definition["version"] == "v4"
+        assert definition["volumes"]["data"] == {"name": "mydata"}
+        scratch = definition["volumes"]["scratch"]
+        assert "reference" not in scratch
+        assert scratch["ingress"][0]["destination"] == {"uri": "file://nf-fuzzball.zip"}
+
+    def test_dry_run_does_not_submit(self) -> None:
+        client = make_client()
+        captured: dict[str, Any] = {}
+        install_fake_request(client, captured)
+
+        client.submit_nextflow_job(make_args(dry_run=True))
+
+        assert "workflow_request" not in captured

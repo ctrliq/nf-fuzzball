@@ -5,7 +5,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changelog was maintained before v0.2.0._
 
-## [0.4.0] Unreleased
+## [0.4.1] 2026-07-29
+
+### Added
+
+- **Fuzzball v4.1 support**. The plugin now supports Fuzzball v4.1.
+
+### Changed
+
+- **ApiUtils** in the plugin now sets `READ_UNKNOWN_ENUM_VALUES_AS_NULL` to true to
+  allow unrecognized enum values do not cause deserialization errors.
+
+## [0.4.0] 2026-06-12
 
 ### Added
 

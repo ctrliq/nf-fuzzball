@@ -175,9 +175,10 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
                     task.exitStatus = Integer.MAX_VALUE
                     task.stdout = outputFile
                     task.stderr = errorFile
+                    killTask()
                     yield true
                 }
-                log.warn("Unknown workflow status: ${statusResp.workflowStatus} " +
+                log.warn("Workflow ${wfId} for task `${task.name}` reported unknown status: ${statusResp.workflowStatus} " +
                          "(${unknownStatusCount}/${MAX_UNKNOWN_STATUS_RETRIES} before failing the task)")
                 yield false
             }

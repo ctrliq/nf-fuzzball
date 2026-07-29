@@ -27,6 +27,14 @@ import com.ciq.fuzzball.model.FuzzballApiV4WorkflowStatus as WorkflowStatus
 @CompileStatic
 class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
 
+    /**
+     * Number of consecutive unrecognized workflow statuses tolerated in
+     * {@link #checkIfCompleted()} before the task is failed. An unrecognized status is
+     * most likely a newer Fuzzball server reporting a state this plugin was not built
+     * against, in which case polling would otherwise never terminate.
+     */
+    @groovy.transform.PackageScope static final int MAX_UNKNOWN_STATUS_RETRIES = 5
+
     private final Path exitFile
     private final Long wallTimeMillis
     private final Path wrapperFile
@@ -38,6 +46,7 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
     @groovy.transform.PackageScope WorkflowServiceApi fuzzballWfService
     private String wfDefinitionYaml
     private Session session
+    private int unknownStatusCount
 
     FuzzballTaskHandler(TaskRun task, FuzzballExecutor executor) {
         super(task)
@@ -136,9 +145,13 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
         GetWorkflowStatusResponse statusResp = fuzzballWfService.getWorkflowStatus(wfId)
         switch(statusResp.workflowStatus) {
             case WorkflowStatus.STAGE_STATUS_UNSPECIFIED,
-                 WorkflowStatus.STAGE_STATUS_STARTED -> false
+                 WorkflowStatus.STAGE_STATUS_STARTED -> {
+                    unknownStatusCount = 0
+                    yield false
+            }
             case WorkflowStatus.STAGE_STATUS_FINISHED,
                  WorkflowStatus.STAGE_STATUS_FAILED -> {
+                    unknownStatusCount = 0
                     status = COMPLETED
                     int exit = readExitFile()
                     task.exitStatus = exit
@@ -147,6 +160,7 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
                     yield true
             }
             case WorkflowStatus.STAGE_STATUS_CANCELED -> {
+                    unknownStatusCount = 0
                     status = COMPLETED
                     task.exitStatus = Integer.MAX_VALUE
                     task.stdout = outputFile
@@ -154,7 +168,17 @@ class FuzzballTaskHandler extends TaskHandler implements FusionAwareTask {
                     yield true
             }
             default -> {
-                log.warn("Unknown workflow status: ${statusResp.workflowStatus}")
+                if (++unknownStatusCount > MAX_UNKNOWN_STATUS_RETRIES) {
+                    log.error("Workflow ${wfId} for task `${task.name}` reported an unknown status " +
+                              "(${statusResp.workflowStatus}) ${unknownStatusCount} times in a row - failing the task")
+                    status = COMPLETED
+                    task.exitStatus = Integer.MAX_VALUE
+                    task.stdout = outputFile
+                    task.stderr = errorFile
+                    yield true
+                }
+                log.warn("Unknown workflow status: ${statusResp.workflowStatus} " +
+                         "(${unknownStatusCount}/${MAX_UNKNOWN_STATUS_RETRIES} before failing the task)")
                 yield false
             }
         }

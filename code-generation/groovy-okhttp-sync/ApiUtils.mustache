@@ -47,10 +47,6 @@ class ApiUtils {
             .registerModule(new JavaTimeModule())
             .configure(SerializationFeature.WRITE_ENUMS_USING_TO_STRING, true)
             .configure(DeserializationFeature.READ_ENUMS_USING_TO_STRING, true)
-            // A newer Fuzzball server may return enum values this SDK was not generated
-            // against. Map them to null so callers can handle them rather than failing
-            // deserialization of the whole response.
-            .configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL, true)
 
     private static final int MAX_RESP_BODY_PREVIEW = 4096
 

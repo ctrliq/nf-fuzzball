@@ -11,6 +11,10 @@ _No changelog was maintained before v0.2.0._
 
 - **Fuzzball v4.2 support**. The plugin now supports Fuzzball v4.2.
 
+### Internal
+
+- Dependencies upgraded: jackson-databind to 2.21.6
+
 ## [0.4.1] 2026-07
 
 ### Added

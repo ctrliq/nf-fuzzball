@@ -5,13 +5,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changelog was maintained before v0.2.0._
 
-## [0.4.1] 2026-07-29
+## [0.4.2] 2026-09
+
+### Added
+
+- **Fuzzball v4.2 support**. The plugin now supports Fuzzball v4.2.
+
+### Internal
+
+- Dependencies upgraded: jackson-databind to 2.21.6
+
+## [0.4.1] 2026-07
 
 ### Added
 
 - **Fuzzball v4.1 support**. The plugin now supports Fuzzball v4.1.
 
-## [0.4.0] 2026-06-12
+## [0.4.0] 2026-06
 
 ### Added
 
@@ -30,13 +40,13 @@ _No changelog was maintained before v0.2.0._
   name-less persistent references like `volume://user/persistent` cannot be resolved
   client-side in v4.
 
-## [0.3.2] 2026-06-01
+## [0.3.2] 2026-06
 
 ### Added
 
 - **Fuzzball v3.4 support**
 
-## [0.3.1] 2026-05-19
+## [0.3.1] 2026-05
 
 ### Added
 
@@ -53,7 +63,7 @@ _No changelog was maintained before v0.2.0._
 - **API error messages**. `ApiException` now includes the response body, so server-side error
   details are surfaced instead of just the bare HTTP status phrase.
 
-## [0.3.0] 2026-04-28
+## [0.3.0] 2026-04
 
 ### Added
 
@@ -61,14 +71,14 @@ _No changelog was maintained before v0.2.0._
 - **Minimum Fuzzball version enforcement**. The submission script now validates the Fuzzball cluster
   version at startup and exits with a clear error if the cluster is too old.
 
-## [0.2.2] 2026-05-19
+## [0.2.2] 2026-05
 
 ### Added
 
 - **AWS egress retry**. Added AWS CLI retry plus a re-sync loop to make nf-fuzzball-submit egress
   more robust.
 
-## [0.2.1] 2026-04-28
+## [0.2.1] 2026-04
 
 ### Added
 
@@ -87,7 +97,7 @@ _No changelog was maintained before v0.2.0._
 - Migrated type checking from mypy to `ty` for Python code.
 - Dependency bumps to address security advisories.
 
-## [0.2.0] 2026-03-23
+## [0.2.0] 2026-03
 
 ### Added
 
